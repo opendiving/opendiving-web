@@ -50,9 +50,9 @@ export interface InstanceConfig {
   /**
    * Whether OpenDiving Commons is edited on this instance, which is the one place
    * proposals are made and reviewed; every other copy holds a read-only copy of the
-   * records and answers those routes with a 404. The admin section offers the
-   * review queue on it, and `/privacy` reads it from the server, to count that
-   * queue's map.
+   * records and answers those routes with a 404. A site's page offers proposing on
+   * it and the admin section the review queue, and `/privacy` and `/terms` read it
+   * from the server, to say what proposing shows, publishes and takes away.
    */
   commons_primary: boolean;
 }

@@ -6,10 +6,14 @@ import type { DiveSite } from "@/lib/api/dive-sites";
 
 // The page's own decisions, about a site's owner and whether it is saved; what
 // sits around them has tests of its own.
-const loaded = vi.hoisted(() => ({ site: null as unknown }));
+const loaded = vi.hoisted(() => ({
+  site: null as unknown,
+  primary: false,
+  replace: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: loaded.replace }),
 }));
 vi.mock("@/hooks/useAuthGuard", () => ({
   useAuthGuard: () => ({
@@ -25,6 +29,12 @@ vi.mock("@/hooks/useResource", () => ({
   useResource: () => ({
     resource: loaded.site,
     setResource: vi.fn(),
+    isLoading: false,
+  }),
+}));
+vi.mock("@/hooks/useInstanceConfig", () => ({
+  useInstanceConfig: () => ({
+    config: { commons_primary: loaded.primary },
     isLoading: false,
   }),
 }));
@@ -47,6 +57,14 @@ vi.mock("@/components/sites/dive-site-dialog", () => ({
   DiveSiteDialog: ({ open }: { open: boolean }) =>
     open ? <div>The whole form</div> : null,
   readBack: vi.fn(),
+}));
+vi.mock("@/components/sites/propose-site-dialog", () => ({
+  ProposeSiteDialog: ({ open }: { open: boolean }) =>
+    open ? <div>Is it already in the Commons?</div> : null,
+}));
+vi.mock("@/components/sites/propose-change-dialog", () => ({
+  ProposeChangeDialog: ({ open }: { open: boolean }) =>
+    open ? <div>The shared members</div> : null,
 }));
 vi.mock("@/components/sites/commons-site-dialog", () => ({
   CommonsSiteDialog: ({ open, site }: { open: boolean; site: DiveSite }) =>
@@ -80,6 +98,7 @@ const items = async () => {
 
 beforeEach(() => {
   loaded.site = null;
+  loaded.primary = false;
 });
 
 describe("DiveSiteDetailPageContent", () => {
@@ -153,5 +172,96 @@ describe("DiveSiteDetailPageContent", () => {
     expect(
       screen.queryByRole("link", { name: /OpenStreetMap/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("offers proposing a diver's own site only where the Commons is edited", async () => {
+    loaded.site = OWN;
+    loaded.primary = true;
+    render(<DiveSiteDetailPageContent />);
+
+    await openMenu();
+
+    expect(await items()).toEqual([
+      "Propose for OpenDiving Commons",
+      "Edit",
+      "Delete",
+    ]);
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Propose for OpenDiving Commons" }),
+    );
+    expect(
+      await screen.findByText("Is it already in the Commons?"),
+    ).toBeInTheDocument();
+  });
+
+  it("offers a change to any Commons record where the Commons is edited", async () => {
+    loaded.site = COMMONS;
+    loaded.primary = true;
+    render(<DiveSiteDetailPageContent />);
+
+    await openMenu();
+
+    expect(await items()).toEqual(["Propose a change", "Save to your sites"]);
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Propose a change" }),
+    );
+    expect(await screen.findByText("The shared members")).toBeInTheDocument();
+  });
+
+  it("shows a waiting proposal and offers no second one", async () => {
+    loaded.site = {
+      ...OWN,
+      proposal: {
+        uuid: "proposal-1",
+        kind: "new_site",
+        status: "waiting",
+        reason: null,
+        created_at: "2026-01-02T00:00:00Z",
+      },
+    };
+    loaded.primary = true;
+    render(<DiveSiteDetailPageContent />);
+
+    expect(screen.getByText("Waiting for review")).toBeInTheDocument();
+    await openMenu();
+    expect(await items()).toEqual(["Edit", "Delete"]);
+  });
+
+  it("offers proposing again after a decline, and shows why", async () => {
+    loaded.site = {
+      ...OWN,
+      proposal: {
+        uuid: "proposal-1",
+        kind: "new_site",
+        status: "declined",
+        reason: "Pin is on land",
+        created_at: "2026-01-02T00:00:00Z",
+      },
+    };
+    loaded.primary = true;
+    render(<DiveSiteDetailPageContent />);
+
+    expect(screen.getByText("Pin is on land")).toBeInTheDocument();
+    await openMenu();
+    expect(await items()).toContain("Propose for OpenDiving Commons");
+  });
+
+  it("offers replacing a copy on every instance, and goes to the record", async () => {
+    loaded.site = {
+      ...OWN,
+      commons_match: { uuid: "commons-1", name: "Kapal Polis" },
+    };
+    render(<DiveSiteDetailPageContent />);
+
+    expect(screen.getByRole("link", { name: "Kapal Polis" })).toHaveAttribute(
+      "href",
+      "/sites/commons-1",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Replace with Commons site" }),
+    );
+    expect(await screen.findByRole("dialog")).toHaveTextContent(
+      "is then deleted",
+    );
   });
 });

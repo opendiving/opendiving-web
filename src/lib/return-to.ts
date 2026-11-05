@@ -46,6 +46,7 @@ const SECTIONS: Record<string, { index: string; item: string }> = {
 
 export function labelForPath(path: string): string {
   const segments = path.split(/[?#]/)[0].split("/").filter(Boolean);
+  if (segments.join("/") === "sites/proposals") return "Back to your proposals";
   const section = SECTIONS[segments[0]];
   if (!section) return "Back";
   return `Back to ${segments.length > 1 ? section.item : section.index}`;

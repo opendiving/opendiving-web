@@ -4375,20 +4375,23 @@ passes. A shorter list is not a stronger guarantee.
 
 This file pins privacy sections by number and by quoted content — §4.4 map tiles, §4.5 geocoder,
 §4.6 species cache, §4.7 Legal Requirements, §4.8 invitations, §4.9 check-in links, §4.10 linking a
-person, §4.11 API keys, §4.12 Google sign-in — so a reword at the right number falsifies a pin
-silently. A stale privacy page is worse than a vague one.
+person, §4.11 API keys, §4.12 Google sign-in, then the weather and proposing — so a reword at the
+right number falsifies a pin silently. A stale privacy page is worse than a vague one.
 
 Conditional sections sit last. §4.12 exists only when `GOOGLE_CLIENT_ID` is set, so its absence
 leaves no gap. The weather service's section follows it, present only where `/config` says the
-instance fetches dive conditions, and numbered 4.13 or 4.12 by whether Google's is there. The
-invitations disclosure is unconditional — `REGISTRATION_MODE` flips with a restart, and a section
-that came and went would change under a reader for no stated reason — so it holds a fixed number and
-hedges in prose ("where this copy is invite-only"); the check-in links, linking and API keys
-sections are unconditional because every copy offers them. §4.8's join-link paragraph alone comes
-and goes, with `join_links`: a copy without join links says nothing of them. `page.test.tsx` asserts
-§4.8 to §4.11 always present and §4.12 present only when configured. `git grep '4\.12'` misses the
-page's and `lib/google-oauth.test.ts`'s regex literals; use
-`git grep -n -E '4\\?\.(9|1[0123])|4\.\{'`, which also finds the weather heading's computed number.
+instance fetches dive conditions, and numbered 4.13 or 4.12 by whether Google's is there. Proposing
+for OpenDiving Commons comes after both, present only where `/config` says the instance is the
+Commons' primary, its number computed from which of the two precede it, 4.12 to 4.14; the terms name
+it by its heading, since that page reads neither. The invitations disclosure is unconditional —
+`REGISTRATION_MODE` flips with a restart, and a section that came and went would change under a
+reader for no stated reason — so it holds a fixed number and hedges in prose ("where this copy is
+invite-only"); the check-in links, linking and API keys sections are unconditional because every
+copy offers them. §4.8's join-link paragraph alone comes and goes, with `join_links`: a copy without
+join links says nothing of them. `page.test.tsx` asserts §4.8 to §4.11 always present and §4.12
+present only when configured. `git grep '4\.12'` misses the page's and `lib/google-oauth.test.ts`'s
+regex literals; use `git grep -n -E '4\\?\.(9|1[0123])|4\.\{'`, which also finds the weather
+heading's computed number.
 
 ## The ICO's `localStorage` suggestion, read and answered rather than passed over
 
@@ -4414,10 +4417,11 @@ controller, is the outcome it must not inherit.
 
 ## The terms page has two speakers, and the headings are the mechanism
 
-`/terms` describes this software, not a platform: no shared content, forums, passwords, third-party
-content licence or `legal@opendiving.app`. §2: you keep your own dive-site list (`user_uuid`-scoped,
-`lib/api/dive-sites.ts`). §8: the page changes with the software; no notice mailing exists. §3 lists
-every sign-in method, Google hedged in prose ("where this copy offers it") rather than gated on
+`/terms` describes this software, not a platform: no forums, passwords or `legal@opendiving.app`,
+and a licence on what a diver enters only where they dedicate it to OpenDiving Commons, on the
+instance that edits it. §2: you keep your own list of dive sites, your own and saved Commons records
+alike. §8: the page changes with the software; no notice mailing exists. §3 lists every sign-in
+method, Google hedged in prose ("where this copy offers it") rather than gated on
 `GOOGLE_CLIENT_ID`, because the sentence draws a security consequence from completeness. §13 splits:
 operator for this copy, project for a software defect. §7 makes AGPLv3 §13's source offer the
 operator's.
@@ -6278,6 +6282,16 @@ them.
 
 `app/privacy/page.test.tsx` and `app/terms/page.test.tsx` assert absences of block-only strings, not
 a snapshot; both pages are `async` (`render(await PrivacyPage())`).
+
+## What proposing makes false is reworded inline, and the operator block's rule does not apply
+
+The operator block adds a block and rewords nothing, which suits answers to questions the sections
+leave open. Proposing changes what the sections themselves say: that nothing is published, what
+deletion removes, what a diver keeps. A block above a page that still says "Nothing you enter is
+published" contradicts it. So each such sentence varies inline on `commons_primary`, as the
+`mapTiles` and `joinLinks` sentences do, and every other copy renders as before. The numbers stay
+put because the new section sits last. `page.test.tsx` on both pages holds each sentence in both
+renderings.
 
 ## The source offer names the repositories, and still leads with the request
 

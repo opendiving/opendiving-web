@@ -40,8 +40,11 @@ export default async function TermsPage() {
   // self-hosted copy - including one whose API is briefly down - renders these Terms
   // exactly as they have always read. The other thing that does is a clause naming
   // join links wherever registration is said to need an invitation, on the same rule,
-  // so a copy that has set none up carries no word about them.
-  const { projectOperated, joinLinks } = await readLegalPageConfig();
+  // so a copy that has set none up carries no word about them. So does the grant for
+  // proposing to OpenDiving Commons, and every sentence it makes false, which are
+  // reworded inline and on any other copy read as they always have.
+  const { projectOperated, joinLinks, commonsPrimary } =
+    await readLegalPageConfig();
 
   return (
     <div className={PAGE_COLUMN}>
@@ -211,8 +214,9 @@ export default async function TermsPage() {
                 2. Description of Service
               </h2>
               <p className="text-foreground mb-4">
-                This copy of OpenDiving is a private dive log. The software lets
-                you:
+                {commonsPrimary
+                  ? "This copy of OpenDiving is a dive log that keeps what you enter to yourself, and the place where OpenDiving Commons, a public pool of dive sites, is edited. The software lets you:"
+                  : "This copy of OpenDiving is a private dive log. The software lets you:"}
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
@@ -221,6 +225,12 @@ export default async function TermsPage() {
                 <li>
                   Keep your own list of dive sites and plan trips around them
                 </li>
+                {commonsPrimary && (
+                  <li>
+                    Propose a dive site of yours, or a change to a Commons site,
+                    for OpenDiving Commons, which a reviewer accepts or declines
+                  </li>
+                )}
                 <li>Track your gear and when it is due for service</li>
                 <li>
                   Record your diving certifications and the courses behind them
@@ -246,18 +256,28 @@ export default async function TermsPage() {
               <p className="text-foreground mb-4">
                 What it does not do is worth stating, because a page like this
                 one usually claims otherwise: there are no public profiles, no
-                feeds, no forums, no comments, no public ratings and no photo
-                sharing. The rating you give a dive is part of your own log. The
-                people you record are private records of yours, not connections
-                between accounts. An account on this copy gives its holder no
-                view of anything you enter. This copy shows one person to
-                another in three cases only: an invitation, which is about your
-                name rather than about anything you entered; a check-in link you
-                make, which shows your check-in page to whoever holds it,
-                account or not; and a person you link to an account here, which
-                shows you that account&rsquo;s current username and puts its
-                identifier in your own export. Section 5 says exactly what each
-                is, and what follows from the rest.
+                feeds, no forums,{" "}
+                {commonsPrimary
+                  ? "nothing one diver can post for another"
+                  : "no comments"}
+                , no public ratings and no photo sharing. The rating you give a
+                dive is part of your own log. The people you record are private
+                records of yours, not connections between accounts.{" "}
+                {commonsPrimary
+                  ? "An account on this copy gives its holder no view of what you enter, apart from an administrator's, which reads what you propose for OpenDiving Commons."
+                  : "An account on this copy gives its holder no view of anything you enter."}{" "}
+                This copy shows one person to another in{" "}
+                {commonsPrimary ? "four" : "three"} cases only: an invitation,
+                which is about your name rather than about anything you entered;
+                a check-in link you make, which shows your check-in page to
+                whoever holds it, account or not; {!commonsPrimary && "and "}a
+                person you link to an account here, which shows you that
+                account&rsquo;s current username and puts its identifier in your
+                own export
+                {commonsPrimary &&
+                  "; and a proposal for OpenDiving Commons, which shows what you proposed and your name to whoever reviews it, and publishes what is accepted, without your name"}
+                . Section 5 says exactly what each is, and what follows from the
+                rest.
               </p>
               <p className="text-foreground mb-4">
                 Whether this copy costs anything, who may register for it, and
@@ -352,9 +372,9 @@ export default async function TermsPage() {
                   training, your dive computer and your own judgement
                 </li>
                 <li>
-                  What you type in, and what is imported from a dive computer,
-                  is stored as given. Nobody checks it, and nothing here
-                  corrects it
+                  {commonsPrimary
+                    ? "What you type in, and what is imported from a dive computer, is kept as it arrived, and nobody checks it, with one exception: a reviewer reads what you propose for OpenDiving Commons, and may correct it or decline it. Accepting a record says it belongs in the pool, and nothing about whether a site is safe to dive"
+                    : "What you type in, and what is imported from a dive computer, is stored as given. Nobody checks it, and nothing here corrects it"}
                 </li>
                 <li>
                   Neither the OpenDiving project nor the operator of this copy
@@ -372,9 +392,11 @@ export default async function TermsPage() {
               <p className="text-foreground mb-4">
                 What you enter into this copy &mdash; dives, dive drafts, sites,
                 trips, gear, courses, certifications, contacts, people, tags,
-                your check-in details, notes, and the files you import &mdash;
-                is yours, and you are responsible for it. You agree not to use
-                this copy to hold or send:
+                your check-in details, notes, and the files you import &mdash;{" "}
+                {commonsPrimary
+                  ? "is your responsibility, and stays yours unless you dedicate it to the public domain by proposing it for OpenDiving Commons."
+                  : "is yours, and you are responsible for it."}{" "}
+                You agree not to use this copy to hold or send:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
@@ -407,29 +429,41 @@ export default async function TermsPage() {
                 to do, not this copy&rsquo;s.
               </p>
               <p className="text-foreground mb-4">
-                You keep every right you have in what you enter. Nothing here
-                gives the OpenDiving project any rights in your content as the
-                software&rsquo;s author &mdash; writing a program grants no
-                claim on what is entered into a copy of it, and where the
-                project is not the one running this copy it receives no data
+                {commonsPrimary
+                  ? "Every right you have in what you enter stays yours, apart from what you dedicate by proposing it, as the paragraphs below say."
+                  : "You keep every right you have in what you enter."}{" "}
+                Nothing here gives the OpenDiving project any rights in your
+                content as the software&rsquo;s author &mdash; writing a program
+                grants no claim on what is entered into a copy of it, and where
+                the project is not the one running this copy it receives no data
                 from it and never sees what you log. Where the project is the
-                one running it, it holds what the next paragraph grants the
-                operator and nothing beyond that.
+                one running it,{" "}
+                {commonsPrimary
+                  ? "it holds what the paragraphs below grant the operator, may use what has been dedicated to the public domain as anyone may, and holds nothing beyond that."
+                  : "it holds what the next paragraph grants the operator and nothing beyond that."}
               </p>
               <p className="text-foreground mb-4">
-                You grant the operator of this copy only the permission
-                technically needed to run the Service for you &mdash; to store
-                your entries, show them back to you, and include them in exports
-                you ask for. Your entries are not published, shared with other
-                users, or shown to anyone else by this software, except through
-                a check-in link you make. Printing your check-in summary and
-                handing it to a dive shop is you showing your own entries to
-                someone, not this copy showing them, and the permission above is
-                unchanged by it. The next three paragraphs are the three things
+                {commonsPrimary
+                  ? "Proposals aside, you grant the operator of this copy no more than what is technically needed to run the Service for you"
+                  : "You grant the operator of this copy only the permission technically needed to run the Service for you"}{" "}
+                &mdash; to store your entries, show them back to you, and
+                include them in exports you ask for.{" "}
+                {commonsPrimary
+                  ? "Nothing you enter is published, shared with other users, or shown to anyone else by this software, except through a check-in link you make or a proposal you send for OpenDiving Commons."
+                  : "Your entries are not published, shared with other users, or shown to anyone else by this software, except through a check-in link you make."}{" "}
+                Printing your check-in summary and handing it to a dive shop is
+                you showing your own entries to someone, not this copy showing
+                them, and the permission above is unchanged by it.{" "}
+                {commonsPrimary
+                  ? "The next four paragraphs are the four things"
+                  : "The next three paragraphs are the three things"}{" "}
                 this copy does show one person to another: an invitation, which
-                is not an entry; a check-in link, which is; and a person linked
-                to an account, which shows you something of theirs rather than
-                anything of yours.
+                is not an entry; a check-in link, which is;{" "}
+                {!commonsPrimary && "and "}a person linked to an account, which
+                shows you something of theirs rather than anything of yours
+                {commonsPrimary &&
+                  "; and a proposal, which is an entry, and the one thing here that can end up public"}
+                .
               </p>
               <p className="text-foreground mb-4">
                 Where this copy is invite-only and you invite somebody to it,
@@ -478,15 +512,52 @@ export default async function TermsPage() {
                 and nothing else. The privacy policy&rsquo;s section 4.10 sets
                 out the same in its own register.
               </p>
+              {commonsPrimary && (
+                <p className="text-foreground mb-4">
+                  Where you propose a dive site of yours, or a change to a
+                  Commons site, for OpenDiving Commons, you grant the operator
+                  the further permission that act needs, and only that: to show
+                  whoever reviews it what you proposed, your message, the name
+                  on your account and how many of your proposals have been
+                  accepted and declined; to correct it before accepting it; to
+                  keep the proposal, tied to your account, until your account
+                  goes; and to publish what is accepted, in the pool and in the
+                  public copies of it. The words you tick go further than a
+                  permission. In them you say that what you propose is from your
+                  own diving and is not copied from another database, app or
+                  publication, and you dedicate it to the public domain under{" "}
+                  <a
+                    href="https://creativecommons.org/publicdomain/zero/1.0/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-muted-foreground"
+                  >
+                    CC0 1.0
+                  </a>
+                  , which gives up your rights in it, for everyone, as far as
+                  the law allows. What is accepted is public, never says who
+                  proposed it, and stays if you delete your account; a change
+                  accepted into a record from another source leaves that record
+                  under its source&rsquo;s licence. What is declined or
+                  withdrawn publishes nothing, and a decline always comes with a
+                  reason. Anyone can report a Commons record to the operator of
+                  this copy, by the way section 13 gives, and a report is
+                  answered by changing the record; a record cannot yet be
+                  removed. The privacy policy&rsquo;s section headed{" "}
+                  <em>Proposing for OpenDiving Commons</em> sets out the same in
+                  its own register.
+                </p>
+              )}
               <p className="text-foreground mb-4">
                 That permission is deliberately no wider than what running the
                 Service takes, and the OpenDiving project holds itself to
                 keeping it that way: if a version of the software ever adds a
                 way to show what you entered to someone else, that feature
                 arrives with a permission of its own written here and a section
-                of its own on the privacy page, rather than leaning on this one.
-                The invitation, check-in link and linking grants above are that
-                rule being kept, not exceptions to it.
+                of its own on the privacy page, rather than leaning on this one.{" "}
+                {commonsPrimary
+                  ? "The invitation, check-in link, linking and proposal grants above are that rule being kept, not exceptions to it."
+                  : "The invitation, check-in link and linking grants above are that rule being kept, not exceptions to it."}
               </p>
             </section>
 
@@ -507,10 +578,12 @@ export default async function TermsPage() {
                 , which describes this copy the same way these Terms do.
               </p>
               <p className="text-foreground mb-4">
-                Two things worth knowing without reading it: exporting
-                everything you have entered and deleting your account are both
-                buttons in Settings, and neither needs anyone&rsquo;s
-                permission.
+                Two things worth knowing without reading it:{" "}
+                {commonsPrimary
+                  ? "exporting what you have entered, your proposals for OpenDiving Commons aside,"
+                  : "exporting everything you have entered"}{" "}
+                and deleting your account are both buttons in Settings, and
+                neither needs anyone&rsquo;s permission.
               </p>
             </section>
 
@@ -701,9 +774,9 @@ export default async function TermsPage() {
               </h2>
               <p className="text-foreground mb-4">
                 For anything to do with this copy &mdash; your account, your
-                data, what these Terms mean for you, or the Service being down
-                &mdash; the person to ask is whoever runs this copy of
-                OpenDiving. The{" "}
+                data, {commonsPrimary && "a report about a Commons record, "}
+                what these Terms mean for you, or the Service being down &mdash;
+                the person to ask is whoever runs this copy of OpenDiving. The{" "}
                 <Link
                   href="/support"
                   className="underline hover:text-muted-foreground"

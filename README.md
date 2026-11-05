@@ -62,10 +62,11 @@ one.
 - **Dive sites** — your personal site list: the other names a site goes by, the depths it is dived
   at, its water, its altitude and how you get in, and your own tags. Search OpenDiving Commons, a
   shared pool of named sites, and use one as it stands: every diver's dives name the same record,
-  with your notes and tags on top and yours alone. A site's page sums up your dives there — how
-  many, the last and the deepest, the species you saw and your average rating — beside every dive
-  you've logged at it, and a dive logged there starts from its water, altitude and entry. Sort the
-  list by name, by dives or by the last dive, and filter it by a tag.
+  with your notes and tags on top and yours alone. Where the Commons is edited, propose a site of
+  yours or a change to a record, for a reviewer to accept. A site's page sums up your dives there —
+  how many, the last and the deepest, the species you saw and your average rating — beside every
+  dive you've logged at it, and a dive logged there starts from its water, altitude and entry. Sort
+  the list by name, by dives or by the last dive, and filter it by a tag.
 - **Gear tracking** — your equipment with per-item dive counts and dive time, groupable into gear
   sets you can attach to a dive in one click; a cylinder records its volume, working pressure and
   material once, and a dive's tank links it. Plus **service schedules** (annual service, visual

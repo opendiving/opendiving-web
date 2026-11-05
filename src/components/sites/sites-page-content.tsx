@@ -127,8 +127,7 @@ export function SitesPageContent() {
   } = useInfiniteResource<DiveSite>(fetchDiveSites, {
     keyOf: (site) => site.uuid,
     enabled: !!user,
-    isNarrowed:
-      search.length > 0 || Boolean(filters.tagUuid) || listingMatches,
+    isNarrowed: search.length > 0 || Boolean(filters.tagUuid) || listingMatches,
     errorMessage: "Failed to load dive sites. Please try again.",
   });
 

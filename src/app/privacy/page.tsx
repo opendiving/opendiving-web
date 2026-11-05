@@ -53,6 +53,16 @@ export default async function PrivacyPage() {
     diveConditions,
     commonsPrimary,
   } = await readLegalPageConfig();
+  // Last of the conditional sections, so its number follows whichever of them this
+  // copy has. A sentence elsewhere that proposing makes false is reworded inline on
+  // `commonsPrimary`, and on every other copy reads as it always has.
+  const proposingSection =
+    12 + (googleClientId ? 1 : 0) + (diveConditions ? 1 : 0);
+
+  // Six things every copy has, the map tiles and the proposals where it has them.
+  const outsideTheButtons = ["Six", "Seven", "Eight"][
+    Number(mapTiles) + Number(commonsPrimary)
+  ];
 
   return (
     <div className={PAGE_COLUMN}>
@@ -81,7 +91,18 @@ export default async function PrivacyPage() {
                 this instance is there: the app, the API, the background worker,
                 {mapTiles && <> the map renderer §4.4 describes,</>} the
                 Postgres database and the short-lived counter store §2.2
-                describes. There is no second site and nothing is copied to one.
+                describes.{" "}
+                {commonsPrimary ? (
+                  <>
+                    There is no second site, and nothing of your account is
+                    copied to one. The OpenDiving Commons records section 4.
+                    {proposingSection} describes are the exception that is not
+                    yours: they are public, and they are copied to a public
+                    repository on GitHub.
+                  </>
+                ) : (
+                  "There is no second site and nothing is copied to one."
+                )}
               </OperatorAnswer>
               <OperatorAnswer question="Where uploaded files are kept — §4.3, §8">
                 In Cloudflare R2, created under Cloudflare&rsquo;s EU
@@ -311,6 +332,16 @@ export default async function PrivacyPage() {
                   this copy by typing its username, and section 4.10 says what
                   that shows, and to whom
                 </li>
+                {commonsPrimary && (
+                  <li>
+                    <strong>Proposals for OpenDiving Commons:</strong> A dive
+                    site of yours, or a change to a Commons site, that you
+                    propose: its shared facts as you proposed them, the words
+                    you ticked and when, and any message you add for the
+                    reviewer. Who reads that, and what is published, is section
+                    4.{proposingSection}
+                  </li>
+                )}
                 <li>
                   <strong>Support Requests:</strong> Whatever you write on the
                   support page, if this copy has one configured, and the address
@@ -360,9 +391,9 @@ export default async function PrivacyPage() {
                 is kept.
               </p>
               <p className="text-foreground mb-4">
-                There are no photos of dives, no bio, no experience level, and
-                no messages, comments or posts, because there are no community
-                features to put them in.
+                {commonsPrimary
+                  ? "There are no photos of dives, no bio, no experience level, and no comments or posts, because there are no community features to put them in. The one message here is the word you may add to a proposal for OpenDiving Commons, and the reason a reviewer gives for declining one, which pass between you and the reviewer and go no further."
+                  : "There are no photos of dives, no bio, no experience level, and no messages, comments or posts, because there are no community features to put them in."}
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -439,14 +470,18 @@ export default async function PrivacyPage() {
                   can only do signed in, such as exporting your data, importing
                   a logbook, changing your username or email, linking a person
                   to an account, registering a passkey, making an API key,
-                  inviting somebody, and looking up place and species names.
-                  Each counter is a number and expires by itself: after 15
-                  minutes on the sign-in and account paths, after an hour on the
-                  support form, the invite-request form, exports, logbook
-                  imports, and the place- and species-name lookups. Other
-                  counters exist that hold no identifier at all &mdash; they cap
-                  how often this server as a whole may call an outside provider,
-                  and are keyed on the provider, not on anyone
+                  inviting somebody,{" "}
+                  {commonsPrimary && "proposing for OpenDiving Commons, "}and
+                  looking up place and species names. Each counter is a number
+                  and expires by itself: after 15 minutes on the sign-in and
+                  account paths, after an hour on the support form, the
+                  invite-request form, exports, logbook imports, and the place-
+                  and species-name lookups
+                  {commonsPrimary &&
+                    "; and after a day on proposals for OpenDiving Commons"}
+                  . Other counters exist that hold no identifier at all &mdash;
+                  they cap how often this server as a whole may call an outside
+                  provider, and are keyed on the provider, not on anyone
                 </li>
                 <li>
                   <strong>Passkey labels:</strong> If you register a passkey, a
@@ -509,9 +544,12 @@ export default async function PrivacyPage() {
                 <li>
                   Coordinates you place yourself &mdash; a pin on the map, or a
                   pair of coordinates typed into a dive site, trip or contact
-                  form. Choosing a Commons site, which section 4.2 describes,
-                  sends no position of yours: the position is the site&rsquo;s
-                  own, and what is recorded is that you used it
+                  form
+                  {commonsPrimary &&
+                    ", or into a change you propose to a Commons site"}
+                  . Choosing a Commons site, which section 4.2 describes, sends
+                  no position of yours: the position is the site&rsquo;s own,
+                  and what is recorded is that you used it
                 </li>
                 <li>
                   GPS positions recorded inside a dive-computer file you import,
@@ -611,6 +649,16 @@ export default async function PrivacyPage() {
                   tool of yours, sends again after a lost reply is created once
                   rather than twice
                 </li>
+                {commonsPrimary && (
+                  <li>
+                    <strong>Keep OpenDiving Commons:</strong> Show what you
+                    propose for OpenDiving Commons to whoever reviews it, tell
+                    you what became of it, publish what is accepted, without
+                    your name, and keep the proposal as the evidence of what you
+                    affirmed. Section 4.{proposingSection} says exactly what
+                    that shows and publishes
+                  </li>
+                )}
                 <li>
                   <strong>Count how this copy is used:</strong> Keep the daily
                   totals from section 2.2 &mdash; accounts created and through
@@ -624,6 +672,8 @@ export default async function PrivacyPage() {
                 personalise anything, not used to pick content for you, not
                 sold, and not fed to advertising. There is no advertising here
                 to feed.
+                {commonsPrimary &&
+                  " A record accepted into OpenDiving Commons is a different thing, being no longer your data: it is in the public domain, so anyone may use it for anything, and this page cannot promise otherwise."}
               </p>
             </section>
 
@@ -633,60 +683,98 @@ export default async function PrivacyPage() {
               </h2>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
-                4.1 Nothing Here Is Public
+                {commonsPrimary
+                  ? "4.1 What Is Public Here"
+                  : "4.1 Nothing Here Is Public"}
               </h3>
               <p className="text-foreground mb-4">
-                Nothing you enter is published. There are no public profiles, no
-                public dive logs, no feeds, no forums, and no public ratings or
-                reviews: the rating you give a dive is part of your own log.
-                Every dive, trip, gear item, course, certification, contact,
-                person and tag belongs to one account and is visible to that
-                account alone, and so is every dive site you add yourself. A
-                Commons site belongs to no account, as section 4.2 says, and
-                your notes, tags and dives on one are as private as the rest.
-                There is no setting that makes any of it public, because there
-                is nothing for such a setting to do. The exceptions are ones you
-                make yourself: a check-in link shows your check-in page to
-                whoever holds it, for a day, and section 4.9 says exactly what
-                that shows; where this copy is invite-only, an invite link shows
-                your name &mdash; and nothing you entered &mdash; to whoever
-                opens it, until you reset or remove it, as section 4.8 says; and
-                an API key you make lets whatever holds it read your account as
-                you &mdash; and change it, if you let it &mdash; until it
-                expires or you revoke it, as section 4.11 says.
+                {commonsPrimary
+                  ? "Nothing you enter is published unless you propose it for OpenDiving Commons and a reviewer accepts it."
+                  : "Nothing you enter is published."}{" "}
+                There are no public profiles, no public dive logs, no feeds, no
+                forums, and no public ratings or reviews: the rating you give a
+                dive is part of your own log. Every dive, trip, gear item,
+                course, certification, contact, person and tag{" "}
+                {commonsPrimary
+                  ? "is kept for one account and shown to that account alone, and a dive site you add yourself is too, until you propose it."
+                  : "belongs to one account and is visible to that account alone, and so is every dive site you add yourself."}{" "}
+                A Commons site belongs to no account, as section 4.2 says, and
+                your notes, tags and dives on one are as private as the rest.{" "}
+                {commonsPrimary
+                  ? "No setting publishes anything: the one way something you entered becomes public is a proposal a reviewer accepts, one site at a time. You make every other exception yourself too:"
+                  : "There is no setting that makes any of it public, because there is nothing for such a setting to do. The exceptions are ones you make yourself:"}{" "}
+                a check-in link shows your check-in page to whoever holds it,
+                for a day, and section 4.9 says exactly what that shows; where
+                this copy is invite-only, an invite link shows your name &mdash;
+                and nothing you entered &mdash; to whoever opens it, until you
+                reset or remove it, as section 4.8 says;{" "}
+                {!commonsPrimary && "and "}an API key you make lets whatever
+                holds it read your account as you &mdash; and change it, if you
+                let it &mdash; until it expires or you revoke it, as section
+                4.11 says
+                {commonsPrimary && (
+                  <>
+                    ; and a dive site or a change you propose is read by whoever
+                    reviews it and, once accepted, is public for good, as{" "}
+                    section 4.{proposingSection} says
+                  </>
+                )}
+                .
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
                 4.2 What Other Divers Can See
               </h3>
               <p className="text-foreground mb-4">
-                Nothing you have entered is shared between accounts. There are
-                no groups, no comments and no shared logs, and the people you
-                record are your own notes about them rather than a connection
-                between two accounts. Another diver with an account on this same
-                copy cannot see any dive, dive site you added, trip, gear item,
-                course, certification, contact, person or tag of yours. What
-                does cross between accounts, when you link a person to one, runs
-                towards you and is small: that an account with the username you
-                typed, or with the identifier a file you imported carried,
+                {commonsPrimary
+                  ? "What you enter stays in your account unless you propose it for OpenDiving Commons. There are no groups, nothing one diver can post for another, and no shared logs,"
+                  : "Nothing you have entered is shared between accounts. There are no groups, no comments and no shared logs,"}{" "}
+                and the people you record are your own notes about them rather
+                than a connection between two accounts.{" "}
+                {commonsPrimary ? (
+                  <>
+                    Another diver with an account on this same copy sees no
+                    dive, trip, gear item, course, certification, contact,
+                    person or tag of yours, and no dive site you added unless it
+                    has been accepted into OpenDiving Commons. The account that
+                    reviews proposals does read a site you propose, as section
+                    4.{proposingSection} says.
+                  </>
+                ) : (
+                  "Another diver with an account on this same copy cannot see any dive, dive site you added, trip, gear item, course, certification, contact, person or tag of yours."
+                )}{" "}
+                What does cross between accounts, when you link a person to one,
+                runs towards you and is small: that an account with the username
+                you typed, or with the identifier a file you imported carried,
                 exists here; what its username is now; and, in your own export,
                 its identifier.
               </p>
               <p className="text-foreground mb-4">
-                There are three exceptions. The first is not about anything you
-                entered: inviting somebody shows them your name, and shows you
-                whether they went on to register; and, where this copy is
-                invite-only, an invite link you make shows your name to whoever
-                opens it, and shows you the name on the account of anyone who
-                creates one through it. Section 4.8 sets out exactly what that
-                discloses, in both directions. The second is exactly about what
-                you entered: a check-in link you make shows your check-in page
-                to whoever holds the link, another diver included, until it
-                expires or you revoke it. Section 4.9 sets out what that shows.
-                The third runs the other way and is about another account rather
-                than yours: linking a person you recorded to an account here
-                shows you that account&rsquo;s current username, and tells the
-                account nothing. Section 4.10 sets out what that discloses.
+                There are {commonsPrimary ? "four" : "three"} exceptions. The
+                first is not about anything you entered: inviting somebody shows
+                them your name, and shows you whether they went on to register;
+                and, where this copy is invite-only, an invite link you make
+                shows your name to whoever opens it, and shows you the name on
+                the account of anyone who creates one through it. Section 4.8
+                sets out exactly what that discloses, in both directions. The
+                second is exactly about what you entered: a check-in link you
+                make shows your check-in page to whoever holds the link, another
+                diver included, until it expires or you revoke it. Section 4.9
+                sets out what that shows. The third runs the other way and is
+                about another account rather than yours: linking a person you
+                recorded to an account here shows you that account&rsquo;s
+                current username, and tells the account nothing. Section 4.10
+                sets out what that discloses.
+                {commonsPrimary && (
+                  <>
+                    {" "}
+                    The fourth is about what you entered too, and you choose it
+                    each time: a dive site or a change you propose for
+                    OpenDiving Commons is shown to whoever reviews it, with your
+                    name, and what is accepted is public, without it. Section 4.
+                    {proposingSection} sets out what that shows and publishes.
+                  </>
+                )}
               </p>
               <p className="text-foreground mb-4">
                 Two things every account on this copy does draw on belong to no
@@ -697,16 +785,21 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 The second is OpenDiving Commons, a pool of dive sites this copy
                 carries: its name, position and the other facts of the place,
-                drawn from open sources such as OpenStreetMap and Wikidata. A
-                Commons site is one record every account can use, marked{" "}
+                drawn from open sources such as OpenStreetMap and Wikidata
+                {commonsPrimary &&
+                  ", and from what divers have proposed on this copy"}
+                . A Commons site is one record every account can use, marked{" "}
                 <em>Commons</em> in your list of sites, on its own page and in
                 the searches that find it, and it is not copied into yours when
                 you log a dive there or save it to your sites. The notes, tags
                 and dives you add to it are yours alone: they are kept apart
-                from the record, and no other account can see them, or that you
-                use the site at all. Removing a Commons site from your sites
-                deletes your notes and tags on it and takes it off your dives,
-                which stay in your log, and leaves the record as it was.
+                from the record, and no other account can see them
+                {commonsPrimary
+                  ? ". Nor can another account see that you use the site, apart from whoever reviews a change you propose to it."
+                  : ", or that you use the site at all."}{" "}
+                Removing a Commons site from your sites deletes your notes and
+                tags on it and takes it off your dives, which stay in your log,
+                and leaves the record as it was.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -990,11 +1083,20 @@ export default async function PrivacyPage() {
                 Whoever runs this copy decides whether anyone may create an
                 account on it or only people who have been invited
                 {joinLinks && <> or who follow one of its join links</>}. Where
-                it is invitations, this is one of the three places in the
-                software where something about one person is shown to another
-                &mdash; the others are a check-in link, in section 4.9, and
-                linking a person to an account, in section 4.10 &mdash; and this
-                section is the whole of it.
+                it is invitations, this is one of the{" "}
+                {commonsPrimary ? "four" : "three"} places in the software where
+                something about one person is shown to another &mdash; the
+                others are a check-in link, in section 4.9,{" "}
+                {commonsPrimary ? (
+                  <>
+                    linking a person to an account, in section 4.10, and a
+                    proposal for OpenDiving Commons, in section 4.
+                    {proposingSection}
+                  </>
+                ) : (
+                  "and linking a person to an account, in section 4.10"
+                )}{" "}
+                &mdash; and this section is the whole of it.
               </p>
               <p className="text-foreground mb-4">
                 An invitation you make by typing an address carries no code, no
@@ -1102,8 +1204,11 @@ export default async function PrivacyPage() {
                 open on its own phone or computer &mdash; from a QR code on your
                 screen, or an address you send. This is another of the places in
                 the software where something about one person is shown to
-                another, the only one that shows what you entered, and this
-                section is the whole of it.
+                another,{" "}
+                {commonsPrimary
+                  ? "one of the two that show what you entered"
+                  : "the only one that shows what you entered"}
+                , and this section is the whole of it.
               </p>
               <p className="text-foreground mb-4">
                 <strong>What a link shows:</strong> your check-in page as it
@@ -1154,9 +1259,12 @@ export default async function PrivacyPage() {
                 have an account on this same copy. Type that account&rsquo;s
                 username into the person and this copy links the two, so that
                 the username the account has now shows beside the name you gave
-                them. This is the third place in the software where something
-                about one person is shown to another, and this section is the
-                whole of it.
+                them.{" "}
+                {commonsPrimary
+                  ? "This is the third of the four places"
+                  : "This is the third place"}{" "}
+                in the software where something about one person is shown to
+                another, and this section is the whole of it.
               </p>
               <p className="text-foreground mb-4">
                 <strong>What you are shown:</strong> whether an account with
@@ -1359,6 +1467,138 @@ export default async function PrivacyPage() {
                   </p>
                 </>
               )}
+
+              {/* Conditional like the two above and after them, and the terms' grant names
+                  it by its heading, since that page reads neither of theirs. */}
+              {commonsPrimary && (
+                <>
+                  <h3 className="text-xl font-semibold text-foreground mb-3">
+                    4.{proposingSection} Proposing for OpenDiving Commons
+                  </h3>
+                  <p className="text-foreground mb-4">
+                    OpenDiving Commons is edited on this copy. A dive site of
+                    yours can be offered to it with{" "}
+                    <em>Propose for OpenDiving Commons</em>, and a Commons site
+                    can be corrected with <em>Propose a change</em>; both are on
+                    the site&rsquo;s own page, one site at a time, and neither
+                    goes anywhere until you tick the words it shows you and send
+                    it. This is the fourth place in the software where something
+                    about one person is shown to another, the second that shows
+                    what you entered, and the only one that publishes anything,
+                    and this section is the whole of it.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>What a reviewer is shown:</strong> whoever runs this
+                    copy reviews proposals, from an administrator&rsquo;s
+                    account. They are shown the name on your account, never your
+                    address; how many of your proposals have been accepted and
+                    declined; the message you added, if you added one; and the
+                    site&rsquo;s shared facts &mdash; its name and other names,
+                    its pin, the name of its locality, its entries in registries
+                    such as OpenStreetMap, its depths, its water, its altitude
+                    and how divers get in. For a site of your own that is both
+                    as you proposed it and as it stands while the proposal
+                    waits, so an edit you make meanwhile is in front of them
+                    too. Never your notes, your tags or your dives, and no other
+                    diver is shown any of it.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>What is published:</strong> if a reviewer accepts,
+                    the record, and only the record: those shared facts as the
+                    reviewer settled them, with the pin at six decimal places
+                    and the locality as a name alone, and the site&rsquo;s
+                    identifier, which it keeps and which encodes when you
+                    created the site, to the millisecond. A change publishes the
+                    new values on the record it changes. Who proposed it is
+                    never published: no name, no address and no account goes
+                    with it. A site of yours that is accepted stops being yours,
+                    and every account here can use it; your notes, tags and
+                    dives on it stay yours, as section 4.2 says. Where the
+                    Commons already has the site, the reviewer may accept yours
+                    into that record instead: your dives, notes and tags move to
+                    the record and your own site is removed.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>Who can read it:</strong> anyone. This copy serves
+                    every Commons record at a public address, with no account
+                    needed, and they are copied to a{" "}
+                    <a
+                      href="https://github.com/opendiving/opendiving-commons"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:text-muted-foreground"
+                    >
+                      public repository on GitHub
+                    </a>
+                    , whose history keeps what it has held. Other copies of
+                    OpenDiving carry the records too, and anyone may take them
+                    from there.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>What you give up:</strong> the words you tick say
+                    that what you propose is from your own diving and not copied
+                    from elsewhere, and dedicate it to the public domain under{" "}
+                    <a
+                      href="https://creativecommons.org/publicdomain/zero/1.0/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:text-muted-foreground"
+                    >
+                      CC0 1.0
+                    </a>
+                    . What is accepted is anyone&rsquo;s, for any purpose, and
+                    it stays: removing it from your sites or deleting your
+                    account leaves it where it is. A change accepted into a
+                    record that came from another source leaves that record
+                    under its source&rsquo;s licence.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>What this copy keeps privately:</strong> the
+                    proposal &mdash; what you asked for, the words you ticked
+                    and when, your message, whether it waits or was accepted,
+                    declined or withdrawn, and any reason. It is tied to your
+                    account and is never published. It is kept so that it can be
+                    reviewed and answered, so that you can see what became of
+                    it, and as the evidence that you made the dedication. It
+                    goes when your account goes, whatever became of it, and
+                    section 7 has the rest of how long it stays.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>What happens to it:</strong> while it waits,
+                    everyone goes on seeing the site as it is, and you can
+                    withdraw it from the site&rsquo;s page or from{" "}
+                    <em>Your proposals</em> on the Sites page. A proposal that
+                    is declined or withdrawn publishes nothing. A decline always
+                    comes with a reason, which the reviewer writes and you read
+                    on the site until you propose again, and in your list of
+                    proposals. No email is sent about a proposal; the answer
+                    waits for you in those two places. Proposals are limited per
+                    account per day, counted with the other rate limits in
+                    section 2.2. A tool of yours holding a read-and-write API
+                    key can send one as you, and the words it sends are yours as
+                    much as a tick would be.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>What you can ask:</strong> the rights in section 6.2
+                    apply to a proposal as to anything else here. Your list
+                    shows each one&rsquo;s outcome and reason; for a copy of the
+                    rest, or to have one corrected or deleted, ask whoever runs
+                    this copy, as section 13 says. An accepted record is a
+                    different matter, because it carries nothing that names you
+                    and it is no longer yours to withdraw: deleting the proposal
+                    behind it leaves it public.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>Reporting a record:</strong> anyone, with an account
+                    or without, can report a Commons record &mdash; a pin that
+                    shows more than it should, a wrong name, something that
+                    should not be there &mdash; to whoever runs this copy, by
+                    the way section 13 gives. A report is answered by changing
+                    the record, a reviewer coarsening the pin or changing the
+                    name. A record cannot yet be removed.
+                  </p>
+                </>
+              )}
             </section>
 
             <section className="mb-8">
@@ -1450,25 +1690,44 @@ export default async function PrivacyPage() {
                   who joined through your link, and take back one that has not
                   been used
                 </li>
-                <li>Export everything you have entered</li>
+                <li>
+                  {commonsPrimary
+                    ? "Export what you have entered, all but your proposals for OpenDiving Commons"
+                    : "Export everything you have entered"}
+                </li>
                 <li>
                   Bring a logbook back in &mdash; a file this app exported, or
                   files from a dive computer or another program, as many at once
                   as you have, seeing what they would do before anything is
                   written
                 </li>
-                <li>Delete your account and everything attached to it</li>
+                <li>
+                  {commonsPrimary
+                    ? "Delete your account and what is attached to it, which leaves any record accepted into OpenDiving Commons"
+                    : "Delete your account and everything attached to it"}
+                </li>
               </ul>
               <p className="text-foreground mb-4">
                 There are no privacy settings for your dive logs, and their
-                absence is the point: nothing of yours is public or shared, so
-                there is nothing to switch off. The exceptions are a check-in
-                link you made, which Revoke on your check-in page switches off
-                at once &mdash; section 4.9; where this copy is invite-only,
-                your invite link, which Remove on the Invitations card switches
-                off at once &mdash; section 4.8; and an API key you made, which
-                Revoke on the API keys card switches off at once &mdash; section
-                4.11.
+                absence is the point:{" "}
+                {commonsPrimary
+                  ? "what you log is neither public nor shared unless you propose it, so there is nothing to switch off. What does have a switch is a check-in link you made, which"
+                  : "nothing of yours is public or shared, so there is nothing to switch off. The exceptions are a check-in link you made, which"}{" "}
+                Revoke on your check-in page switches off at once &mdash;
+                section 4.9; where this copy is invite-only, your invite link,
+                which Remove on the Invitations card switches off at once
+                &mdash; section 4.8; {!commonsPrimary && "and "}an API key you
+                made, which Revoke on the API keys card switches off at once
+                &mdash; section 4.11
+                {commonsPrimary && (
+                  <>
+                    ; and a proposal that waits, which Withdraw on the site or
+                    in your list of proposals takes back at once &mdash; section
+                    4.{proposingSection}. A proposal already accepted has no
+                    switch: it is public, and it stays
+                  </>
+                )}
+                .
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1508,13 +1767,13 @@ export default async function PrivacyPage() {
                 The first four need no request: access, correction, deletion and
                 portability are all buttons in Settings, and they act
                 immediately rather than being forwarded to somebody.{" "}
-                {mapTiles ? "Seven" : "Six"} things sit outside those buttons,
-                and naming them is better than letting that sentence read wider
-                than it is. The email address you sign in with, your username,
-                the list of signed-in devices and your API keys are in Settings
-                but are not part of the export: they are your account on this
-                copy rather than your logbook, and the username only names the
-                file you download.
+                {outsideTheButtons} things sit outside those buttons, and naming
+                them is better than letting that sentence read wider than it is.
+                The email address you sign in with, your username, the list of
+                signed-in devices and your API keys are in Settings but are not
+                part of the export: they are your account on this copy rather
+                than your logbook, and the username only names the file you
+                download.
                 {mapTiles && (
                   <>
                     {" "}
@@ -1528,9 +1787,18 @@ export default async function PrivacyPage() {
                 And two records in section 2.2 are in neither, the account
                 security events and the retry records: nothing in the app shows
                 them to you and no button copies them, so a copy of either has
-                to be asked for like the rights below. The last two, that
-                request, and anything else go to whoever runs this copy &mdash;
-                section 13 says how to reach them.
+                to be asked for like the rights below.
+                {commonsPrimary && (
+                  <>
+                    {" "}
+                    Nor is a proposal for OpenDiving Commons in the export: your
+                    list of proposals shows what became of each, and a copy of
+                    the rest has to be asked for in the same way, as section 4.
+                    {proposingSection} says.
+                  </>
+                )}{" "}
+                The last two, that request, and anything else go to whoever runs
+                this copy &mdash; section 13 says how to reach them.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -1653,9 +1921,11 @@ export default async function PrivacyPage() {
                 7. Data Retention
               </h2>
               <p className="text-foreground mb-4">
-                While your account exists, what you have entered is kept. That
-                is what a dive log is for &mdash; a logbook that quietly
-                discarded your older dives would be the wrong product.
+                {commonsPrimary
+                  ? "What you have entered is kept for as long as your account exists, and what is accepted into OpenDiving Commons for longer. That is what"
+                  : "While your account exists, what you have entered is kept. That is what"}{" "}
+                a dive log is for &mdash; a logbook that quietly discarded your
+                older dives would be the wrong product.
               </p>
               <p className="text-foreground mb-4">
                 Three of the records in section 2.2 expire on their own, whether
@@ -1712,6 +1982,18 @@ export default async function PrivacyPage() {
                 expired one stays on the API keys card, marked, so that removing
                 it is yours to do.
               </p>
+              {commonsPrimary && (
+                <p className="text-foreground mb-4">
+                  A <strong>proposal for OpenDiving Commons</strong> is not
+                  swept either. It is kept, whatever became of it, until your
+                  account goes, and one on a dive site of your own goes sooner
+                  if that site is deleted or replaced with a Commons site. A{" "}
+                  <strong>record accepted into the Commons</strong> is kept for
+                  as long as the Commons is, whatever becomes of your account:
+                  it belongs to no account, and section 4.{proposingSection}{" "}
+                  says what it carries.
+                </p>
+              )}
               {mapTiles && (
                 <p className="text-foreground mb-4">
                   The <strong>map tiles</strong> this copy draws, which section
@@ -1743,13 +2025,26 @@ export default async function PrivacyPage() {
                   Personal information is permanently deleted within 30 days
                 </li>
                 <li>
-                  The deletion is not a flag or an archive: the account row and
-                  everything hanging off it &mdash; dives, dive drafts, sites,
-                  trips, gear, courses, certifications, contacts, people, tags
-                  &mdash; are destroyed, and the files you uploaded are unlinked
-                  from disk with them. A Commons site you saved stays, being no
-                  account&rsquo;s, and your notes and tags on it go
+                  The deletion is not a flag or an archive: the account row and{" "}
+                  {commonsPrimary
+                    ? "what belongs to it"
+                    : "everything hanging off it"}{" "}
+                  &mdash; dives, dive drafts, sites, trips, gear, courses,
+                  certifications, contacts, people, tags &mdash; are destroyed,
+                  and the files you uploaded are unlinked from disk with them. A
+                  Commons site you saved stays, being no account&rsquo;s, and
+                  your notes and tags on it go
+                  {commonsPrimary &&
+                    ". A site or a change of yours that was accepted into OpenDiving Commons stays too, having stopped being yours when it was accepted"}
                 </li>
+                {commonsPrimary && (
+                  <li>
+                    Your proposals for OpenDiving Commons go with it, whatever
+                    became of them. One still waiting leaves the
+                    reviewer&rsquo;s queue as soon as you ask to delete the
+                    account, and comes back if you bring the account back
+                  </li>
+                )}
                 <li>
                   Any invitations you sent go with it, used or not, and so does
                   your invite link. Somebody you invited who has not created an
@@ -1775,14 +2070,16 @@ export default async function PrivacyPage() {
                 </li>
               </ul>
               <p className="text-foreground mb-4">
-                Apart from the daily totals above, which name nobody, nothing is
-                held back for &ldquo;legitimate business purposes&rdquo;; there
-                is no business here to have them. Two honest caveats remain, and
-                both belong to the deployment rather than to the software:
-                whatever backups the operator keeps are theirs to expire, and a
-                deletion cannot reach into a backup already written; and an
-                operator under a legal obligation to preserve something is
-                subject to it whatever this page says.
+                {commonsPrimary
+                  ? "Apart from the daily totals above and the records accepted into OpenDiving Commons, neither of which names you, nothing is kept for"
+                  : "Apart from the daily totals above, which name nobody, nothing is held back for"}{" "}
+                &ldquo;legitimate business purposes&rdquo;; there is no business
+                here to have them. Two honest caveats remain, and both belong to
+                the deployment rather than to the software: whatever backups the
+                operator keeps are theirs to expire, and a deletion cannot reach
+                into a backup already written; and an operator under a legal
+                obligation to preserve something is subject to it whatever this
+                page says.
               </p>
             </section>
 
@@ -1792,10 +2089,21 @@ export default async function PrivacyPage() {
               </h2>
               <p className="text-foreground mb-4">
                 Your data lives on this instance, and where that is, is a fact
-                about its operator&rsquo;s deployment. There is no network of
-                servers behind it and no transfer between countries built into
-                the software: one copy of OpenDiving is one database and one
-                files volume, wherever the person running it chose to put them.
+                about its operator&rsquo;s deployment.{" "}
+                {commonsPrimary ? (
+                  <>
+                    There is no network of servers behind it, and nothing of
+                    your account leaves it. What does is the OpenDiving Commons
+                    records section 4.{proposingSection} describes, which anyone
+                    anywhere can fetch and which are copied to a public
+                    repository on GitHub, a service run from the United States.
+                    Otherwise one copy of OpenDiving
+                  </>
+                ) : (
+                  "There is no network of servers behind it and no transfer between countries built into the software: one copy of OpenDiving"
+                )}{" "}
+                is one database and one files volume, wherever the person
+                running it chose to put them.
                 {mapTiles && (
                   <>
                     {" "}
@@ -2184,21 +2492,24 @@ export default async function PrivacyPage() {
               </h2>
               <p className="text-foreground mb-4">
                 Most of what people write to a privacy address to ask for, you
-                can simply do. Exporting everything you have entered and
-                deleting your account are buttons in Settings, and bringing a
-                logbook back in is one on the Import page; they work
-                immediately, they need nobody&rsquo;s approval, and no request
-                has to be sent to anyone.
+                can simply do.{" "}
+                {commonsPrimary
+                  ? "Exporting what you have entered, your proposals for OpenDiving Commons aside, and deleting your account are buttons in Settings,"
+                  : "Exporting everything you have entered and deleting your account are buttons in Settings,"}{" "}
+                and bringing a logbook back in is one on the Import page; they
+                work immediately, they need nobody&rsquo;s approval, and no
+                request has to be sent to anyone.
               </p>
               <p className="text-foreground mb-4">
                 For anything else &mdash; a question about this page, about how
-                this copy is run, or about a right in section 6.2 that those
-                buttons do not cover &mdash; the person to ask is whoever runs
-                this copy of OpenDiving. They are the controller of your data,
-                whether that is the OpenDiving project running a copy of its own
-                or somebody else entirely; an author who does not run this copy
-                holds none of your data and could not answer for whoever does.
-                The{" "}
+                this copy is run,{" "}
+                {commonsPrimary && "a report about a Commons record, "}or about
+                a right in section 6.2 that those buttons do not cover &mdash;
+                the person to ask is whoever runs this copy of OpenDiving. They
+                are the controller of your data, whether that is the OpenDiving
+                project running a copy of its own or somebody else entirely; an
+                author who does not run this copy holds none of your data and
+                could not answer for whoever does. The{" "}
                 <Link
                   href="/support"
                   className="underline hover:text-muted-foreground"

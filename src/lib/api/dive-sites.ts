@@ -284,10 +284,7 @@ export interface DiveSiteCommonsMatchName {
 export type DiveSiteProposalKind = "new_site" | "change";
 
 export type DiveSiteProposalStatus =
-  | "waiting"
-  | "accepted"
-  | "declined"
-  | "withdrawn";
+  "waiting" | "accepted" | "declined" | "withdrawn";
 
 /** One of the diver's proposals: the site is the record it became once accepted. */
 export interface DiveSiteProposal {

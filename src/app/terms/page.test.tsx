@@ -17,8 +17,16 @@ vi.mock("@/lib/api/config.server", () => ({ readLegalPageConfig }));
 
 // `await TermsPage()`: an async Server Component is a function returning a promise, and
 // handing the component to `render` renders the promise instead of the page.
-async function renderPage(projectOperated: boolean, joinLinks = false) {
-  readLegalPageConfig.mockResolvedValue({ projectOperated, joinLinks });
+async function renderPage(
+  projectOperated: boolean,
+  joinLinks = false,
+  commonsPrimary = false,
+) {
+  readLegalPageConfig.mockResolvedValue({
+    projectOperated,
+    joinLinks,
+    commonsPrimary,
+  });
   render(await TermsPage());
 }
 
@@ -353,6 +361,102 @@ describe("§5", () => {
 
     expect(screen.getByText(/What you enter into this copy/)).toHaveTextContent(
       /dives, dive drafts, sites/,
+    );
+  });
+});
+
+// Each sentence proposing makes false, from both sides: as it stands on every other
+// copy, and gone where the Commons is edited.
+describe("proposing for OpenDiving Commons", () => {
+  const FALSE_ON_THE_PRIMARY = [
+    "a private dive log",
+    "no comments",
+    "gives its holder no view of anything you enter",
+    "This copy shows one person to another in three cases only",
+    "is stored as given",
+    "Nobody checks it, and nothing here corrects it",
+    "is yours, and you are responsible for it",
+    "You keep every right you have in what you enter",
+    "it holds what the next paragraph grants the operator and nothing beyond that",
+    "only the permission technically needed",
+    "Your entries are not published, shared with other users",
+    "The next three paragraphs are the three things this copy does show one person to another",
+    "The invitation, check-in link and linking grants above are that rule being kept",
+    "exporting everything you have entered",
+  ];
+
+  const ONLY_ON_THE_PRIMARY = [
+    "Proposing for OpenDiving Commons",
+    "OpenDiving Commons",
+    "CC0",
+    "four cases only",
+    "The next four paragraphs",
+    "a report about a Commons record",
+  ];
+
+  const pageText = () => document.body.textContent?.replace(/\s+/g, " ") ?? "";
+
+  it.each([
+    [false, false],
+    [true, true],
+  ])(
+    "leaves every other copy's page as it was (project %s, join links %s)",
+    async (projectOperated, joinLinks) => {
+      await renderPage(projectOperated, joinLinks);
+
+      const text = pageText();
+      for (const sentence of FALSE_ON_THE_PRIMARY) {
+        expect(text).toContain(sentence);
+      }
+      for (const leaked of ONLY_ON_THE_PRIMARY) {
+        expect(text).not.toContain(leaked);
+      }
+    },
+  );
+
+  it.each([
+    [false, false],
+    [true, true],
+  ])(
+    "corrects each of those where the Commons is edited (project %s, join links %s)",
+    async (projectOperated, joinLinks) => {
+      await renderPage(projectOperated, joinLinks, true);
+
+      const text = pageText();
+      for (const sentence of FALSE_ON_THE_PRIMARY) {
+        expect(text).not.toContain(sentence);
+      }
+    },
+  );
+
+  it("has a grant of its own in §5, naming the privacy section by its heading", async () => {
+    await renderPage(false, false, true);
+
+    const grant = screen.getByText(/Where you propose a dive site of yours/);
+    expect(grant).toHaveTextContent(/further permission that act needs/);
+    expect(grant).toHaveTextContent(/never says who proposed it/);
+    expect(grant).toHaveTextContent(/stays if you delete your account/);
+    expect(grant).toHaveTextContent(/a decline always comes with a reason/);
+    expect(grant).toHaveTextContent(/answered by changing the record/);
+    expect(grant).toHaveTextContent(/Proposing for OpenDiving Commons/);
+    expect(
+      grant.querySelector(
+        'a[href="https://creativecommons.org/publicdomain/zero/1.0/"]',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("counts the proposal in §2 and §5, and the closing rule names it", async () => {
+    await renderPage(false, false, true);
+
+    expect(screen.getByText(/in four cases only/)).toHaveTextContent(
+      /a proposal for OpenDiving Commons/,
+    );
+    expect(screen.getByText(/The next four paragraphs/)).toHaveTextContent(
+      /and a proposal/,
+    );
+    expect(pageText()).toContain(
+      "The invitation, check-in link, linking and proposal grants above are that rule being kept",
     );
   });
 });

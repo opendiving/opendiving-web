@@ -12,6 +12,7 @@ describe("labelForPath", () => {
   it("names the section's list page", () => {
     expect(labelForPath("/dives")).toBe("Back to dives");
     expect(labelForPath("/sites")).toBe("Back to dive sites");
+    expect(labelForPath("/sites/proposals")).toBe("Back to your proposals");
     expect(labelForPath("/home")).toBe("Back to home");
     expect(labelForPath("/courses")).toBe("Back to courses");
     expect(labelForPath("/people")).toBe("Back to people");

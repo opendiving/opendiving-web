@@ -116,8 +116,7 @@ export function DiveSiteDetailPageContent() {
 
   const inCommons = isCommonsSite(diveSite);
   const canPropose =
-    config?.commons_primary === true &&
-    diveSite.proposal?.status !== "waiting";
+    config?.commons_primary === true && diveSite.proposal?.status !== "waiting";
   const removedMessage = inCommons ? REMOVED_MESSAGE : DELETED_MESSAGE;
   const applySaved = (saved: DiveSite) => {
     setDiveSite(saved);

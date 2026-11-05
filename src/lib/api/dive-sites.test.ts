@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./client")>()),
-  apiClient: { get: vi.fn(), put: vi.fn() },
+  apiClient: { get: vi.fn(), put: vi.fn(), post: vi.fn(), delete: vi.fn() },
 }));
 
 const { apiClient } = await import("./client");
 const get = vi.mocked(apiClient.get);
-const { diveSitesAPI } = await import("./dive-sites");
+const post = vi.mocked(apiClient.post);
+const { changedMembers, diveSitesAPI } = await import("./dive-sites");
 const { speciesAPI } = await import("./species");
 
 const page = { data: [], total_count: 0, has_more: false };
@@ -116,6 +117,65 @@ describe("speciesAPI.getLifeList", () => {
 
     expect(get).toHaveBeenCalledWith("/user/species", {
       params: { page: 1, items_per_page: 100, dive_site_uuid: "site-1" },
+    });
+  });
+});
+
+describe("the sites list's commons_match", () => {
+  it("is sent only when asked for", async () => {
+    await diveSitesAPI.getDiveSites(1, 1, { commonsMatch: true });
+    await diveSitesAPI.getDiveSites(1, 1);
+
+    expect(get.mock.calls[0][1]?.params).toMatchObject({ commons_match: true });
+    expect(get.mock.calls[1][1]?.params).not.toHaveProperty("commons_match");
+  });
+});
+
+describe("diveSitesAPI.replaceDiveSite", () => {
+  it("names the record the site gives way to", async () => {
+    post.mockResolvedValue({ data: {} });
+
+    await diveSitesAPI.replaceDiveSite("site-1", "commons-1");
+
+    expect(post).toHaveBeenCalledWith("/dive-site/site-1/replace", {
+      commons_site_uuid: "commons-1",
+    });
+  });
+});
+
+describe("changedMembers", () => {
+  const MEMBERS = {
+    name: "Kapal Polis",
+    other_names: ["Police Boat"],
+    latitude: 1,
+    longitude: 2,
+    location_name: null,
+    external_ids: [],
+    depth_from: 5,
+    depth_to: null,
+    water_type: null,
+    altitude: null,
+    entry_types: [],
+  };
+
+  it("names nothing where nothing changed", () => {
+    expect(changedMembers(MEMBERS, { ...MEMBERS })).toEqual({});
+  });
+
+  it("names what changed, a cleared member and a list included", () => {
+    expect(
+      changedMembers(MEMBERS, {
+        ...MEMBERS,
+        depth_from: null,
+        other_names: [],
+      }),
+    ).toEqual({ depth_from: null, other_names: [] });
+  });
+
+  it("names the pin whole, since half of one is refused", () => {
+    expect(changedMembers(MEMBERS, { ...MEMBERS, latitude: 1.5 })).toEqual({
+      latitude: 1.5,
+      longitude: 2,
     });
   });
 });

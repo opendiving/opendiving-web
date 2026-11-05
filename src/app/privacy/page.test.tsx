@@ -1459,3 +1459,214 @@ describe.each([
     }
   });
 });
+
+// A copy that edits OpenDiving Commons says something else in a good many places, and
+// each is pinned from both sides: the sentence stands on every other copy, and is gone
+// here. The list is what proposing, the queue or an accepted record makes false.
+describe("proposing for OpenDiving Commons", () => {
+  const FALSE_ON_THE_PRIMARY = [
+    "belongs to one account",
+    "Nothing you enter is published.",
+    "There is no setting that makes any of it public",
+    "Nothing Here Is Public",
+    "cannot see any dive, dive site",
+    "everything hanging off it",
+    "There are three exceptions",
+    "The exceptions are ones you make yourself",
+    "one of the three places in the software where something about one person is shown to another",
+    "the only one that shows what you entered",
+    "This is the third place in the software where something about one person is shown to another",
+    "nothing of yours is public or shared, so there is nothing to switch off",
+    "no messages, comments or posts, because there are no community features to put them in",
+    "Delete your account and everything attached to it",
+    "The exceptions are a check-in link you made",
+    "Export everything you have entered",
+    "Exporting everything you have entered",
+    "nothing is held back for",
+    "While your account exists, what you have entered is kept",
+    "Nothing you have entered is shared between accounts",
+    "and so is every dive site you add yourself",
+    "or that you use the site at all",
+    "no groups, no comments and no shared logs",
+    "no transfer between countries built into the software",
+  ];
+
+  const ONLY_ON_THE_PRIMARY = [
+    "Proposing for OpenDiving Commons",
+    "Proposals for OpenDiving Commons:",
+    "Keep OpenDiving Commons:",
+    "What Is Public Here",
+    "There are four exceptions",
+    "proposing for OpenDiving Commons,",
+    "after a day on proposals",
+    "public repository on GitHub",
+    "a change you propose",
+    "CC0",
+  ];
+
+  const pageText = () => document.body.textContent?.replace(/\s+/g, " ") ?? "";
+
+  const sectionText = (heading: RegExp) => {
+    const found = screen.getByText(heading);
+    const section: string[] = [];
+    for (
+      let node = found.nextElementSibling;
+      node && node.tagName === "P";
+      node = node.nextElementSibling
+    ) {
+      section.push(node.textContent ?? "");
+    }
+    return section.join(" ").replace(/\s+/g, " ");
+  };
+
+  it.each([
+    { google: false },
+    { google: true, projectOperated: true, joinLinks: true },
+    { google: true, mapTiles: true, diveConditions: true },
+  ])("leaves every other copy's page as it was: %j", async (config) => {
+    await renderPage(config);
+
+    const text = pageText();
+    for (const sentence of FALSE_ON_THE_PRIMARY) {
+      expect(text).toContain(sentence);
+    }
+    for (const leaked of ONLY_ON_THE_PRIMARY) {
+      expect(text).not.toContain(leaked);
+    }
+  });
+
+  it.each([
+    { google: false },
+    { google: true, projectOperated: true, joinLinks: true },
+    { google: true, mapTiles: true, diveConditions: true },
+  ])(
+    "corrects each of those where the Commons is edited: %j",
+    async (config) => {
+      await renderPage({ ...config, commonsPrimary: true });
+
+      const text = pageText();
+      for (const sentence of FALSE_ON_THE_PRIMARY) {
+        expect(text).not.toContain(sentence);
+      }
+    },
+  );
+
+  it("corrects the operator block's second-site sentence where both apply", async () => {
+    await renderPage({ google: false, projectOperated: true });
+    expect(pageText()).toContain(
+      "There is no second site and nothing is copied to one.",
+    );
+
+    cleanup();
+    await renderPage({
+      google: false,
+      projectOperated: true,
+      commonsPrimary: true,
+    });
+    expect(pageText()).not.toContain(
+      "There is no second site and nothing is copied to one.",
+    );
+  });
+
+  it.each([
+    [false, false, "4.12"],
+    [true, false, "4.13"],
+    [false, true, "4.13"],
+    [true, true, "4.14"],
+  ])(
+    "numbers the section after the conditional ones (Google %s, weather %s)",
+    async (google, diveConditions, number) => {
+      await renderPage({ google, diveConditions, commonsPrimary: true });
+
+      const heading = screen.getByText(
+        new RegExp(`^${number.replace(".", "\\.")} Proposing`),
+      );
+      expect(heading.tagName).toBe("H3");
+      // A sentence pointing at it agrees.
+      expect(
+        screen.getByText(/one of the four places in the software/),
+      ).toHaveTextContent(`in section ${number}`);
+    },
+  );
+
+  it("says what is published, what is kept, and how to report a record", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    const section = sectionText(/4\.12 Proposing for OpenDiving Commons/);
+    expect(section).toMatch(/the name on your account, never your address/);
+    expect(section).toMatch(/how many of your proposals have been accepted/);
+    expect(section).toMatch(/Never your notes, your tags or your dives/);
+    expect(section).toMatch(/encodes when you created the site/);
+    expect(section).toMatch(/Who proposed it is never published/);
+    expect(section).toMatch(/public domain under CC0 1\.0/);
+    expect(section).toMatch(/deleting your account leaves it/);
+    expect(section).toMatch(/tied to your account/);
+    expect(section).toMatch(/A decline always comes with a reason/);
+    expect(section).toMatch(/rights in section 6\.2 apply/);
+    expect(section).toMatch(/A report is answered by changing the record/);
+    expect(section).toMatch(/cannot yet be removed/);
+    // The page states no lawful basis for anything, and nor does this.
+    expect(section).not.toMatch(/lawful basis|legitimate interest|consent/i);
+  });
+
+  it("counts the queue among the places one person is shown to another", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    expect(
+      screen.getByText(/one of the four places in the software/),
+    ).toHaveTextContent(/section 4\.12/);
+    expect(screen.getByText(/There are four exceptions\./)).toHaveTextContent(
+      /Section 4\.12/,
+    );
+  });
+
+  it("lists it in §2.1 and §3, and keeps §3's close true", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    expect(
+      listAfterHeading(/2\.1 Information You Provide Directly/).join(" "),
+    ).toMatch(/Proposals for OpenDiving Commons:/);
+    expect(
+      screen.getByText(/And nothing else\. Your data is not profiled/),
+    ).toHaveTextContent(/public domain/);
+  });
+
+  it("§2.2 gives the proposal counter its own life", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    expect(pageText()).toMatch(
+      /Each counter is a number and expires by itself:.*after a day on proposals for OpenDiving Commons/,
+    );
+  });
+
+  it("§6.2 counts proposals among what sits outside the buttons", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+    expect(pageText()).toContain("Seven things sit outside those buttons");
+
+    cleanup();
+    await renderPage({ google: false, commonsPrimary: true, mapTiles: true });
+    expect(pageText()).toContain("Eight things sit outside those buttons");
+    expect(pageText()).toMatch(
+      /Nor is a proposal for OpenDiving Commons in the export/,
+    );
+  });
+
+  it("§6.2's ordinals still add up here", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    const split = screen.getByText(
+      /The first \w+ need no request/,
+    ).textContent!;
+    expect(split).toMatch(/The first four need no request/);
+    expect(split).toMatch(/The last two,/);
+  });
+
+  it("§7 says what goes with the account and what stays", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    const text = pageText();
+    expect(text).toMatch(/A proposal for OpenDiving Commons is not swept/);
+    expect(text).toMatch(/Your proposals for OpenDiving Commons go with it/);
+    expect(text).toMatch(/A record accepted into the Commons is kept/);
+  });
+});

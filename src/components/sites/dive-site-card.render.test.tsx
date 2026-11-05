@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveSiteCard } from "./dive-site-card";
 import type { DiveSite } from "@/lib/api/dive-sites";
@@ -92,6 +92,26 @@ const figuresOf = (item: HTMLElement) =>
   ]);
 
 describe("DiveSiteCard", () => {
+  it("says a proposal on the site waits, and nothing of one declined", () => {
+    const proposal = {
+      uuid: "proposal-1",
+      kind: "new_site",
+      status: "waiting",
+      reason: null,
+      created_at: "2026-01-02T00:00:00Z",
+    } as const;
+    const item = card({ site: site({ proposal }) });
+    expect(within(item).getByText("Waiting for review")).toBeInTheDocument();
+
+    cleanup();
+    const declined = card({
+      site: site({ proposal: { ...proposal, status: "declined" } }),
+    });
+    expect(
+      within(declined).queryByText("Waiting for review"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a map of a site's pin, named by the site", async () => {
     const item = card({
       site: site({ latitude: 28.5721, longitude: 34.5372 }),
