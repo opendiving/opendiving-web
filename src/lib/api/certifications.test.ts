@@ -8,11 +8,14 @@ import {
 describe("certificationAgencyLabel", () => {
   it("spells out the acronym for a known agency", () => {
     expect(certificationAgencyLabel("padi")).toBe("PADI");
+    expect(certificationAgencyLabel("cdaa")).toBe("CDAA");
+    expect(certificationAgencyLabel("isc")).toBe("ISC");
+    expect(certificationAgencyLabel("ise")).toBe("ISE");
   });
 
   it("spells an agency the way the agency spells itself", () => {
-    // The last widening before the format freezes: short names that are not a
-    // capitalized slug, so each is written out rather than derived.
+    // Short names that are not a capitalized slug, so each is written out rather
+    // than derived.
     expect(certificationAgencyLabel("scotsac")).toBe("ScotSAC");
     expect(certificationAgencyLabel("protec")).toBe("ProTec");
     expect(certificationAgencyLabel("apnea_academy")).toBe("Apnea Academy");
@@ -21,10 +24,26 @@ describe("certificationAgencyLabel", () => {
   });
 
   it("offers the format's vocabulary in its order, with `other` last", () => {
-    expect(CERTIFICATION_AGENCIES.slice(-21)).toEqual([
+    expect(CERTIFICATION_AGENCIES).toEqual([
+      "padi",
+      "ssi",
+      "naui",
+      "sdi",
+      "tdi",
+      "cmas",
+      "raid",
+      "bsac",
+      "gue",
+      "iantd",
+      "psai",
+      "dan",
+      "andi",
+      "snsi",
+      "acuc",
+      "pss",
+      "ida",
       "ndl",
       "utd",
-      "saa",
       "scotsac",
       "iac",
       "protec",
@@ -42,6 +61,9 @@ describe("certificationAgencyLabel", () => {
       "nacd",
       "idea",
       "diwa",
+      "cdaa",
+      "isc",
+      "ise",
       "other",
     ]);
   });

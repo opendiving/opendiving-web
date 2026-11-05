@@ -24,12 +24,10 @@ import { labelOrFallback } from "./labels";
  * **Value for value, and in order, the DiveJSON vocabulary** (spec §6.16, shared
  * with §6.17's courses). On a certification `agency` is a REQUIRED member of a
  * closed set; on a course it is OPTIONAL, drawn from this same set when it is
- * there at all. The format freezes a closed set's values at 1.0, so the twenty
- * that arrived with its last widening before the tag (`ndl` to `diwa`) are the
- * last additions there will be without a major version. They are here rather
- * than laundered through `other`/`agency_other` on the way in, which would have
- * made a round trip lossy on a member the format guarantees where it appears at
- * all.
+ * there at all. The format freezes a closed set's values at 1.0, so this list
+ * moves when the format's does and not otherwise. Its members are here rather
+ * than laundered through `other`/`agency_other` on the way in, which would make
+ * a round trip lossy on a member the format guarantees where it appears at all.
  */
 export const CERTIFICATION_AGENCIES = [
   "padi",
@@ -44,7 +42,6 @@ export const CERTIFICATION_AGENCIES = [
   "iantd",
   "psai",
   "dan",
-  "efr",
   "andi",
   "snsi",
   "acuc",
@@ -52,7 +49,6 @@ export const CERTIFICATION_AGENCIES = [
   "ida",
   "ndl",
   "utd",
-  "saa",
   "scotsac",
   "iac",
   "protec",
@@ -70,6 +66,9 @@ export const CERTIFICATION_AGENCIES = [
   "nacd",
   "idea",
   "diwa",
+  "cdaa",
+  "isc",
+  "ise",
   "other",
 ] as const;
 
@@ -99,7 +98,6 @@ const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
   iantd: "IANTD",
   psai: "PSAI",
   dan: "DAN",
-  efr: "EFR",
   andi: "ANDI",
   snsi: "SNSI",
   acuc: "ACUC",
@@ -107,7 +105,6 @@ const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
   ida: "IDA",
   ndl: "NDL",
   utd: "UTD",
-  saa: "SAA",
   scotsac: "ScotSAC",
   iac: "IAC",
   protec: "ProTec",
@@ -125,6 +122,9 @@ const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
   nacd: "NACD",
   idea: "IDEA",
   diwa: "DIWA",
+  cdaa: "CDAA",
+  isc: "ISC",
+  ise: "ISE",
   other: "Other",
 };
 

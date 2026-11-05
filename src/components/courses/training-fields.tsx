@@ -122,7 +122,7 @@ export function TrainingFields({
               <FormControl
                 render={
                   <Input
-                    placeholder="e.g. FFESSM"
+                    placeholder="e.g. SwedTech Diving"
                     {...field}
                     value={field.value ?? ""}
                   />

@@ -160,9 +160,9 @@ describe("CoursesFilters", () => {
     ).not.toBeInTheDocument();
   });
 
-  // Nineteen agencies are eighteen ways to empty a list for a diver who trained
-  // with one of them. What the selects offer is the vocabulary the courses
-  // themselves carry, which the page reads off its own list.
+  // Every other agency is a way to empty the list for a diver who trained with
+  // one of them. What the selects offer is the vocabulary the courses themselves
+  // carry, which the page reads off its own list.
   it("offers only the agencies and statuses it is given", () => {
     render(<Row agencies={["padi", "sdi"]} statuses={["completed"]} />);
 
