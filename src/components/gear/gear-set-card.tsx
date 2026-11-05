@@ -2,7 +2,7 @@
 
 import { Copy, Edit } from "lucide-react";
 import { GearSet, gearItemLabel } from "@/lib/api/gear";
-import { formatWeight } from "@/lib/units";
+
 import { useUnits } from "@/hooks/useUnits";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DeleteMenuItem } from "@/components/ui/item-actions-menu";
@@ -28,7 +28,7 @@ export function GearSetCard({
   onDelete,
   isDeleting,
 }: GearSetCardProps) {
-  const units = useUnits();
+  const { formatWeight } = useUnits();
 
   return (
     <PlainCard
@@ -61,7 +61,7 @@ export function GearSetCard({
         <CardFigure label="Items" value={set.gear_items.length} />
         <CardFigure
           label="Weight"
-          value={set.weight != null ? formatWeight(set.weight, units) : null}
+          value={set.weight != null ? formatWeight(set.weight) : null}
         />
       </CardFigures>
     </PlainCard>

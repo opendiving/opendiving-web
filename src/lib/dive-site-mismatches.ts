@@ -1,7 +1,7 @@
 import type { DiveSiteLookupItem } from "@/lib/api/dive-sites";
 import { WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { labelOrFallback } from "@/lib/api/labels";
-import { formatAltitude, type UnitSystem } from "@/lib/units";
+import { formatAltitude, type UnitSelection } from "@/lib/units";
 
 type ComparedSite = Pick<
   DiveSiteLookupItem,
@@ -16,7 +16,7 @@ type ComparedSite = Pick<
  */
 export function diveSiteMismatches(
   sites: readonly ComparedSite[],
-  units: UnitSystem,
+  units: UnitSelection,
 ): string[][] {
   const water = sites.find((site) => site.water_type);
   const altitude = sites.find((site) => site.altitude != null);

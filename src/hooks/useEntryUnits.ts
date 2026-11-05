@@ -9,12 +9,14 @@ import {
   toggleDimension,
   writeEntryUnits,
 } from "@/lib/entry-units";
-import type { EntryDimension, UnitSystem } from "@/lib/units";
+import { unitLabel, type EntryDimension, type UnitSystem } from "@/lib/units";
 
 /** What `useEntryUnits` returns. */
 export interface EntryUnits {
   /** The system this dimension's boxes display and parse in, right now. */
   entryUnits: (dimension: EntryDimension) => UnitSystem;
+  /** The label for this dimension after applying device overrides. */
+  entryUnitLabel: (dimension: EntryDimension) => string;
   /** Flips one dimension to the other system, remembered on this device. */
   toggleEntryUnits: (dimension: EntryDimension) => void;
 }
@@ -33,7 +35,7 @@ export interface EntryUnits {
  * erasing what a previous visit stored.
  */
 export function useEntryUnits(): EntryUnits {
-  const accountUnits = useUnits();
+  const { unitSystemFor } = useUnits();
   const raw = useSyncExternalStore(
     subscribeToEntryUnits,
     readStoredEntryUnits,
@@ -45,8 +47,9 @@ export function useEntryUnits(): EntryUnits {
   const overrides = useMemo(() => parseEntryUnits(raw), [raw]);
 
   const entryUnits = useCallback(
-    (dimension: EntryDimension) => overrides[dimension] ?? accountUnits,
-    [overrides, accountUnits],
+    (dimension: EntryDimension) =>
+      overrides[dimension] ?? unitSystemFor(dimension),
+    [overrides, unitSystemFor],
   );
 
   const toggleEntryUnits = useCallback(
@@ -59,10 +62,17 @@ export function useEntryUnits(): EntryUnits {
       // see DECISIONS.md - and solved it with an updater, which needs state this
       // deliberately doesn't keep.)
       const stored = parseEntryUnits(readStoredEntryUnits());
-      writeEntryUnits(toggleDimension(stored, dimension, accountUnits));
+      writeEntryUnits(
+        toggleDimension(stored, dimension, unitSystemFor(dimension)),
+      );
     },
-    [accountUnits],
+    [unitSystemFor],
   );
 
-  return { entryUnits, toggleEntryUnits };
+  const entryUnitLabel = useCallback(
+    (dimension: EntryDimension) => unitLabel(dimension, entryUnits(dimension)),
+    [entryUnits],
+  );
+
+  return { entryUnits, entryUnitLabel, toggleEntryUnits };
 }

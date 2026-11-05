@@ -1,20 +1,59 @@
 "use client";
 
+import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import type { UnitSystem } from "@/lib/units";
+import * as units from "@/lib/units";
+import { formatDistance } from "@/lib/geo-distance";
 
-/**
- * Which system this diver reads measurements in.
- *
- * The one place the preference is read. Components call this once and pass the
- * result down into the pure formatters in `lib/units.ts` - lib code never reaches
- * for context, which is what lets the same functions be tested without React and
- * called from `lib/dive-mixtures.ts` and `lib/dive-profile.ts`.
- *
- * Falls back to metric, which is the column's default and so the answer for every
- * existing row - and is also what renders in the moment before `user` has loaded,
- * where the alternative is a flash of nothing where a number goes.
- */
-export function useUnits(): UnitSystem {
-  return useAuth().user?.units ?? "metric";
+/** Account units and formatters that follow the diver's measurement preferences. */
+export function useUnits() {
+  const { user } = useAuth();
+  const system = user?.units ?? "metric";
+  const overrides = user?.unit_preferences;
+  return useMemo(() => {
+    const preferences = units.resolveUnitPreferences(system, overrides);
+    return {
+      preferences,
+      formatDistance: (meters: number) => formatDistance(meters, preferences),
+      unitSystemFor: (dimension: units.Dimension | "volume") =>
+        units.unitSystemFor(dimension, preferences),
+      unitLabel: (dimension: units.Dimension) =>
+        units.unitLabel(dimension, preferences),
+      unitWord: (dimension: units.Dimension) =>
+        units.unitWord(dimension, preferences),
+      toDisplayUnits: (metric: number, dimension: units.Dimension) =>
+        units.toDisplayUnits(metric, dimension, preferences),
+      toMetricUnits: (display: number, dimension: units.Dimension) =>
+        units.toMetricUnits(display, dimension, preferences),
+      displayNumber: (
+        metric: number,
+        dimension: units.Dimension,
+        options?: units.FormatOptions,
+      ) => units.displayNumber(metric, dimension, preferences, options),
+      formatDepth: (meters: number, options?: units.FormatOptions) =>
+        units.formatDepth(meters, preferences, options),
+      formatComparableDepth: (
+        meters: number,
+        options?: Parameters<typeof units.formatComparableDepth>[2],
+      ) => units.formatComparableDepth(meters, preferences, options),
+      formatTemperature: (celsius: number, options?: units.FormatOptions) =>
+        units.formatTemperature(celsius, preferences, options),
+      formatWeight: (kg: number, options?: units.FormatOptions) =>
+        units.formatWeight(kg, preferences, options),
+      formatPressure: (bar: number, options?: units.FormatOptions) =>
+        units.formatPressure(bar, preferences, options),
+      formatVisibility: (meters: number) =>
+        units.formatVisibility(meters, preferences),
+      formatAltitude: (meters: number) =>
+        units.formatAltitude(meters, preferences),
+      formatSac: (barPerMinute: number, options?: units.FormatOptions) =>
+        units.formatSac(barPerMinute, preferences, options),
+      formatRmv: (litersPerMinute: number, options?: units.FormatOptions) =>
+        units.formatRmv(litersPerMinute, preferences, options),
+      formatGasVolume: (liters: number, options?: units.FormatOptions) =>
+        units.formatGasVolume(liters, preferences, options),
+      formatWindSpeed: (metersPerSecond: number) =>
+        units.formatWindSpeed(metersPerSecond, preferences),
+    };
+  }, [system, overrides]);
 }

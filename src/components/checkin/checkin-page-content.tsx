@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-
 import { useCheckinDetails } from "@/contexts/CheckinDetailsContext";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useCheckinLink } from "@/hooks/useCheckinLink";
@@ -27,7 +26,7 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 export function CheckInPageContent() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
   const checkin = useCheckinDetails();
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [people, setPeople] = useState<Person[]>([]);

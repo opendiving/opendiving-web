@@ -2,7 +2,6 @@
 
 import { Fragment } from "react";
 import Link from "next/link";
-
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import type {
@@ -21,7 +20,7 @@ import {
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
 import { importDiveOutcomeSentence } from "@/lib/logbook-import";
-import { formatDepth } from "@/lib/units";
+
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -69,7 +68,7 @@ export function ImportDiveTable({
   members,
   written,
 }: ImportDiveTableProps) {
-  const units = useUnits();
+  const { formatDepth } = useUnits();
   const withReturnTo = useWithReturnTo();
 
   return (
@@ -166,7 +165,7 @@ export function ImportDiveTable({
                   )}
                 >
                   {dive.max_depth != null
-                    ? formatDepth(dive.max_depth, units, { decimals: 1 })
+                    ? formatDepth(dive.max_depth, { decimals: 1 })
                     : "—"}
                 </TableCell>
                 <TableCell className={cn(CELL, "hidden md:table-cell")}>

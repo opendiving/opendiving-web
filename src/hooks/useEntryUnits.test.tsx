@@ -2,15 +2,24 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useEntryUnits } from "./useEntryUnits";
 import { ENTRY_UNITS_KEY } from "@/lib/entry-units";
-import type { UnitSystem } from "@/lib/units";
+import type { UnitSystem, UnitPreferenceOverrides } from "@/lib/units";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // The account preference this hook falls back to, in a box the tests can move -
 // `vi.mock`'s factory is hoisted above the file and cannot see an ordinary `let`.
-const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));
+const auth = vi.hoisted(() => ({
+  units: "metric" as UnitSystem,
+  unit_preferences: {} as UnitPreferenceOverrides,
+}));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+  useAuth: () => ({
+    user: {
+      uuid: "user-1",
+      units: auth.units,
+      unit_preferences: auth.unit_preferences,
+    },
+  }),
 }));
 
 // Installed per test - under this runner `window.localStorage` reads back as
@@ -20,6 +29,7 @@ let storage: Storage;
 
 beforeEach(() => {
   auth.units = "metric";
+  auth.unit_preferences = {};
   storage = memoryStorage();
   useStorage(storage);
 });
@@ -34,6 +44,7 @@ describe("useEntryUnits", () => {
     const { result } = renderHook(() => useEntryUnits());
 
     expect(result.current.entryUnits("pressure")).toBe("metric");
+    expect(result.current.entryUnitLabel("pressure")).toBe("bar");
     expect(result.current.entryUnits("depth")).toBe("metric");
   });
 
@@ -59,6 +70,7 @@ describe("useEntryUnits", () => {
     act(() => result.current.toggleEntryUnits("pressure"));
 
     expect(stored()).toEqual({ pressure: "imperial" });
+    expect(result.current.entryUnitLabel("pressure")).toBe("psi");
   });
 
   it("reads a stored override back on a fresh mount", () => {
@@ -143,4 +155,25 @@ describe("useEntryUnits", () => {
     expect(result.current.entryUnits("pressure")).toBe("imperial");
     expect(stored()).toEqual({ pressure: "imperial" });
   });
+});
+
+it("follows mixed account preferences and keeps entry overrides independent", () => {
+  auth.unit_preferences = {
+    depth: "imperial",
+    temperature: "metric",
+    pressure: "imperial",
+  };
+  const { result, rerender } = renderHook(() => useEntryUnits());
+  expect(result.current.entryUnits("depth")).toBe("imperial");
+  expect(result.current.entryUnits("visibility")).toBe("imperial");
+  expect(result.current.entryUnits("temperature")).toBe("metric");
+  act(() => result.current.toggleEntryUnits("pressure"));
+  expect(result.current.entryUnits("pressure")).toBe("metric");
+  expect(stored()).toEqual({ pressure: "metric" });
+  auth.unit_preferences = { ...auth.unit_preferences, depth: "metric" };
+  rerender();
+  expect(result.current.entryUnits("depth")).toBe("metric");
+  expect(result.current.entryUnits("pressure")).toBe("metric");
+  act(() => result.current.toggleEntryUnits("pressure"));
+  expect(stored()).toBeNull();
 });

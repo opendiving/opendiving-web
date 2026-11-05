@@ -22,12 +22,6 @@ import {
   compassPoint,
   fetchedFields,
 } from "@/lib/dive-conditions";
-import {
-  formatAltitude,
-  formatDepth,
-  formatTemperature,
-  formatWindSpeed,
-} from "@/lib/units";
 
 interface DiveEnvironmentCardProps {
   dive: Dive;
@@ -52,7 +46,8 @@ export function DiveEnvironmentCard({
   dive,
   onEdit,
 }: DiveEnvironmentCardProps) {
-  const units = useUnits();
+  const { formatTemperature, formatAltitude, formatWindSpeed, formatDepth } =
+    useUnits();
   const conditions = dive.conditions ?? null;
   const fetched = fetchedFields(dive);
   const labelled = (label: string, field: keyof typeof fetched) =>
@@ -70,7 +65,7 @@ export function DiveEnvironmentCard({
     figures.push({
       key: "air_temperature",
       label: labelled("Air temperature", "air_temperature"),
-      value: formatTemperature(dive.air_temperature, units),
+      value: formatTemperature(dive.air_temperature),
     });
   }
   if (dive.water_type != null) {
@@ -84,7 +79,7 @@ export function DiveEnvironmentCard({
     figures.push({
       key: "altitude",
       label: "Altitude",
-      value: formatAltitude(dive.altitude, units),
+      value: formatAltitude(dive.altitude),
     });
   }
   if (dive.current != null) {
@@ -120,21 +115,21 @@ export function DiveEnvironmentCard({
         weather.wind_direction != null
           ? `Wind from ${compassPoint(weather.wind_direction)}`
           : "Wind",
-      value: formatWindSpeed(weather.wind_speed, units),
+      value: formatWindSpeed(weather.wind_speed),
     });
   }
   if (sea?.sea_surface_temperature != null) {
     fetchedOnly.push({
       key: "sea_temperature",
       label: "Sea temperature",
-      value: formatTemperature(sea.sea_surface_temperature, units),
+      value: formatTemperature(sea.sea_surface_temperature),
     });
   }
   if (sea?.wave_height != null) {
     fetchedOnly.push({
       key: "wave_height",
       label: "Wave height",
-      value: formatDepth(sea.wave_height, units, { decimals: 1 }),
+      value: formatDepth(sea.wave_height, { decimals: 1 }),
     });
   }
   // Drawn where the dive has a turn on both sides of it, and otherwise as the

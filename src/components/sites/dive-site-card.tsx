@@ -17,7 +17,6 @@ import { MapBackdrop } from "@/components/map/map-backdrop";
 import { diveSiteFacts } from "@/components/sites/dive-site-facts";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { useUnits } from "@/hooks/useUnits";
-import { formatDepth } from "@/lib/units";
 
 interface DiveSiteCardProps {
   site: DiveSite;
@@ -35,7 +34,7 @@ export function DiveSiteCard({
   onDelete,
   isDeleting,
 }: DiveSiteCardProps) {
-  const units = useUnits();
+  const { preferences: units, formatDepth } = useUnits();
   const facts = diveSiteFacts(site, units);
   const figures: BackdropCardFigure[] = [
     { label: "Dives", value: site.dive_count ?? 0 },
@@ -44,7 +43,7 @@ export function DiveSiteCard({
       // Whole units, as a dive card rounds its depths.
       value:
         site.max_dive_depth != null
-          ? formatDepth(site.max_dive_depth, units, { decimals: 0 })
+          ? formatDepth(site.max_dive_depth, { decimals: 0 })
           : "-",
     },
   ];

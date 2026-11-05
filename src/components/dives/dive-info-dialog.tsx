@@ -37,7 +37,7 @@ const label = (
 // inside Location and Gear, and Tanks is a list of cylinders the page's own card
 // draws - so none of them is here.
 export function DiveInfoDialog({ dive }: { dive: Dive }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const measure = <T,>(
     value: T | null | undefined,
     format: (v: T) => string,
