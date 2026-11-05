@@ -260,7 +260,7 @@ export function PlaceSearch({
       // Only the lookup has a page to report. The geocoder returns a bare list
       // and says nothing about what it held back, so a menu of geocoder rows
       // alone never claims there is more.
-      return { items, hasMore: sites?.has_more ?? false };
+      return { items, hasMore: sites?.has_more ?? false, credits };
     },
     [latitude, longitude, listCommonsSites, units],
   );
@@ -335,8 +335,9 @@ export function PlaceSearch({
         commitOnEnterOnly
       />
 
-      {/* A licence condition of the data, so it is rendered wherever the results
-          are - through `Attribution`, since both sources send the licence URL as
+      {/* The menu's foot credits the rows while they are open, over this line;
+          this one outlasts the menu. A licence condition of the data, so it is
+          rendered wherever the results are - through `Attribution`, since both sources send the licence URL as
           a markdown link and printing that raw would show a diver
           `[Data © OpenStreetMap contributors, ODbL 1.0.](https://...)`.
 

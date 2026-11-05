@@ -694,12 +694,14 @@ export default async function PrivacyPage() {
                 carries: its name, position and the other facts of the place,
                 drawn from open sources such as OpenStreetMap and Wikidata. A
                 Commons site is one record every account can use, marked{" "}
-                <em>Commons</em> wherever it appears, and it is not copied into
-                yours when you log a dive there or save it to your sites. The
-                notes, tags and dives you add to it are yours alone: they are
-                kept apart from the record, and no other account can see them,
-                or that you use the site at all. Removing a Commons site from
-                your sites removes those and leaves the record as it was.
+                <em>Commons</em> in your list of sites, on its own page and in
+                the searches that find it, and it is not copied into yours when
+                you log a dive there or save it to your sites. The notes, tags
+                and dives you add to it are yours alone: they are kept apart
+                from the record, and no other account can see them, or that you
+                use the site at all. Removing a Commons site from your sites
+                deletes your notes and tags on it and takes it off your dives,
+                which stay in your log, and leaves the record as it was.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">

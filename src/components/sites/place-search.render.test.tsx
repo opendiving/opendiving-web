@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PlaceSearch } from "./place-search";
 import type { GeocodeResult } from "@/lib/api/geocoding";
@@ -181,7 +181,7 @@ describe("PlaceSearch results", () => {
 
   it("says the list was cut when the lookup held matches back", async () => {
     // Without the pass-through this footer can never render: `hasMore` is the
-    // primitive's, and the catalog response is the only thing that knows.
+    // primitive's, and the lookup's answer is the only thing that knows.
     suggest([THISTLEGORM], true);
     render(
       <PlaceSearch
@@ -286,8 +286,8 @@ describe("PlaceSearch results", () => {
 // One source down is a shorter menu, not an error. The combobox reads any throw
 // from `onSearch` as total failure - it empties the list and shows
 // `searchErrorLabel` - so awaiting the two together would let the geocoder's
-// per-user rate limit delete catalog rows that arrived perfectly well, and let a
-// catalog failure regress the box that works today.
+// per-user rate limit delete Commons rows that arrived perfectly well, and let a
+// lookup failure regress the geocoder's box.
 describe("PlaceSearch with one source down", () => {
   it("still shows Commons rows when the geocoder throws", async () => {
     suggest([THISTLEGORM]);
@@ -663,9 +663,9 @@ describe("PlaceSearch geocoder rows", () => {
         site: MONAD_SHOAL,
       });
       expect(
-        screen.getByRole("link", {
+        screen.getAllByRole("link", {
           name: "Data © OpenStreetMap contributors, ODbL 1.0.",
-        }),
+        })[0],
       ).toBeInTheDocument();
     });
 
@@ -795,6 +795,30 @@ describe("PlaceSearch with a position on the form", () => {
 });
 
 describe("PlaceSearch credits", () => {
+  // The line under the field sits behind the open menu, so a row's credit has to
+  // be in the menu with it, and that line is what outlasts the menu.
+  it("credits a Commons row in the open menu and under the field", async () => {
+    suggest([THISTLEGORM]);
+    render(
+      <PlaceSearch
+        listCommonsSites
+        value={null}
+        onTypeName={vi.fn()}
+        onPick={vi.fn()}
+      />,
+    );
+
+    await searchFor("thistlegorm");
+
+    const name = "Data © OpenStreetMap contributors, ODbL 1.0.";
+    expect(
+      await within(await screen.findByRole("listbox")).findByRole("link", {
+        name,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name })).toHaveLength(2);
+  });
+
   it("renders the credit's licence link rather than its markdown", async () => {
     // The API folds the licence URL into the credit as a markdown link. Printed
     // rather than rendered, a diver reads "[Data © OpenStreetMap contributors,
@@ -811,17 +835,20 @@ describe("PlaceSearch credits", () => {
 
     await searchFor("thistlegorm");
 
-    const link = await screen.findByRole("link", {
-      name: "Data © OpenStreetMap contributors, ODbL 1.0.",
-    });
+    const link = await within(await screen.findByRole("listbox")).findByRole(
+      "link",
+      {
+        name: "Data © OpenStreetMap contributors, ODbL 1.0.",
+      },
+    );
     expect(link).toHaveAttribute("href", "https://osm.org/copyright");
     expect(screen.queryByText(/\[Data ©/)).not.toBeInTheDocument();
   });
 
   it("shows one OpenStreetMap credit for two sources that share the string", async () => {
-    // The catalog's OSM credit is byte-identical to the geocoder's, which is
-    // what makes the accumulator's existing collapse-by-string enough - there is
-    // no deduplication of our own here and there should not be.
+    // An OpenStreetMap record's credit is byte-identical to the geocoder's, which
+    // is what makes the accumulator's collapse-by-string enough - there is no
+    // deduplication of our own here and there should not be.
     suggest([THISTLEGORM]);
     searchPlaces.mockResolvedValue([{ ...DAHAB, attribution: OSM_CREDIT }]);
     render(
@@ -837,7 +864,7 @@ describe("PlaceSearch credits", () => {
     await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(2));
 
     expect(
-      screen.getAllByRole("link", {
+      within(screen.getByRole("listbox")).getAllByRole("link", {
         name: "Data © OpenStreetMap contributors, ODbL 1.0.",
       }),
     ).toHaveLength(1);
@@ -859,7 +886,9 @@ describe("PlaceSearch credits", () => {
     await searchFor("thistlegorm");
 
     expect(
-      await screen.findByRole("link", { name: "Data from Wikidata, CC0 1.0." }),
+      await within(await screen.findByRole("listbox")).findByRole("link", {
+        name: "Data from Wikidata, CC0 1.0.",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -882,7 +911,7 @@ describe("PlaceSearch credits", () => {
     await searchFor("thistlegorm");
     await waitFor(() =>
       expect(
-        screen.getByText(/OpenStreetMap contributors, ODbL/),
+        screen.getAllByText(/OpenStreetMap contributors, ODbL/)[0],
       ).toBeInTheDocument(),
     );
 
@@ -893,7 +922,7 @@ describe("PlaceSearch credits", () => {
 // Two ways a place would be placed without anyone choosing it. Both are
 // `CreatableCombobox`'s ordinary single-select behaviour, which is right where
 // the input *is* the value and wrong here, where a pick writes the two
-// coordinate fields, the Location beside them and - for a catalog row - the Name.
+// coordinate fields and the Location beside them.
 describe("PlaceSearch commits nothing by itself", () => {
   it("places nothing when an exact name is merely typed", async () => {
     searchPlaces.mockResolvedValue([DAHAB]);
