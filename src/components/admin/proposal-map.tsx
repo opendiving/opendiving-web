@@ -18,6 +18,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { useConfig } from "@/contexts/ConfigContext";
 import { clampLatitude, MAX_ZOOM } from "@/lib/basemap";
 import { haversineMeters } from "@/lib/geo-distance";
+import { TILE_SIZE } from "@/lib/map-grid";
 import { cn } from "@/lib/utils";
 
 // Close enough to judge a pin against the coast, which the read-only maps' fit is
@@ -29,9 +30,6 @@ const FIT_PADDING = 56;
 
 // Between two markers' centres, which clears their 12px dots of each other.
 const MARKER_GAP = 20;
-
-// The width of the world at zoom 0, in the pixels MapLibre's zoom counts.
-const WORLD_WIDTH = 512;
 
 const MARKER_CLASSES: Record<ReviewMarker["kind"], string> = {
   proposed: markerClassName("pin"),
@@ -102,7 +100,7 @@ function separatingZoom([centre, ...others]: ReviewMarker[]) {
   ]).meterInMercatorCoordinateUnits();
   return Math.min(
     MAX_ZOOM,
-    Math.log2(MARKER_GAP / (nearest * worldPerMetre * WORLD_WIDTH)),
+    Math.log2(MARKER_GAP / (nearest * worldPerMetre * TILE_SIZE)),
   );
 }
 
