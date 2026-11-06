@@ -31,7 +31,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     label: "Authentication",
     icon: KeyRound,
   },
-  { href: "/settings/storage", label: "Storage", icon: HardDrive },
+  { href: "/settings/data", label: "Data", icon: HardDrive },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
   {
     href: "/settings/preferences",
