@@ -1,6 +1,7 @@
 "use client";
 
 import { Attribution } from "@/components/attribution";
+import { CommonsIcon } from "@/components/icons/commons-icon";
 import { Badge } from "@/components/ui/badge";
 import type {
   ComboboxItem,
@@ -26,7 +27,8 @@ export const COMMONS_MATCH_RULE_LABELS: Record<CommonsMatchRule, string> = {
 
 export function CommonsBadge() {
   return (
-    <Badge variant="outline" className="font-medium">
+    <Badge variant="outline" className="gap-1 pl-2 font-medium">
+      <CommonsIcon className="h-3.5 w-3.5 text-coral" />
       {COMMONS_LABEL}
     </Badge>
   );
@@ -53,7 +55,7 @@ export function CommonsCredit({
 export function commonsMark(
   site: DiveSiteLookupItem,
 ): Pick<ComboboxItem, "badge"> {
-  return isCommonsSite(site) ? { badge: COMMONS_LABEL } : {};
+  return isCommonsSite(site) ? { badge: <CommonsBadge /> } : {};
 }
 
 /** The credits of a list of records, each once, in the order they came. */

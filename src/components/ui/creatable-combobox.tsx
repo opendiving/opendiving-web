@@ -7,9 +7,9 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { Attribution } from "@/components/attribution";
-import { badgeVariants } from "@/components/ui/badge";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -63,9 +63,9 @@ export interface ComboboxItem {
   // site's location, a gear item's type) - purely cosmetic, doesn't affect
   // matching/filtering.
   hint?: string;
-  // A short label after the hint, for a row that is a different kind of thing
-  // from its neighbours. Cosmetic in the same way.
-  badge?: string;
+  // A badge after the hint, for a row that is a different kind of thing from its
+  // neighbours. Cosmetic in the same way.
+  badge?: ReactNode;
 }
 
 export interface ComboboxSearchResult {
@@ -1048,12 +1048,7 @@ export function CreatableCombobox({
                         </span>
                       )}
                       {item.badge && (
-                        <span
-                          className={cn(
-                            badgeVariants({ variant: "outline" }),
-                            "ml-2 font-medium",
-                          )}
-                        >
+                        <span className="ml-2 inline-flex align-middle">
                           {item.badge}
                         </span>
                       )}

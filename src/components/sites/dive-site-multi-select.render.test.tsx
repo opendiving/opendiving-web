@@ -138,6 +138,7 @@ describe("DiveSiteMultiSelect", () => {
       expect(own).not.toHaveTextContent("Commons");
       expect(commons).toHaveTextContent("Blue Hole Arch");
       expect(commons).toHaveTextContent("Commons");
+      expect(commons.querySelector(".lucide-commons")).toBeInTheDocument();
       expect(
         screen.getByRole("link", {
           name: "Data © OpenStreetMap contributors, ODbL 1.0.",

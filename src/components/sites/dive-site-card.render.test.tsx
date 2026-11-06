@@ -239,6 +239,7 @@ describe("DiveSiteCard", () => {
       const item = card({ site: commons() });
 
       expect(within(item).getByText("Commons")).toBeInTheDocument();
+      expect(item.querySelector(".lucide-commons")).toBeInTheDocument();
       expect(
         within(item).getByRole("link", {
           name: "Data © OpenStreetMap contributors, ODbL 1.0.",
