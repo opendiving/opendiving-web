@@ -2209,8 +2209,8 @@ describe("DiveProfileChart in full screen", () => {
       within(dialog).getByRole("button", { name: "Exit full screen" }),
     );
 
-    expect(screen.queryByRole("dialog")).toBeNull();
-    // Base UI moves focus on the tick after the dialog unmounts.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // Base UI moves focus after the dialog unmounts.
     await waitFor(() =>
       expect(document.activeElement).toBe(
         screen.getByRole("button", { name: "Full screen" }),

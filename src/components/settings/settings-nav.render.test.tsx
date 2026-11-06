@@ -171,6 +171,7 @@ describe("SettingsNav", () => {
       "Account",
       "Check-in",
       "Authentication",
+      "MCP",
       "Storage",
       "Notifications",
       "Preferences",

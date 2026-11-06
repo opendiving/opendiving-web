@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveDetailCards } from "./dive-detail-cards";
 import {
@@ -93,7 +93,9 @@ describe("a card's edit dialog across a step of the pager", () => {
       </DiveDetailProvider>,
     );
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
     expect(divesAPI.updateDive).not.toHaveBeenCalled();
   });
 });

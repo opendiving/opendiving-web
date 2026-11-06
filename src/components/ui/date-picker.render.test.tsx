@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useLayoutEffect, useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePointer } from "@/test/pointer";
 import { DatePicker, rangeEndAfter } from "./date-picker";
@@ -167,8 +167,8 @@ describe("DatePicker text entry", () => {
     await userEvent.keyboard("{Escape}");
 
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    await waitFor(() => expect(icon).toHaveFocus());
     expect(document.body).not.toHaveFocus();
-    expect(icon).toHaveFocus();
   });
 
   it("still picks from the calendar, and shows what was picked", async () => {

@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  // Remote previews reach the dev server through the configured public hostname.
+  allowedDevOrigins: process.env.SITE_URL
+    ? [new URL(process.env.SITE_URL).hostname]
+    : [],
   cacheComponents: true,
   partialPrefetching: true,
   // Off, or Next sends `X-Powered-By: Next.js` on every response by default.

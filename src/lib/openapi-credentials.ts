@@ -11,8 +11,9 @@ export const CREDENTIALS_EXTENSION = "x-opendiving-credentials";
 export const CREDENTIAL_OPTIONS = [
   { value: "session", label: "Signed-in session" },
   { value: "superuser", label: "Superuser session" },
-  { value: "api-key-read", label: "API key: read" },
-  { value: "api-key-write", label: "API key: read & write" },
+  { value: "api-key-scoped", label: "API key: custom permissions" },
+  { value: "api-key-read", label: "API key: legacy read" },
+  { value: "api-key-write", label: "API key: legacy read & write" },
   { value: "anonymous", label: "No credential" },
 ] as const;
 

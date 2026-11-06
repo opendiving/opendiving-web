@@ -45,6 +45,9 @@ afterEach(clearIntersectionObservers);
 // Popup positioning measures with these; jsdom reports zeroes and warns without them.
 Element.prototype.scrollIntoView = vi.fn();
 
+// Base UI waits for viewport animations; jsdom has no Web Animations API.
+Element.prototype.getAnimations = () => [];
+
 // The calendar's swipe captures the pointer once a drag passes its threshold, and
 // jsdom implements none of the three, so a test swiping it would throw.
 Element.prototype.hasPointerCapture = () => false;
