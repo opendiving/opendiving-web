@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Marker, type Map as MapLibreMap } from "maplibre-gl";
+import {
+  Marker,
+  MercatorCoordinate,
+  type Map as MapLibreMap,
+} from "maplibre-gl";
 import { Minus, Plus } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -12,7 +16,8 @@ import { markerClassName } from "@/components/map/marker";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useConfig } from "@/contexts/ConfigContext";
-import { clampLatitude } from "@/lib/basemap";
+import { clampLatitude, MAX_ZOOM } from "@/lib/basemap";
+import { haversineMeters } from "@/lib/geo-distance";
 import { cn } from "@/lib/utils";
 
 // Close enough to judge a pin against the coast, which the read-only maps' fit is
@@ -21,6 +26,12 @@ const OPENING_ZOOM = 15;
 
 // Room for the labels, which sit beside their dots and outside what is fitted.
 const FIT_PADDING = 56;
+
+// Between two markers' centres, which clears their 12px dots of each other.
+const MARKER_GAP = 20;
+
+// The width of the world at zoom 0, in the pixels MapLibre's zoom counts.
+const WORLD_WIDTH = 512;
 
 const MARKER_CLASSES: Record<ReviewMarker["kind"], string> = {
   proposed: markerClassName("pin"),
@@ -76,6 +87,25 @@ function boundsAround([centre, ...others]: ReviewMarker[]) {
   ] as [[number, number], [number, number]];
 }
 
+// The zoom that sets the nearest marker clear of the first. It outranks the fit: a
+// duplicate metres from the pin is what the reviewer is looking for, and a match
+// further off that this pushes out of frame is still in the list beside the map.
+// Haversine, because `map.project` would put a match across the antimeridian a
+// world away.
+function separatingZoom([centre, ...others]: ReviewMarker[]) {
+  const nearest = Math.min(
+    ...others.map((marker) => haversineMeters(centre, marker)),
+  );
+  const worldPerMetre = MercatorCoordinate.fromLngLat([
+    centre.longitude,
+    centre.latitude,
+  ]).meterInMercatorCoordinateUnits();
+  return Math.min(
+    MAX_ZOOM,
+    Math.log2(MARKER_GAP / (nearest * worldPerMetre * WORLD_WIDTH)),
+  );
+}
+
 export interface ProposalMapProps {
   // At least one, the first being what the map centres on. Hold it stable: a new
   // array moves the camera back.
@@ -100,9 +130,11 @@ export function ProposalMap({ markers }: ProposalMapProps) {
             maxZoom: OPENING_ZOOM,
           })
         : undefined;
+    const fitted = camera?.zoom ?? OPENING_ZOOM;
     map.jumpTo({
       center: [centre.longitude, centre.latitude],
-      zoom: camera?.zoom ?? OPENING_ZOOM,
+      zoom:
+        others.length > 0 ? Math.max(fitted, separatingZoom(markers)) : fitted,
     });
   }, [map, markers]);
 

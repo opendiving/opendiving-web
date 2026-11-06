@@ -79,6 +79,33 @@ describe("ProposalMap", () => {
     expect(far.x).toBeLessThan(frame.right);
   });
 
+  it("opens with a match metres from the pin clear of it, even with another far off", async () => {
+    drawn([
+      PROPOSED,
+      {
+        kind: "match",
+        label: "Near · 15 m",
+        latitude: 27.500135,
+        longitude: 34.25,
+      },
+      {
+        kind: "current",
+        label: "Far",
+        latitude: 27.51,
+        longitude: 34.25,
+      },
+    ]);
+
+    await waitFor(() => expect(marker("match")).not.toBeNull());
+    await waitFor(() => {
+      const near = centreOf(marker("match")!);
+      const pin = centreOf(marker("proposed")!);
+      expect(Math.hypot(near.x - pin.x, near.y - pin.y)).toBeGreaterThan(
+        marker("proposed")!.offsetWidth,
+      );
+    });
+  });
+
   it("holds a match across the antimeridian, going the short way round", async () => {
     drawn([
       { ...PROPOSED, latitude: -16.5, longitude: 179.99 },
