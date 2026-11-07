@@ -25,6 +25,7 @@ import {
   TANK_USAGE_LABELS,
   gasName,
 } from "@/lib/dive-mixtures";
+import { PROFILE_CHANNELS } from "@/lib/dive-profile";
 import {
   decoModelLabel,
   MODE_LABELS,
@@ -97,6 +98,13 @@ const percent: Format = measured((value) => `${value}%`);
 // that the dive has one is what can be said without reading another route.
 const linked: Format = () => "Linked";
 
+// A profile's curves, as the dive page's chart names them.
+const curveName: Format = worded(
+  Object.fromEntries(
+    Object.values(PROFILE_CHANNELS).map(({ key, label }) => [key, label]),
+  ),
+);
+
 // The dive's own members, in the dive form's words.
 const DIVE_MEMBERS: Record<string, Member> = {
   start_time: { label: "Start time", format: when },
@@ -137,6 +145,7 @@ const DIVE_MEMBERS: Record<string, Member> = {
 };
 
 const MIXTURE_MEMBERS: Record<string, Member> = {
+  gas_number: { label: "Gas number", format: plain },
   volume: { label: "Volume", format: measured((value) => `${value} L`) },
   start_pressure: { label: "Start pressure", format: pressure },
   end_pressure: { label: "End pressure", format: pressure },
@@ -338,8 +347,10 @@ function recordingRow(
   }
   if (first === "profile" && second === "channels" && isIndex(third)) {
     return isWholeElement(change)
-      ? elementRow(`${prefix}Curve`, change, (channel: string) => channel)
-      : valueRow(`${prefix}Curve`, change, plain, units);
+      ? elementRow(`${prefix}Curve`, change, (channel: unknown) =>
+          curveName(channel, units),
+        )
+      : valueRow(`${prefix}Curve`, change, curveName, units);
   }
   const nested = {
     device: DEVICE_MEMBERS,

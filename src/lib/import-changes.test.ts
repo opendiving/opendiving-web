@@ -40,6 +40,12 @@ describe("describeImportChange", () => {
       label: "Tank 2: Start pressure",
       after: expect.stringContaining("200"),
     });
+    expect(describe_("mixtures/0/gas_number", 0, 1)).toEqual({
+      kind: "value",
+      label: "Tank 1: Gas number",
+      before: "0",
+      after: "1",
+    });
     expect(describe_("recordings/1/cns_end", null, 9)).toMatchObject({
       label: "Recording 2: CNS at the end",
       after: "9%",
@@ -86,14 +92,40 @@ describe("describeImportChange", () => {
     ).toEqual({
       kind: "value",
       label: "Recording 1: Curve",
-      before: "temperature",
-      after: "ceiling",
+      before: "Temperature",
+      after: "Deco ceiling",
     });
     expect(
       describe_("recordings/0/profile/channels/2", null, "temperature"),
     ).toEqual({
       kind: "element",
-      text: "Recording 1: Curve added — temperature",
+      text: "Recording 1: Curve added — Temperature",
+    });
+  });
+
+  it("names a curve as the profile chart does", () => {
+    expect(describe_("recordings/0/profile/channels/3", null, "ndl")).toEqual({
+      kind: "element",
+      text: "Recording 1: Curve added — No-deco time",
+    });
+    expect(
+      describe_(
+        "recordings/0/profile/channels/4",
+        "surface_gradient_factor",
+        null,
+      ),
+    ).toEqual({
+      kind: "element",
+      text: "Recording 1: Curve removed — Surface gradient factor",
+    });
+  });
+
+  it("reads a curve this build has no name for rather than hiding it", () => {
+    expect(
+      describe_("recordings/0/profile/channels/5", null, "scrubber_life"),
+    ).toEqual({
+      kind: "element",
+      text: "Recording 1: Curve added — Scrubber life",
     });
   });
 
@@ -127,8 +159,8 @@ describe("describeImportChange", () => {
       before: "—",
       after: "93",
     });
-    expect(describe_("mixtures/0/gas_number", 0, 1)).toMatchObject({
-      label: "mixtures/0/gas_number",
+    expect(describe_("mixtures/0/id", 4, 5)).toMatchObject({
+      label: "mixtures/0/id",
     });
   });
 });
