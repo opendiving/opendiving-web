@@ -17,6 +17,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { StatusMessage } from "@/components/ui/status-message";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { useCheckinDetails } from "@/contexts/CheckinDetailsContext";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import {
@@ -36,7 +37,12 @@ export interface ImportReviewProps {
   onOvertaken: () => void;
 }
 
-const logHref = (record: LogbookImportRead) => `/import/${record.uuid}/log`;
+// The way to the log, and back to this page: the review at `/import` holds the
+// diver's check-in choices, and `/import/[id]` would start them over.
+function useLogHref(record: LogbookImportRead): string {
+  const withReturnTo = useWithReturnTo();
+  return withReturnTo(`/import/${record.uuid}/log`);
+}
 
 const OVERTAKEN = {
   title: "No longer waiting",
@@ -64,6 +70,7 @@ function RefusedFiles({ record }: { record: LogbookImportRead }) {
 // The rows by outcome in a sentence. The unchanged and the skipped have no card,
 // so their terms lead to the log page, which names them.
 function ImportSummary({ record }: { record: LogbookImportRead }) {
+  const logHref = useLogHref(record);
   const terms = importSummaryTerms(record.dives);
   if (terms.length === 0) return null;
   return (
@@ -72,10 +79,7 @@ function ImportSummary({ record }: { record: LogbookImportRead }) {
         <Fragment key={term.outcome}>
           {index > 0 && ", "}
           {term.outcome === "unchanged" || term.outcome === "skipped" ? (
-            <Link
-              href={logHref(record)}
-              className="underline underline-offset-2"
-            >
+            <Link href={logHref} className="underline underline-offset-2">
               {term.text}
             </Link>
           ) : (
@@ -113,6 +117,7 @@ function PendingImport({
   const { refreshUser } = useAuth();
   const { reload: reloadCheckinDetails } = useCheckinDetails();
   const checkIn = useImportCheckIn(record.check_in_details, record.portrait);
+  const logHref = useLogHref(record);
   const [phase, setPhase] = useState<"idle" | "importing" | "discarding">(
     "idle",
   );
@@ -211,7 +216,7 @@ function PendingImport({
       <ImportCheckInDetails checkIn={checkIn} />
 
       <p className="text-sm">
-        <Link href={logHref(record)} className="underline underline-offset-2">
+        <Link href={logHref} className="underline underline-offset-2">
           Import log
         </Link>
       </p>
@@ -255,6 +260,7 @@ function PendingImport({
 // What became of an import, from the moment it is applied until it leaves the
 // history.
 function AppliedImport({ record, onRemoved }: ImportReviewProps) {
+  const logHref = useLogHref(record);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -306,7 +312,7 @@ function AppliedImport({ record, onRemoved }: ImportReviewProps) {
       <ImportReportView record={record} />
 
       <p className="text-sm">
-        <Link href={logHref(record)} className="underline underline-offset-2">
+        <Link href={logHref} className="underline underline-offset-2">
           Import log
         </Link>
       </p>

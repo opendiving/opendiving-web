@@ -47,6 +47,7 @@ const mocks = vi.hoisted(() => ({
   routerReplace: vi.fn(),
   routerPush: vi.fn(),
   params: { id: "import-1" },
+  search: "",
 }));
 
 vi.mock("@/hooks/useAuthGuard", () => ({
@@ -124,7 +125,7 @@ vi.mock("@/components/ui/use-toast", () => ({
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   usePathname: () => "/import",
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(mocks.search),
   useParams: () => mocks.params,
   useRouter: () => ({ replace: mocks.routerReplace, push: mocks.routerPush }),
 }));
@@ -331,6 +332,7 @@ const resultShown = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.search = "";
   mocks.pending.mockReset();
   mocks.pending.mockRejectedValue(notFound());
   mocks.list.mockResolvedValue({
@@ -665,7 +667,7 @@ describe("the review", () => {
     expect(unchanged).toHaveAttribute("href", "/import/import-1/log");
     expect(screen.getByRole("link", { name: "1 skipped" })).toHaveAttribute(
       "href",
-      "/import/import-1/log",
+      "/import/import-1/log?from=%2Fimport",
     );
     expect(unchanged.closest("p")).toHaveTextContent(
       "2 new dives, 1 modified, 1 unchanged, 1 skipped",
@@ -856,7 +858,7 @@ describe("the review", () => {
     await drawReview(pendingImport());
     expect(screen.getByRole("link", { name: "Import log" })).toHaveAttribute(
       "href",
-      "/import/import-1/log",
+      "/import/import-1/log?from=%2Fimport",
     );
   });
 });
@@ -1182,6 +1184,15 @@ describe("the log page", () => {
     expect(
       screen.getByRole("link", { name: "Back to import" }),
     ).toHaveAttribute("href", "/import/import-1");
+  });
+
+  it("goes back to the page it was opened from, which holds the diver's choices", async () => {
+    mocks.search = "from=/import";
+    await drawLog(log({ dives: [logDive()] }));
+
+    expect(
+      screen.getByRole("link", { name: "Back to import" }),
+    ).toHaveAttribute("href", "/import");
   });
 
   it("heads each dive with its start, device and outcome, and a skipped one's reason", async () => {

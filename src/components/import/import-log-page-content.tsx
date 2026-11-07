@@ -9,6 +9,7 @@ import { ImportNoteGroups } from "@/components/import/import-note-groups";
 import { HERO_BODY, PlainHero } from "@/components/ui/map-hero";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useResource } from "@/hooks/useResource";
+import { useReturnTo } from "@/hooks/useReturnTo";
 import {
   logbookImportAPI,
   type LogbookImportDiveNotes,
@@ -19,6 +20,7 @@ import {
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
 import { importOutcomeLabel, importStartText } from "@/lib/logbook-import";
+import { labelForPath } from "@/lib/return-to";
 
 function DiveEntry({ dive }: { dive: LogbookImportDiveNotes }) {
   const device = dive.device
@@ -54,6 +56,10 @@ function DiveEntry({ dive }: { dive: LogbookImportDiveNotes }) {
 // the review.
 export function ImportLogPageContent() {
   const params = useParams();
+  const back = useReturnTo({
+    href: `/import/${params.id as string}`,
+    label: labelForPath("/import"),
+  });
   const { user, isAuthenticated, isLoading } = useAuthGuard();
   const { resource: log } = useResource<LogbookImportNotes>(
     logbookImportAPI.notes,
@@ -71,8 +77,8 @@ export function ImportLogPageContent() {
   return (
     <div>
       <PlainHero
-        backHref={`/import/${params.id as string}`}
-        backLabel="Back to import"
+        backHref={back.href}
+        backLabel={back.label}
         icon={ScrollText}
         title="Import log"
         figures={[]}

@@ -5725,12 +5725,12 @@ fails to compile; `logbook-import.test.ts` restates the map as an independent li
 the same `Record`.
 
 The only lockstep part: the API's list comes from `divejson.read_formats()`, which a Renovate bump
-moves, so a reader can reach the Import page before this repository names it. A file's `format`
-renders through `importSourceLabel`, de-snaking the id until a label exists (`suunto_xml` is
-`"Suunto DM5 XML"`); a note's `code` and `kind` are opaque strings, so an unfamiliar one reads as
-information and `noteKindLabel` de-snakes the kind; the form's picker alone does not widen — a new
-format is unpickable there until its extension lands. The Import page filters nothing, so it takes
-the new format at once.
+moves, so a reader can reach the Import page before this repository names it. A stored file's
+`parser_key` renders through `importSourceLabel`, de-snaking the id until a label exists
+(`suunto_xml` is `"Suunto DM5 XML"`); a note's `code` and `kind` are opaque strings, so an
+unfamiliar one reads as information and `noteKindLabel` de-snakes the kind; the form's picker alone
+does not widen — a new format is unpickable there until its extension lands. The Import page filters
+nothing, so it takes the new format at once.
 
 Nothing in the browser parses a dive file or groups a note; the API sends the report's notes
 grouped, and this side owns only presentation, including the "and N more" count (`count` minus the
@@ -5741,7 +5741,7 @@ three `wheres` sent).
 The API reads the dive form's file through the converter logbook import uses, so the form's picker
 offers `DIVE_COMPUTER_FILE_ACCEPT` — the flattened `LOGBOOK_IMPORT_SOURCE_EXTENSIONS`, without
 `.divejson` and `.zip`, which the parse route refuses — and a stored file's `parser_key` renders
-through `importSourceLabel`, as an import's `members` rows do. The ids only an import reports
+through `importSourceLabel`, in a new dive's review as on its page. The ids only an import reports
 (`divejson`, `archive`, `zip`) are labelled in a map of their own, so they never become the form's
 extensions. A second list beside these would have to move whenever the converter pin adds a reader.
 The form's copy names no formats of its own for the same reason: it says "any format logbook import

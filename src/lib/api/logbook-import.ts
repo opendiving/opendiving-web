@@ -336,8 +336,7 @@ export interface ImportMemberReport {
   sha256: string;
   /**
    * What the file was read as: a converter format id, `divejson`, `archive` or
-   * `zip`, or `null` for a file nothing here reads. Render through
-   * `importSourceLabel`.
+   * `zip`, or `null` for a file nothing here reads.
    */
   format: string | null;
   /** On a zip's own row, how many files it opened into. */
