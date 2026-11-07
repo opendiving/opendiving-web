@@ -67,6 +67,14 @@ beforeEach(() => {
 });
 
 describe("SiteProposalsPageContent", () => {
+  it("dates a proposal from its full timestamp", async () => {
+    answer([proposal({ created_at: "2026-01-02T12:00:00Z" })]);
+    render(<SiteProposalsPageContent />);
+
+    expect(await screen.findByText("Jan 2, 2026")).toBeInTheDocument();
+    expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+  });
+
   it("lists each proposal with its outcome and any reason", async () => {
     answer([
       proposal({}),
