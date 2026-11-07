@@ -12,8 +12,34 @@ import { parseDecimal } from "@/lib/decimal-entry";
 import { cn } from "@/lib/utils";
 import type { FormControlA11yProps } from "@/components/ui/form";
 import { useUnits } from "@/hooks/useUnits";
-import type { UnitSystem } from "@/lib/units";
+import { toCommittedMetric, type UnitSystem } from "@/lib/units";
 import { divesAPI } from "@/lib/api/dives";
+import type { CylinderMaterial, VesselFacts } from "@/lib/api/gear";
+
+/** The vessel facts a cylinder's name pins down beyond its litres. */
+export interface PresetVessel extends Pick<
+  VesselFacts,
+  "working_pressure" | "material"
+> {
+  working_pressure: number;
+  material: CylinderMaterial;
+}
+
+// A rating in bar exactly as the working-pressure box stores the stamped psi typed
+// in imperial, so an imperial reader reads the stamp back and a metric reader sees
+// what that same entry shows.
+function ratedAt(psi: number, material: CylinderMaterial): PresetVessel {
+  return {
+    working_pressure: toCommittedMetric(psi, "pressure", "imperial"),
+    material,
+  };
+}
+
+const AL_3000 = ratedAt(3000, "aluminium");
+const HP_3442 = ratedAt(3442, "steel");
+// LP cylinders are named at their "+" rating, 10% over the stamped 2400 psi: at
+// 2400 an LP85 holds 75 cu ft, so only 2640 reads the name back.
+const LP_2640 = ratedAt(2640, "steel");
 
 export interface VolumeOption {
   value: number;
@@ -27,6 +53,12 @@ export interface VolumeOption {
    * a metric composition, so it is part of `label` and never leads.
    */
   imperialName?: string;
+  /**
+   * The working pressure and material the name pins down, on every row with an
+   * `imperialName` and no other: a 12 L is made at 200, 232 and 300 bar in steel
+   * and in aluminium, so litres alone say neither.
+   */
+  vessel?: PresetVessel;
 }
 
 export interface VolumeOptionGroup {
@@ -48,7 +80,12 @@ export interface VolumeOptionGroup {
 
 const TWIN_SETS: VolumeOption[] = [
   { value: 14, label: "14 L (2x7 L)" },
-  { value: 22.2, label: "22.2 L (2x AL80)", imperialName: "2x AL80" },
+  {
+    value: 22.2,
+    label: "22.2 L (2x AL80)",
+    imperialName: "2x AL80",
+    vessel: AL_3000,
+  },
   { value: 24, label: "24 L (2x12 L)" },
   { value: 30, label: "30 L (2x15 L)" },
 ];
@@ -74,6 +111,11 @@ export function isTwinSetVolume(volume: number | null | undefined): boolean {
 // `S80`, an `S` divers read as steel, which is why the model number is not what
 // is shown here (see DECISIONS.md). `HP` is the 3442 psi steel family and `LP`
 // the 2400/2640 psi one, from Faber and Worthington.
+//
+// A named row also carries the working pressure and material its name pins down,
+// from the makers' rating families: 3000 psi aluminium (Luxfer, Catalina), 3300
+// psi for the AL100 (Luxfer's S100), 3442 psi HP steel and 2400+ LP steel (Faber,
+// Worthington). An unnamed row carries neither.
 //
 // Every litre figure is a manufacturer's stated water capacity - Luxfer's and
 // Catalina's scuba sheets via XS Scuba, XS Scuba's Metal Impact sheet, Faber's
@@ -113,15 +155,46 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
     options: [
       // The standard stage/deco/pony bottle. Luxfer 5.7, Catalina 5.8; the preset
       // takes Luxfer's, theirs being the AL40 most often sold under the name.
-      { value: 5.7, label: "5.7 L (AL40)", imperialName: "AL40" },
+      {
+        value: 5.7,
+        label: "5.7 L (AL40)",
+        imperialName: "AL40",
+        vessel: AL_3000,
+      },
       // Luxfer 6.9, Metal Impact 7.1, Catalina 7.2 - a 0.3 L spread with no maker
       // dominant enough to settle it the way Faber settles the HP100. The preset
       // takes the middle figure; a diver whose own sheet says 6.9 types it.
-      { value: 7.1, label: "7.1 L (AL50)", imperialName: "AL50" },
-      { value: 9, label: "9 L (AL63)", imperialName: "AL63" },
-      { value: 10, label: "10 L (AL72)", imperialName: "AL72" },
-      { value: 11.1, label: "11.1 L (AL80)", imperialName: "AL80" },
-      { value: 13.2, label: "13.2 L (AL100)", imperialName: "AL100" },
+      {
+        value: 7.1,
+        label: "7.1 L (AL50)",
+        imperialName: "AL50",
+        vessel: AL_3000,
+      },
+      {
+        value: 9,
+        label: "9 L (AL63)",
+        imperialName: "AL63",
+        vessel: AL_3000,
+      },
+      {
+        value: 10,
+        label: "10 L (AL72)",
+        imperialName: "AL72",
+        vessel: AL_3000,
+      },
+      {
+        value: 11.1,
+        label: "11.1 L (AL80)",
+        imperialName: "AL80",
+        vessel: AL_3000,
+      },
+      // Rated 3300 psi, unlike the rest of the family.
+      {
+        value: 13.2,
+        label: "13.2 L (AL100)",
+        imperialName: "AL100",
+        vessel: ratedAt(3300, "aluminium"),
+      },
     ],
   },
   {
@@ -134,23 +207,68 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
       // Faber 10.2, Worthington 10.1. The preset takes Faber's, for the reason the
       // HP100 below does - one maker across the family beats a row-by-row pick,
       // and a tenth of a litre is well inside what a diver would retype anyway.
-      { value: 10.2, label: "10.2 L (HP80)", imperialName: "HP80" },
+      {
+        value: 10.2,
+        label: "10.2 L (HP80)",
+        imperialName: "HP80",
+        vessel: HP_3442,
+      },
       // The one size the makers genuinely disagree on: Faber 12.9, Worthington's
       // own sheet 11.6, PST 12.7. Faber's figure is the preset because it is the
       // one most often sold under the name; a diver holding either types theirs.
-      { value: 12.9, label: "12.9 L (HP100)", imperialName: "HP100" },
+      {
+        value: 12.9,
+        label: "12.9 L (HP100)",
+        imperialName: "HP100",
+        vessel: HP_3442,
+      },
       // The HP117 and the LP95 below are both 15.0 L - two cylinders that differ
       // by a working pressure the mixture does not record. Hence the list is keyed
       // by label rather than value: the value is not unique.
-      { value: 15, label: "15 L (HP117)", imperialName: "HP117" },
-      { value: 15.3, label: "15.3 L (HP120)", imperialName: "HP120" },
+      {
+        value: 15,
+        label: "15 L (HP117)",
+        imperialName: "HP117",
+        vessel: HP_3442,
+      },
+      {
+        value: 15.3,
+        label: "15.3 L (HP120)",
+        imperialName: "HP120",
+        vessel: HP_3442,
+      },
       // Worthington's X8-130. Faber has no 130; its nearest is the HP133 at 17 L,
       // which is a different cylinder rather than a second figure for this one.
-      { value: 16, label: "16 L (HP130)", imperialName: "HP130" },
-      { value: 13, label: "13 L (LP85)", imperialName: "LP85" },
-      { value: 15, label: "15 L (LP95)", imperialName: "LP95" },
-      { value: 17, label: "17 L (LP108)", imperialName: "LP108" },
-      { value: 19, label: "19 L (LP121)", imperialName: "LP121" },
+      {
+        value: 16,
+        label: "16 L (HP130)",
+        imperialName: "HP130",
+        vessel: HP_3442,
+      },
+      {
+        value: 13,
+        label: "13 L (LP85)",
+        imperialName: "LP85",
+        vessel: LP_2640,
+      },
+      {
+        value: 15,
+        label: "15 L (LP95)",
+        imperialName: "LP95",
+        vessel: LP_2640,
+      },
+      {
+        value: 17,
+        label: "17 L (LP108)",
+        imperialName: "LP108",
+        vessel: LP_2640,
+      },
+      {
+        value: 19,
+        label: "19 L (LP121)",
+        imperialName: "LP121",
+        vessel: LP_2640,
+      },
     ],
   },
 ];
@@ -216,6 +334,12 @@ export interface VolumeComboboxProps extends FormControlA11yProps {
    * would be a caller that does not exist.
    */
   onChange: (value: number | "") => void;
+  /**
+   * Called with the row a diver picks, after `onChange` has its litres - never for
+   * a typed number, which carries no name. Lets a gear item take the vessel facts
+   * a named preset carries; a dive's cylinder records only the volume.
+   */
+  onPick?: (option: VolumeOption) => void;
   /** The dive's start time; bounds the "Recently used" group like a lookup's `until`. */
   until?: string;
   disabled?: boolean;
@@ -243,6 +367,7 @@ export interface VolumeComboboxProps extends FormControlA11yProps {
 export function VolumeCombobox({
   value,
   onChange,
+  onPick,
   until,
   disabled,
   readOnly = false,
@@ -338,6 +463,7 @@ export function VolumeCombobox({
 
   const handleSelect = (option: VolumeOption) => {
     onChange(option.value);
+    onPick?.(option);
     // Dropping the draft is what lets the picked preset reach the input at all:
     // it would otherwise keep rendering whatever half-typed query opened the
     // menu. Same on blur below, which is where "11." settles back to "11".

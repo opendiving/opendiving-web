@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { GearItemDialog, vesselFactsToSave } from "./gear-item-dialog";
 import { gearAPI, type GearItem } from "@/lib/api/gear";
 import { divesAPI } from "@/lib/api/dives";
+import { toCommittedMetric } from "@/lib/units";
 
 // The pressure box reads the diver's units.
 vi.mock("@/contexts/AuthContext", () => ({
@@ -155,6 +156,85 @@ describe("GearItemDialog's vessel fields", () => {
     expect(sent).not.toHaveProperty("volume");
     expect(sent).not.toHaveProperty("working_pressure");
     expect(sent).not.toHaveProperty("material");
+  });
+});
+
+describe("GearItemDialog's volume presets", () => {
+  // What the pressure box stores for "3000" typed in psi.
+  const AL_RATING = toCommittedMetric(3000, "pressure", "imperial");
+
+  async function pickPreset(name: string) {
+    await userEvent.click(screen.getByLabelText("Volume (L)"));
+    await userEvent.click(await screen.findByRole("option", { name }));
+  }
+
+  async function createAndSend() {
+    await userEvent.click(screen.getByRole("button", { name: /create gear/i }));
+    await waitFor(() => expect(createGearItem).toHaveBeenCalled());
+    return createGearItem.mock.calls[0][0];
+  }
+
+  it("fills a blank pressure and material from a named preset", async () => {
+    renderDialog({ initialType: "cylinder", initialName: "AL80" });
+
+    await pickPreset("11.1 L (AL80)");
+
+    expect(screen.getByLabelText("Material")).toHaveValue("aluminium");
+    expect(await createAndSend()).toMatchObject({
+      volume: 11.1,
+      working_pressure: AL_RATING,
+      material: "aluminium",
+    });
+  });
+
+  it("leaves a pressure the diver typed, filling only the blank material", async () => {
+    renderDialog({ initialType: "cylinder", initialName: "Tank" });
+
+    await userEvent.type(
+      screen.getByLabelText("Working pressure (bar)"),
+      "232",
+    );
+    await pickPreset("11.1 L (AL80)");
+
+    expect(await createAndSend()).toMatchObject({
+      volume: 11.1,
+      working_pressure: 232,
+      material: "aluminium",
+    });
+  });
+
+  it("fills nothing from a metric preset, nor from a typed volume", async () => {
+    renderDialog({ initialType: "cylinder", initialName: "Tank" });
+
+    await pickPreset("12 L");
+    expect(screen.getByLabelText("Material")).toHaveValue("");
+
+    const volume = screen.getByLabelText("Volume (L)");
+    await userEvent.clear(volume);
+    await userEvent.type(volume, "11.1");
+    expect(await createAndSend()).toMatchObject({
+      volume: 11.1,
+      working_pressure: null,
+      material: null,
+    });
+  });
+
+  it("never overwrites the facts an edited item stores", async () => {
+    renderDialog({
+      gearItem: item({ volume: 12, working_pressure: 300, material: "carbon" }),
+    });
+
+    await pickPreset("11.1 L (AL80)");
+    await userEvent.click(
+      screen.getByRole("button", { name: /save changes/i }),
+    );
+
+    await waitFor(() => expect(updateGearItem).toHaveBeenCalled());
+    expect(updateGearItem.mock.calls[0][1]).toMatchObject({
+      volume: 11.1,
+      working_pressure: 300,
+      material: "carbon",
+    });
   });
 });
 

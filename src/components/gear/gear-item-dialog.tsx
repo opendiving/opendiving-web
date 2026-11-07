@@ -3,7 +3,7 @@
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
-import { useForm, useWatch, type Control } from "react-hook-form";
+import { useForm, useFormContext, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { gearItemSchema, GearItemInput } from "@/lib/validations/gear";
 import {
@@ -39,7 +39,10 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
-import { VolumeCombobox } from "@/components/dives/volume-combobox";
+import {
+  VolumeCombobox,
+  type VolumeOption,
+} from "@/components/dives/volume-combobox";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { useUnits } from "@/hooks/useUnits";
 import { unitLabel } from "@/lib/units";
@@ -275,7 +278,7 @@ export function GearItemDialog({
 
             {/* The dialog's one type-conditional block: a cylinder's facts are
                 recorded once here and copied onto the tanks that link it. */}
-            {isCylinder && <CylinderFactFields control={form.control} />}
+            {isCylinder && <CylinderFactFields />}
 
             <FormField
               control={form.control}
@@ -346,8 +349,22 @@ export function GearItemDialog({
 
 // A cylinder's three facts. Its own component so only a dialog showing them reads the
 // diver's units, which the pressure box converts.
-function CylinderFactFields({ control }: { control: Control<GearItemInput> }) {
+function CylinderFactFields() {
   const units = useUnits();
+  const { control, getValues, setValue } = useFormContext<GearItemInput>();
+  // A named preset fills only what is still blank: a figure the diver typed, or
+  // the one the item stores, outranks the name's.
+  const fillFromPreset = ({ vessel }: VolumeOption) => {
+    if (!vessel) return;
+    if (getValues("working_pressure") == null) {
+      setValue("working_pressure", vessel.working_pressure, {
+        shouldDirty: true,
+      });
+    }
+    if (!getValues("material")) {
+      setValue("material", vessel.material, { shouldDirty: true });
+    }
+  };
   return (
     <>
       <div className="grid grid-cols-2 gap-4">
@@ -362,6 +379,7 @@ function CylinderFactFields({ control }: { control: Control<GearItemInput> }) {
                   <VolumeCombobox
                     value={field.value}
                     onChange={field.onChange}
+                    onPick={fillFromPreset}
                     placeholder="e.g. 11.1"
                   />
                 }

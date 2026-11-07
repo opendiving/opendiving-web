@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { VolumeCombobox } from "./volume-combobox";
-import type { UnitSystem } from "@/lib/units";
+import {
+  VOLUME_GROUPS,
+  VolumeCombobox,
+  type VolumeOption,
+} from "./volume-combobox";
+import { toCommittedMetric, type UnitSystem } from "@/lib/units";
 import { divesAPI } from "@/lib/api/dives";
 
 // `vi.hoisted` because a `vi.mock` factory is lifted above every other statement
@@ -355,5 +359,55 @@ describe("VolumeCombobox", () => {
     expect(groupNames()).not.toContain("Recently used");
     expect(optionNames()).toHaveLength(27);
     error.mockRestore();
+  });
+});
+
+describe("VOLUME_GROUPS' vessel facts", () => {
+  const options = VOLUME_GROUPS.flatMap((group) => group.options);
+
+  // The rating each family is named at, in stamped psi.
+  function expectedVessel(name: string) {
+    if (name === "AL100") return { psi: 3300, material: "aluminium" };
+    if (/^(2x )?AL\d+$/.test(name)) return { psi: 3000, material: "aluminium" };
+    if (/^HP\d+$/.test(name)) return { psi: 3442, material: "steel" };
+    if (/^LP\d+$/.test(name)) return { psi: 2640, material: "steel" };
+    throw new Error(`No rating family for ${name}`);
+  }
+
+  it.each(options.filter((option) => option.imperialName))(
+    "$label carries the rating and material its name pins down",
+    (option) => {
+      const { psi, material } = expectedVessel(option.imperialName!);
+      // What the working-pressure box stores for the stamp typed in psi.
+      expect(option.vessel).toEqual({
+        working_pressure: toCommittedMetric(psi, "pressure", "imperial"),
+        material,
+      });
+    },
+  );
+
+  it("carries none on a row the litres alone name", () => {
+    const unnamed = options.filter((option) => !option.imperialName);
+    expect(unnamed.length).toBeGreaterThan(0);
+    for (const option of unnamed) expect(option.vessel).toBeUndefined();
+  });
+});
+
+describe("VolumeCombobox's onPick", () => {
+  it("reports the picked row after its litres, and nothing for a typed number", async () => {
+    const onChange = vi.fn();
+    const onPick = vi.fn((option: VolumeOption) => {
+      expect(onChange).toHaveBeenLastCalledWith(option.value);
+    });
+    render(<VolumeCombobox value="" onChange={onChange} onPick={onPick} />);
+
+    await userEvent.type(field(), "11.1");
+    expect(onPick).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      await screen.findByRole("option", { name: "11.1 L (AL80)" }),
+    );
+    expect(onPick).toHaveBeenCalledTimes(1);
+    expect(onPick.mock.calls[0][0]).toMatchObject({ imperialName: "AL80" });
   });
 });
