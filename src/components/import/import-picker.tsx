@@ -137,7 +137,7 @@ export function ImportPicker({ onCreated, onOpenPending }: ImportPickerProps) {
         getApiErrorMessage(
           caught,
           // Shown only when the API sent no `detail` - a proxy's bare 413 among
-          // them. The API's own refusals name the formats and the bounds.
+          // them. The API's own refusals name the bounds.
           "The files could not be read. Please check them and try again.",
         ),
       );
