@@ -664,7 +664,10 @@ describe("the review", () => {
     );
 
     const unchanged = screen.getByRole("link", { name: "1 unchanged" });
-    expect(unchanged).toHaveAttribute("href", "/import/import-1/log");
+    expect(unchanged).toHaveAttribute(
+      "href",
+      "/import/import-1/log?from=%2Fimport",
+    );
     expect(screen.getByRole("link", { name: "1 skipped" })).toHaveAttribute(
       "href",
       "/import/import-1/log?from=%2Fimport",
