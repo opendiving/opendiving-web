@@ -2,11 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {
-  VOLUME_GROUPS,
-  VolumeCombobox,
-  type VolumeOption,
-} from "./volume-combobox";
+import { VolumeCombobox } from "./volume-combobox";
+import { VOLUME_GROUPS, type VolumeOption } from "@/lib/cylinder-presets";
 import { toCommittedMetric, type UnitSystem } from "@/lib/units";
 import { divesAPI } from "@/lib/api/dives";
 

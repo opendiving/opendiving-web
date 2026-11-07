@@ -4,7 +4,7 @@ import {
   TankIcon,
   TwinTankIcon,
 } from "@/components/icons/tank-icon";
-import { isTwinSetVolume } from "@/components/dives/volume-combobox";
+import { isTwinSetVolume } from "@/lib/cylinder-presets";
 import { tankGas } from "@/lib/dive-mixtures";
 
 interface MixtureTankIconProps extends LucideProps {

@@ -84,6 +84,20 @@ describe("GearItemCard", () => {
     expect(card).toHaveTextContent("Cylinder · Faber · 12 L · 232 bar · Steel");
   });
 
+  it("calls a cylinder whose facts are a named preset by that name", () => {
+    const card = itemCard({
+      type: "cylinder",
+      brand: "Luxfer",
+      volume: 11.1,
+      working_pressure: 207,
+      material: "aluminium",
+    });
+
+    expect(card).toHaveTextContent(
+      "Cylinder · Luxfer · AL80 · 11.1 L · 207 bar · Aluminium",
+    );
+  });
+
   it("carries what it has been dived", () => {
     const card = itemCard();
 

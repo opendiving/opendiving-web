@@ -4789,8 +4789,8 @@ The usage flag is the last fact on the card's line, as the label the diver picke
 stays in the form.
 
 The card draws the twin-set icon for a cylinder whose litres match a twin-set preset
-(`isTwinSetVolume` in `volume-combobox.tsx`): `DiveMixture` records no twin flag, and no single in
-the presets shares a total with them. A hand-typed 24 L single draws as a twin set, which is the
+(`isTwinSetVolume` in `lib/cylinder-presets.ts`): `DiveMixture` records no twin flag, and no single
+in the presets shares a total with them. A hand-typed 24 L single draws as a twin set, which is the
 price of having no flag. Parallel cylinders are separate records, so each draws as a single, and the
 first one flagged draws mirrored, as the left of the pair.
 

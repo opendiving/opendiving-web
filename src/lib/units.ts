@@ -109,9 +109,11 @@ export const cubicFeetToLiters = (cubicFeet: number): number =>
 const BAR_PER_ATMOSPHERE = 1.01325;
 
 /**
- * A cylinder's gas capacity in whole cubic feet, the figure it is named by: its water
- * capacity times its working pressure in atmospheres, compressibility ignored -
- * Subsurface's own naming arithmetic, so 11.1 L at 207 bar is the "80" of an AL80.
+ * A cylinder's gas capacity in whole cubic feet: its water capacity times its working
+ * pressure in atmospheres, compressibility ignored - Subsurface's own arithmetic.
+ * Ideal gas over-reads a real cylinder and the makers' names are nominal, so it
+ * gives an AL100 105 and an HP80 84; a gear item matching a named preset shows that
+ * name instead (`vesselFactParts`).
  * Only for a vessel recording both facts, which a gear item can and a dive's
  * cylinder cannot.
  */

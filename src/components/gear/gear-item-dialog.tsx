@@ -40,11 +40,8 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
-import {
-  VolumeCombobox,
-  type PresetVessel,
-  type VolumeOption,
-} from "@/components/dives/volume-combobox";
+import { VolumeCombobox } from "@/components/dives/volume-combobox";
+import type { PresetVessel, VolumeOption } from "@/lib/cylinder-presets";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { useUnits } from "@/hooks/useUnits";
 import { unitLabel } from "@/lib/units";

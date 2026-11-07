@@ -39,15 +39,20 @@ describe("GearItemHero", () => {
     render(<GearItemHero back={BACK} gearItem={item(AL80)} />);
 
     expect(figure("Cylinder")).toHaveTextContent(
-      "11.1 L · 207 bar · Aluminium",
+      "AL80 · 11.1 L · 207 bar · Aluminium",
     );
     expect(figure("Dives")).toHaveTextContent("0");
     expect(figure("Dive time")).toHaveTextContent("0min");
   });
 
-  it("leads with the cubic feet under imperial units", () => {
+  it("leads an unnamed cylinder with its cubic feet under imperial units", () => {
     auth.units = "imperial";
-    render(<GearItemHero back={BACK} gearItem={item(AL80)} />);
+    render(
+      <GearItemHero
+        back={BACK}
+        gearItem={item({ ...AL80, material: "steel" })}
+      />,
+    );
 
     expect(figure("Cylinder")?.textContent).toMatch(/^80 cu ft · 11.1 L · /);
   });
