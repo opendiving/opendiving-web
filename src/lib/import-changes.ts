@@ -337,7 +337,9 @@ function recordingRow(
     return valueRow(`${prefix}${label}`, change, format, units);
   }
   if (first === "profile" && second === "channels" && isIndex(third)) {
-    return elementRow(`${prefix}Curve`, change, (channel: string) => channel);
+    return isWholeElement(change)
+      ? elementRow(`${prefix}Curve`, change, (channel: string) => channel)
+      : valueRow(`${prefix}Curve`, change, plain, units);
   }
   const nested = {
     device: DEVICE_MEMBERS,

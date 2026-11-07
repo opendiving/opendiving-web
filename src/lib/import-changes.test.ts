@@ -80,6 +80,23 @@ describe("describeImportChange", () => {
     });
   });
 
+  it("reads a list position whose value moved as a value, not an element", () => {
+    expect(
+      describe_("recordings/0/profile/channels/1", "temperature", "ceiling"),
+    ).toEqual({
+      kind: "value",
+      label: "Recording 1: Curve",
+      before: "temperature",
+      after: "ceiling",
+    });
+    expect(
+      describe_("recordings/0/profile/channels/2", null, "temperature"),
+    ).toEqual({
+      kind: "element",
+      text: "Recording 1: Curve added — temperature",
+    });
+  });
+
   it("summarises a whole member that arrives as an object", () => {
     expect(
       describe_("recordings/0/profile", null, {
