@@ -8,33 +8,45 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { ImportDetailPageContent } from "./import-detail-page-content";
+import { ImportLogPageContent } from "./import-log-page-content";
 import { ImportPageContent } from "./import-page-content";
-import type { DiveNumberingSummary } from "@/lib/api/dives";
+import type { DiveNumberingSummary, Recording } from "@/lib/api/dives";
 import type {
   ImportCheckInDetail,
   ImportCollectionReport,
-  ImportDiveReport,
   ImportMemberReport,
   ImportNoteGroup,
-  ImportPreview,
-  ImportReport,
+  LogbookImportDiveNotes,
+  LogbookImportNotes,
+  LogbookImportRead,
+  LogbookImportSummary,
 } from "@/lib/api/logbook-import";
-import { importDiveReport } from "@/test/dive-fixtures";
+import { dive as storedDive, importDiveRow } from "@/test/dive-fixtures";
 
-// What only a render reaches: that a read writes nothing and an import sends the
-// same files with the read's token; what the client refuses before sending; that
-// a change to the files discards the plan; and what the review and the result
-// show of the report's rows. The presentation helpers are pinned in
-// `lib/logbook-import.test.ts`, the drop walk in `lib/dropped-files.test.ts`.
+// What only a render reaches: which of the picker and the review the account's
+// state draws, that the files go up once and the apply sends none, what the client
+// refuses before sending, and what the review, the result and the log show of the
+// import. The presentation helpers are pinned in `lib/logbook-import.test.ts`, the
+// changes' labels in `lib/import-changes.test.ts`, the drop walk in
+// `lib/dropped-files.test.ts`.
 const mocks = vi.hoisted(() => ({
-  preview: vi.fn(),
+  create: vi.fn(),
+  pending: vi.fn(),
+  list: vi.fn(),
+  get: vi.fn(),
+  notes: vi.fn(),
   apply: vi.fn(),
+  remove: vi.fn(),
   toast: vi.fn(),
   refreshUser: vi.fn(),
   reloadCheckinDetails: vi.fn(),
   getDiveNumbering: vi.fn(),
   getNextDiveNumber: vi.fn(),
   renumberDives: vi.fn(),
+  routerReplace: vi.fn(),
+  routerPush: vi.fn(),
+  params: { id: "import-1" },
 }));
 
 vi.mock("@/hooks/useAuthGuard", () => ({
@@ -76,7 +88,15 @@ vi.mock("@/lib/api/logbook-import", async (importOriginal) => ({
   // The constants are real - the bounds this page checks against are part of
   // what is under test, and a mocked `MAX_*` would make the check vacuous.
   ...(await importOriginal<typeof import("@/lib/api/logbook-import")>()),
-  logbookImportAPI: { preview: mocks.preview, apply: mocks.apply },
+  logbookImportAPI: {
+    create: mocks.create,
+    pending: mocks.pending,
+    list: mocks.list,
+    get: mocks.get,
+    notes: mocks.notes,
+    apply: mocks.apply,
+    remove: mocks.remove,
+  },
 }));
 
 vi.mock("@/lib/api/dives", async (importOriginal) => ({
@@ -99,28 +119,71 @@ vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: mocks.toast }),
 }));
 
-// Where the dive links are followed from, which the written ones lead back to.
+// The map's tiles are `MapBackdrop`'s own tests'; a card's backdrop mounts near
+// the viewport, which jsdom does not have.
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   usePathname: () => "/import",
   useSearchParams: () => new URLSearchParams(),
+  useParams: () => mocks.params,
+  useRouter: () => ({ replace: mocks.routerReplace, push: mocks.routerPush }),
 }));
 
 const MB = 1024 * 1024;
 
-function report(overrides: Partial<ImportReport> = {}): ImportReport {
+const notFound = () =>
+  Object.assign(new Error("Not found"), { response: { status: 404 } });
+const refused = (status: number, detail?: string) =>
+  Object.assign(new Error("Refused"), {
+    response: { status, data: detail ? { detail } : {} },
+  });
+
+function numbering(
+  overrides: Partial<DiveNumberingSummary> = {},
+): DiveNumberingSummary {
   return {
-    collections: [],
-    files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
-    notes: [],
-    notes_truncated: 0,
-    members: [],
-    dives: [],
+    total_dives: 3,
+    lowest: 1,
+    highest: 3,
+    missing_count: 0,
+    duplicate_count: 0,
+    out_of_date_order_count: 0,
+    is_sequential: true,
     ...overrides,
   };
 }
 
-// A report-level note: the import's own by default, so no kind and no place.
+function pendingImport(
+  overrides: Partial<LogbookImportRead> = {},
+): LogbookImportRead {
+  return {
+    uuid: "import-1",
+    status: "pending",
+    created_at: "2026-11-07T10:00:00Z",
+    applied_at: null,
+    expires_at: "2026-11-08T10:00:00Z",
+    archive: false,
+    members: [],
+    collections: [],
+    files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
+    dives: [],
+    check_in_details: [],
+    portrait: null,
+    numbering: numbering(),
+    ...overrides,
+  };
+}
+
+function appliedImport(
+  overrides: Partial<LogbookImportRead> = {},
+): LogbookImportRead {
+  return pendingImport({
+    status: "applied",
+    applied_at: "2026-11-07T11:00:00Z",
+    ...overrides,
+  });
+}
+
 function group(overrides: Partial<ImportNoteGroup> = {}): ImportNoteGroup {
   return {
     code: "tags_created",
@@ -129,20 +192,6 @@ function group(overrides: Partial<ImportNoteGroup> = {}): ImportNoteGroup {
     message: "",
     count: 1,
     wheres: [],
-    ...overrides,
-  };
-}
-
-function preview(overrides: Partial<ImportPreview> = {}): ImportPreview {
-  return {
-    ...report(),
-    format: "divejson",
-    version: "1.0",
-    generator: null,
-    archive: false,
-    token: "tok-1",
-    check_in_details: [],
-    portrait: null,
     ...overrides,
   };
 }
@@ -167,32 +216,77 @@ function member(
   };
 }
 
-const dive = (overrides: Partial<ImportDiveReport> = {}) =>
-  importDiveReport({
-    start_time: "2026-09-07T11:04:58.880+03:00",
-    device: {
-      brand: "suunto",
-      model: "Suunto Ocean",
-      serial: "253810000400",
-      name: "Porvoo",
-    },
-    members: [0, 1],
-    ...overrides,
-  });
-
 function row(
   collection: string,
   counts: Partial<Omit<ImportCollectionReport, "collection">> = {},
 ): ImportCollectionReport {
+  return { collection, created: 0, linked: 0, skipped: 0, ...counts };
+}
+
+function recording(overrides: Partial<Recording> = {}): Recording {
   return {
-    collection,
-    created: 0,
-    linked: 0,
-    restored: 0,
-    skipped: 0,
-    ...counts,
+    uuid: "recording-1",
+    ordinal: 0,
+    device: { model: "Perdix 3" },
+    files: [],
+    ...overrides,
   };
 }
+
+function log(overrides: Partial<LogbookImportNotes> = {}): LogbookImportNotes {
+  return { dives: [], notes: [], notes_truncated: 0, ...overrides };
+}
+
+function logDive(
+  overrides: Partial<LogbookImportDiveNotes> = {},
+): LogbookImportDiveNotes {
+  return {
+    uuid: "dive-1",
+    start_time: "2026-09-07T11:04:58+03:00",
+    device: { model: "Perdix 3" },
+    outcome: "unchanged",
+    reason: null,
+    notes: [],
+    notes_truncated: 0,
+    ...overrides,
+  };
+}
+
+const newRow = (number = 1) =>
+  importDiveRow({
+    uuid: `dive-${number}`,
+    dive: storedDive({
+      uuid: `dive-${number}`,
+      dive_number: number,
+      start_time: "2026-09-07T11:04:58+03:00",
+      submerged_time: 4063,
+      max_depth: 21.8,
+    }),
+  });
+const modifiedRow = (number = 2) =>
+  importDiveRow({
+    uuid: `dive-${number}`,
+    outcome: "modified",
+    dive: storedDive({ uuid: `dive-${number}`, dive_number: number }),
+    changes: [
+      { member: "max_depth", before: 21, after: 21.8 },
+      {
+        member: "recordings/0/files/1",
+        before: null,
+        after: { original_filename: "dive.json" },
+      },
+      { member: "recordings/0/some_new_member", before: 1, after: 2 },
+    ],
+  });
+const unchangedRow = () =>
+  importDiveRow({ uuid: "dive-9", outcome: "unchanged", dive: null });
+const skippedRow = () =>
+  importDiveRow({
+    uuid: null,
+    outcome: "skipped",
+    dive: null,
+    reason: "It has no start time.",
+  });
 
 const fit = () => new File(["fit"], "1.fit");
 const json = () => new File(["json"], "1.json");
@@ -213,50 +307,46 @@ async function choose(...files: File[]) {
   await userEvent.upload(fileInput(), files);
 }
 
-const readButton = () =>
-  screen.getByRole("button", { name: /^read the files/i });
+const uploadButton = () => screen.getByRole("button", { name: "Upload" });
 const importButton = () => screen.getByRole("button", { name: /^import/i });
 
-async function readWith(result: ImportPreview, ...files: File[]) {
-  mocks.preview.mockResolvedValueOnce(result);
+// The page with no pending import.
+async function drawPicker() {
   render(<ImportPageContent />);
-  await choose(...(files.length > 0 ? files : [fit(), json()]));
-  await userEvent.click(readButton());
-  await screen.findByText(/nothing has been written yet/i);
+  await screen.findByRole("button", { name: /drop files or a folder here/i });
 }
 
-const sentNames = (call: unknown[]) =>
-  (call[0] as File[]).map((file) => file.name);
-
-function numbering(
-  overrides: Partial<DiveNumberingSummary> = {},
-): DiveNumberingSummary {
-  return {
-    total_dives: 3,
-    lowest: 1,
-    highest: 3,
-    missing_count: 0,
-    duplicate_count: 0,
-    out_of_date_order_count: 0,
-    is_sequential: true,
-    ...overrides,
-  };
+// The page with a pending import.
+async function drawReview(record: LogbookImportRead) {
+  mocks.pending.mockResolvedValue(record);
+  render(<ImportPageContent />);
+  await screen.findByRole("heading", { name: /review this import/i });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.pending.mockReset();
+  mocks.pending.mockRejectedValue(notFound());
+  mocks.list.mockResolvedValue({
+    data: [],
+    total_count: 0,
+    has_more: false,
+    page: 1,
+    items_per_page: 20,
+  });
+  mocks.notes.mockResolvedValue(log());
   mocks.getDiveNumbering.mockResolvedValue(numbering());
 });
 
 describe("choosing files", () => {
-  it("takes several files and filters none", () => {
-    render(<ImportPageContent />);
+  it("takes several files and filters none", async () => {
+    await drawPicker();
     expect(fileInput()).toHaveAttribute("multiple");
     expect(fileInput()).not.toHaveAttribute("accept");
   });
 
   it("adds to the selection rather than replacing it, each file removable by name", async () => {
-    render(<ImportPageContent />);
+    await drawPicker();
     await choose(fit());
     await choose(json());
 
@@ -267,7 +357,7 @@ describe("choosing files", () => {
   });
 
   it("does not list a hidden or an empty file", async () => {
-    render(<ImportPageContent />);
+    await drawPicker();
     await choose(new File([], "empty.fit"));
     fireEvent.drop(
       screen.getByRole("button", { name: /drop files or a folder here/i }),
@@ -286,7 +376,7 @@ describe("choosing files", () => {
 });
 
 describe("a folder still being walked", () => {
-  it("holds the read back until its last file has landed", async () => {
+  it("holds the upload back until its last file has landed", async () => {
     let land: (file: File) => void = () => {};
     const slow = {
       isFile: true,
@@ -295,7 +385,7 @@ describe("a folder still being walked", () => {
       fullPath: "/2.fit",
       file: (resolve: (file: File) => void) => (land = resolve),
     };
-    render(<ImportPageContent />);
+    await drawPicker();
     await choose(fit());
     fireEvent.drop(
       screen.getByRole("button", { name: /drop files or a folder here/i }),
@@ -307,11 +397,11 @@ describe("a folder still being walked", () => {
       },
     );
 
-    await waitFor(() => expect(readButton()).toBeDisabled());
+    await waitFor(() => expect(uploadButton()).toBeDisabled());
     land(new File(["y"], "2.fit"));
 
     expect(await screen.findByText("2.fit")).toBeVisible();
-    await waitFor(() => expect(readButton()).toBeEnabled());
+    await waitFor(() => expect(uploadButton()).toBeEnabled());
   });
 });
 
@@ -332,7 +422,7 @@ describe("a drop the browser could not read all of", () => {
       fullPath: "/1.fit",
       file: (resolve: (file: File) => void) => resolve(fit()),
     };
-    render(<ImportPageContent />);
+    await drawPicker();
     fireEvent.drop(
       screen.getByRole("button", { name: /drop files or a folder here/i }),
       {
@@ -355,29 +445,31 @@ describe("a drop the browser could not read all of", () => {
 
 describe("what the client refuses before sending", () => {
   it("refuses a zip over 500 MB in its row, sending nothing", async () => {
-    render(<ImportPageContent />);
+    await drawPicker();
     await choose(sized("backup.zip", 501 * MB, "application/zip"));
 
     expect(screen.getByText(/zip may be up to 500 MB/)).toBeVisible();
-    expect(readButton()).toBeDisabled();
-    expect(mocks.preview).not.toHaveBeenCalled();
+    expect(uploadButton()).toBeDisabled();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  it("refuses a file over 100 MB that is not a zip in its row, and reads the rest", async () => {
-    mocks.preview.mockResolvedValueOnce(preview());
-    render(<ImportPageContent />);
+  it("refuses a file over 100 MB that is not a zip in its row, and sends the rest", async () => {
+    mocks.create.mockResolvedValueOnce(pendingImport());
+    await drawPicker();
     await choose(sized("huge.divejson", 200 * MB), fit());
 
     expect(screen.getByText(/not a zip may be up to 100 MB/)).toBeVisible();
-    await userEvent.click(readButton());
+    await userEvent.click(uploadButton());
 
-    await waitFor(() => expect(mocks.preview).toHaveBeenCalledTimes(1));
-    expect(sentNames(mocks.preview.mock.calls[0])).toEqual(["1.fit"]);
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));
+    expect(
+      (mocks.create.mock.calls[0][0] as File[]).map((file) => file.name),
+    ).toEqual(["1.fit"]);
     expect(mocks.toast).not.toHaveBeenCalled();
   });
 
   it("refuses a selection past 500 MB in all, saying to import in parts", async () => {
-    render(<ImportPageContent />);
+    await drawPicker();
     await choose(
       sized("a.zip", 300 * MB, "application/zip"),
       sized("b.zip", 300 * MB, "application/zip"),
@@ -386,333 +478,703 @@ describe("what the client refuses before sending", () => {
     expect(
       screen.getAllByRole("alert").find((region) => region.textContent),
     ).toHaveTextContent(/in parts/);
-    expect(readButton()).toBeDisabled();
+    expect(uploadButton()).toBeDisabled();
   });
 });
 
-describe("reading", () => {
-  it("writes nothing until asked, then imports the same files with the read's token", async () => {
-    mocks.apply.mockResolvedValueOnce(report());
-    await readWith(preview({ dives: [dive()] }));
+describe("uploading", () => {
+  it("sends the files once, then shows the review with no picker", async () => {
+    mocks.create.mockResolvedValueOnce(pendingImport({ dives: [newRow()] }));
+    await drawPicker();
+    await choose(fit(), json());
+    await userEvent.click(uploadButton());
 
-    expect(mocks.apply).not.toHaveBeenCalled();
-    await userEvent.click(importButton());
-
-    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
-    expect(sentNames(mocks.apply.mock.calls[0])).toEqual(["1.fit", "1.json"]);
-    expect(mocks.apply.mock.calls[0][1]).toBe("tok-1");
+    await screen.findByRole("heading", { name: /review this import/i });
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(
+      (mocks.create.mock.calls[0][0] as File[]).map((file) => file.name),
+    ).toEqual(["1.fit", "1.json"]);
+    expect(
+      screen.queryByRole("button", { name: /drop files or a folder here/i }),
+    ).toBeNull();
   });
 
-  it("shows the upload's bytes on a progress bar while it reads", async () => {
-    let finish: (value: ImportPreview) => void = () => {};
-    mocks.preview.mockImplementationOnce(
-      (_files: File[], onProgress: (sent: number, total: number) => void) => {
-        onProgress(3, 7);
+  it("shows the upload's bytes on a progress bar, then that the server is reading", async () => {
+    let finish: (value: LogbookImportRead) => void = () => {};
+    mocks.create.mockImplementationOnce(
+      (_: File[], onProgress: (sent: number, total: number) => void) => {
+        onProgress(1, 2);
         return new Promise((resolve) => (finish = resolve));
       },
     );
-    render(<ImportPageContent />);
-    await choose(fit(), json());
-    await userEvent.click(
-      screen.getByRole("button", { name: /^read the files/i }),
-    );
+    await drawPicker();
+    await choose(fit());
+    await userEvent.click(uploadButton());
 
-    const bar = await screen.findByRole("progressbar");
-    expect(bar).toHaveAttribute("aria-valuenow", "3");
-    expect(bar).toHaveAttribute("aria-valuemax", "7");
-    finish(preview());
-    await screen.findByText(/nothing has been written yet/i);
-    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.getByRole("progressbar")).toBeVisible();
+    expect(screen.getByText(/^Uploading/)).toBeVisible();
+    expect(uploadButton()).toBeDisabled();
+
+    finish(pendingImport());
+    await screen.findByRole("heading", { name: /review this import/i });
   });
 
-  it("discards the plan when the files change, and offers to read again", async () => {
-    await readWith(preview({ dives: [dive()] }));
-    expect(screen.getByRole("table")).toBeVisible();
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Remove 1.json" }),
+  it("shows the API's refusal in the page, keeping the files", async () => {
+    mocks.create.mockRejectedValueOnce(
+      refused(415, "Nothing here reads that."),
     );
+    await drawPicker();
+    await choose(fit());
+    await userEvent.click(uploadButton());
 
-    expect(screen.queryByText(/nothing has been written yet/i)).toBeNull();
-    expect(screen.queryByRole("table")).toBeNull();
+    expect(await screen.findByText("Nothing here reads that.")).toBeVisible();
+    expect(screen.getByText("1.fit")).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Read the files again" }),
-    ).toBeEnabled();
+      screen.queryByRole("button", { name: /open the pending import/i }),
+    ).toBeNull();
   });
 
-  it("clears a previous report before reading again, and shows the API's refusal in the page", async () => {
-    await readWith(preview({ dives: [dive()] }));
-    await choose(new File(["y"], "2.fit"));
-
-    mocks.preview.mockRejectedValueOnce({
-      response: {
-        status: 413,
-        data: { detail: "This import would take you past your storage limit." },
-      },
-    });
-    await userEvent.click(readButton());
-
+  it("reads a 409's detail and offers to open the pending import", async () => {
+    mocks.create.mockRejectedValueOnce(
+      refused(409, "Import x is waiting to be finished."),
+    );
+    await drawPicker();
+    await choose(fit());
+    await userEvent.click(uploadButton());
     expect(
-      await screen.findByText(
-        "This import would take you past your storage limit.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getAllByRole("alert").find((region) => region.textContent),
-    ).toHaveTextContent("This import would take you past your storage limit.");
-    expect(screen.queryByRole("table")).toBeNull();
-    expect(mocks.toast).not.toHaveBeenCalled();
+      await screen.findByText("Import x is waiting to be finished."),
+    ).toBeVisible();
+
+    mocks.pending.mockResolvedValue(pendingImport());
+    await userEvent.click(
+      screen.getByRole("button", { name: /open the pending import/i }),
+    );
+
+    await screen.findByRole("heading", { name: /review this import/i });
   });
 });
 
-describe("the files, once read", () => {
-  it("says what each file was read as, why one is not kept, and why one is refused", async () => {
-    await readWith(
-      preview({
+describe("the page with no pending import", () => {
+  const summary = (
+    overrides: Partial<LogbookImportSummary> = {},
+  ): LogbookImportSummary => ({
+    uuid: "import-0",
+    created_at: "2026-11-01T10:00:00Z",
+    applied_at: "2026-11-01T11:00:00Z",
+    counts: { new: 12, modified: 2 },
+    ...overrides,
+  });
+
+  it("lists the applied imports, each opening its own page", async () => {
+    mocks.list.mockResolvedValue({
+      data: [summary()],
+      total_count: 1,
+      has_more: false,
+      page: 1,
+      items_per_page: 20,
+    });
+    await drawPicker();
+
+    const heading = await screen.findByRole("heading", {
+      name: /previous imports/i,
+    });
+    expect(heading).toBeVisible();
+    const link = screen.getByRole("link", { name: /12 new, 2 modified/ });
+    expect(link.getAttribute("href")).toMatch(/^\/import\/import-0/);
+  });
+
+  it("has no history section while there is nothing to list", async () => {
+    await drawPicker();
+    await waitFor(() => expect(mocks.list).toHaveBeenCalled());
+    expect(
+      screen.queryByRole("heading", { name: /previous imports/i }),
+    ).toBeNull();
+  });
+
+  it("says so, and offers to try again, where the import could not be read", async () => {
+    mocks.pending.mockRejectedValueOnce(refused(500));
+    render(<ImportPageContent />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /try again/i }),
+    );
+    expect(
+      await screen.findByRole("button", {
+        name: /drop files or a folder here/i,
+      }),
+    ).toBeVisible();
+  });
+});
+
+describe("the review", () => {
+  it("puts the refused files first, each one sentence naming no code", async () => {
+    await drawReview(
+      pendingImport({
         members: [
           member(0, "1.fit"),
-          member(1, "1.json", {
-            format: "suunto_json",
-            kept: false,
-            not_kept: "already_stored",
-          }),
-          member(2, "notes.pdf", {
+          member(1, "notes.txt", {
             format: null,
             kept: false,
-            refusal: "This file is not one this app reads.",
+            refusal: "This is not a dive file.",
           }),
         ],
+        dives: [newRow()],
       }),
-      fit(),
-      json(),
-      new File(["%PDF"], "notes.pdf"),
     );
 
-    expect(screen.getByText("FIT · kept on its dive")).toBeVisible();
-    expect(
-      screen.getByText(
-        "Suunto app JSON · Not kept: your account already has this file",
-      ),
-    ).toBeVisible();
-    expect(
-      screen.getByText("Refused: This file is not one this app reads."),
-    ).toBeVisible();
-  });
-
-  it("lists a zip's files under its row", async () => {
-    await readWith(
-      preview({
-        members: [
-          member(0, "dives.zip", { format: "zip", opened: 2, kept: false }),
-          member(0, "a.fit", { container: 0 }),
-          member(0, "b.fit", { container: 0 }),
-        ],
-      }),
-      new File(["PK"], "dives.zip", { type: "application/zip" }),
+    const refusedList = screen.getByRole("list", {
+      name: /files that could not be read/i,
+    });
+    expect(within(refusedList).getAllByRole("listitem")).toHaveLength(1);
+    expect(refusedList).toHaveTextContent(
+      "notes.txt: This is not a dive file.",
     );
-
-    expect(screen.getByText("Zip · opened into 2 files")).toBeVisible();
-    expect(screen.getByText("a.fit")).toBeVisible();
-    expect(screen.getByText("b.fit")).toBeVisible();
-  });
-});
-
-describe("the dive rows", () => {
-  const members = [
-    member(0, "1.fit"),
-    member(1, "1.json", { format: "suunto_json" }),
-  ];
-
-  it("show start, dive time, depth, device, files and outcome", async () => {
-    await readWith(preview({ members, dives: [dive()] }));
-
-    const cells = within(screen.getAllByRole("row")[1]);
-    expect(cells.getByRole("rowheader")).toHaveTextContent(
-      "Sep 7, 2026, 11:04 +03:00",
-    );
-    expect(cells.getAllByText("67:43").length).toBeGreaterThan(0);
-    expect(cells.getByText("21.8 m")).toBeVisible();
     expect(
-      cells.getAllByText("Suunto Ocean · 253810000400 (Porvoo)").length,
-    ).toBeGreaterThan(0);
-    // One line each, not a comma-joined run.
-    expect(cells.getByText("1.fit")).toBeVisible();
-    expect(cells.getByText("1.json")).toBeVisible();
-    expect(cells.getByText("New")).toBeVisible();
+      refusedList.compareDocumentPosition(screen.getByText(/1 new dive/)) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
-  it("say every outcome in the diver's terms, naming a dive the diver has", async () => {
-    await readWith(
-      preview({
-        members,
+  it("has no refused section where every file read", async () => {
+    await drawReview(pendingImport({ members: [member(0, "1.fit")] }));
+    expect(
+      screen.queryByRole("list", { name: /files that could not be read/i }),
+    ).toBeNull();
+  });
+
+  it("counts the rows, the unchanged and skipped terms leading to the log", async () => {
+    await drawReview(
+      pendingImport({
         dives: [
-          dive({ outcome: "created", uuid: "a" }),
-          dive({ outcome: "restored", uuid: "b" }),
-          dive({ outcome: "linked", uuid: "c" }),
-          dive({ outcome: "updated", uuid: "d", files_added: 1 }),
-          dive({
-            outcome: "updated",
-            uuid: "e",
-            recordings_added: 1,
-            files_added: 1,
-          }),
-          dive({
-            outcome: "skipped",
-            uuid: null,
-            reason: "It has no samples.",
-          }),
+          newRow(1),
+          newRow(2),
+          modifiedRow(3),
+          unchangedRow(),
+          skippedRow(),
         ],
+      }),
+    );
+
+    const unchanged = screen.getByRole("link", { name: "1 unchanged" });
+    expect(unchanged).toHaveAttribute("href", "/import/import-1/log");
+    expect(screen.getByRole("link", { name: "1 skipped" })).toHaveAttribute(
+      "href",
+      "/import/import-1/log",
+    );
+    expect(unchanged.closest("p")).toHaveTextContent(
+      "2 new dives, 1 modified, 1 unchanged, 1 skipped",
+    );
+  });
+
+  it("draws one card per new or modified row, each with its chip, and none for the rest", async () => {
+    await drawReview(
+      pendingImport({
+        dives: [newRow(1), modifiedRow(2), unchangedRow(), skippedRow()],
+      }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: /^New dive: Dive #1/ }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /^What changes on Dive #2/ }),
+    ).toBeVisible();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getByText("New")).toBeVisible();
+    expect(screen.getByText("Modified")).toBeVisible();
+    // A card is a button: no link to a dive that may not exist yet, and no menu.
+    expect(screen.queryByRole("link", { name: /dive #1/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /actions for/i })).toBeNull();
+  });
+
+  it("counts a new dive's sightings as the species seen", async () => {
+    const seen = newRow();
+    await drawReview(
+      pendingImport({
+        dives: [
+          {
+            ...seen,
+            dive: storedDive({
+              ...seen.dive!,
+              max_depth: 10,
+              sightings: [
+                {
+                  uuid: "s1",
+                  scientific_name: "Manta alfredi",
+                  common_name: null,
+                  rank: "Species",
+                  count: null,
+                  abundance: null,
+                  notes: "",
+                },
+              ],
+            }),
+          },
+        ],
+      }),
+    );
+
+    expect(screen.getByText("Species seen")).toBeVisible();
+  });
+
+  it("opens a new dive's panel with the info, tanks and recordings", async () => {
+    const shown = newRow();
+    await drawReview(
+      pendingImport({
+        dives: [
+          {
+            ...shown,
+            dive: storedDive({
+              ...shown.dive!,
+              boat_name: "Blue Horizon",
+              mixtures: [
+                { oxygen: 32, helium: 0, volume: 12, start_pressure: 200 },
+              ],
+              recordings: [
+                recording({
+                  ordinal: 1,
+                  uuid: "second",
+                  device: { model: "Suunto Ocean" },
+                  files: [
+                    {
+                      uuid: "f2",
+                      original_filename: "ocean.fit",
+                      content_type: "application/octet-stream",
+                      byte_size: 1,
+                      parser_key: "fit",
+                      attach_order: 1,
+                    },
+                  ],
+                }),
+                recording({
+                  files: [
+                    {
+                      uuid: "f1",
+                      original_filename: "perdix.uddf",
+                      content_type: "application/xml",
+                      byte_size: 1,
+                      parser_key: "uddf",
+                      attach_order: 0,
+                    },
+                  ],
+                  profile: {
+                    uuid: "p1",
+                    duration: 3_000_000,
+                    depth_sample_count: 300,
+                    provenance: "file",
+                    channels: ["depth"],
+                    max_depth: 21.8,
+                  },
+                }),
+              ],
+            }),
+          },
+        ],
+      }),
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /^New dive: Dive #1/ }),
+    );
+
+    const panel = await screen.findByRole("dialog");
+    for (const heading of [
+      "Location",
+      "Dive info",
+      "Environment",
+      "Gear",
+      "Notes",
+      "Tanks",
+      "Recordings",
+    ]) {
+      expect(
+        within(panel).getByRole("heading", { name: heading }),
+      ).toBeVisible();
+    }
+    expect(within(panel).getByText("Blue Horizon")).toBeVisible();
+    expect(within(panel).getByText(/EAN32, 12 L/)).toBeVisible();
+    expect(within(panel).getByText("perdix.uddf · UDDF")).toBeVisible();
+    expect(within(panel).getByText(/300 samples/)).toBeVisible();
+    // In ordinal order, whatever order the read gave.
+    expect(
+      within(panel)
+        .getByText("Perdix 3")
+        .compareDocumentPosition(within(panel).getByText("Suunto Ocean")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("opens a modified dive's panel with one row per change", async () => {
+    await drawReview(pendingImport({ dives: [modifiedRow()] }));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /^What changes on Dive #2/ }),
+    );
+
+    const panel = await screen.findByRole("dialog");
+    expect(within(panel).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(panel).getByText("Maximum depth")).toBeVisible();
+    expect(within(panel).getByText("21 m")).toBeVisible();
+    expect(within(panel).getByText("21.8 m")).toBeVisible();
+    expect(within(panel).getByText("File added — dive.json")).toBeVisible();
+    // One this build has no label for, by its path rather than hidden.
+    expect(
+      within(panel).getByText("recordings/0/some_new_member"),
+    ).toBeVisible();
+    // Only the changes, never the info sections.
+    expect(
+      within(panel).queryByRole("heading", { name: "Location" }),
+    ).toBeNull();
+  });
+
+  it("shows the collection counts without the dives row, and the files section", async () => {
+    await drawReview(
+      pendingImport({
+        collections: [
+          row("dives", { created: 1 }),
+          row("sites", { linked: 2 }),
+        ],
+        files: { referenced: 3, restored: 0, not_contained: 3, skipped: 0 },
+        dives: [newRow()],
       }),
     );
 
     const table = screen.getByRole("table");
-    for (const outcome of [
-      "New",
-      "Brought back from deletion",
-      "Already in your logbook",
-      "Adds a file to a dive you have",
-      "Adds a file and another computer's recording to a dive you have",
-      "Skipped: It has no samples.",
-    ]) {
-      expect(within(table).getByText(outcome)).toBeVisible();
-    }
-    // Before anything is written, only the dives the diver already has are
-    // there to open - in a new tab, so the review stays put, and with no way
-    // back to an importer that tab never had.
-    const links = within(table).getAllByRole("link");
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/dives/c",
-      "/dives/d",
-      "/dives/e",
-    ]);
-    expect(links[0]).toHaveAttribute("target", "_blank");
+    expect(within(table).getByText("Dive sites")).toBeVisible();
+    expect(within(table).queryByText("Dives")).toBeNull();
+    expect(screen.getByText(/3 named — 0 restored/)).toBeVisible();
+    expect(screen.getByText(/import the full archive/)).toBeVisible();
   });
 
-  it("show no offset and no midnight for a naive start or a bare date", async () => {
-    await readWith(
-      preview({
-        members,
+  it("links to the log", async () => {
+    await drawReview(pendingImport());
+    expect(screen.getByRole("link", { name: "Import log" })).toHaveAttribute(
+      "href",
+      "/import/import-1/log",
+    );
+  });
+});
+
+describe("the import button", () => {
+  it.each([
+    ["new and modified rows", [newRow(1), modifiedRow(2)], "Import 2 dives"],
+    ["one row", [modifiedRow(2), unchangedRow()], "Import 1 dive"],
+    ["only rows with no card", [unchangedRow(), skippedRow()], "Import"],
+    ["no rows", [], "Import"],
+  ])("is labelled from %s and enabled", async (_, dives, label) => {
+    await drawReview(pendingImport({ dives }));
+    const button = screen.getByRole("button", { name: label });
+    expect(button).toBeEnabled();
+  });
+
+  it("is held back while the apply is in flight", async () => {
+    let finish: (value: LogbookImportRead) => void = () => {};
+    mocks.apply.mockReturnValueOnce(
+      new Promise((resolve) => (finish = resolve)),
+    );
+    await drawReview(pendingImport({ dives: [newRow()] }));
+    await userEvent.click(importButton());
+
+    const importing = await screen.findByRole("button", {
+      name: /importing/i,
+    });
+    expect(importing).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Discard" })).toBeDisabled();
+
+    finish(appliedImport());
+    await screen.findByRole("heading", { name: "Imported" });
+  });
+});
+
+describe("applying", () => {
+  it("sends no files, and shows the result", async () => {
+    mocks.apply.mockResolvedValueOnce(appliedImport({ dives: [newRow()] }));
+    await drawReview(pendingImport({ dives: [newRow()] }));
+    await userEvent.click(importButton());
+
+    await screen.findByRole("heading", { name: "Imported" });
+    expect(mocks.apply).toHaveBeenCalledWith("import-1", {
+      check_in_details: undefined,
+      portrait: undefined,
+    });
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it.each([409, 404])(
+    "reads the pending import again on a %i, showing what it finds",
+    async (status) => {
+      mocks.apply.mockRejectedValueOnce(refused(status));
+      await drawReview(pendingImport());
+      mocks.pending.mockReset();
+      mocks.pending.mockRejectedValue(notFound());
+      await userEvent.click(importButton());
+
+      expect(
+        await screen.findByRole("button", {
+          name: /drop files or a folder here/i,
+        }),
+      ).toBeVisible();
+      expect(mocks.pending).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("shows a 429's detail and stays on the review", async () => {
+    mocks.apply.mockRejectedValueOnce(refused(429, "Too many imports."));
+    await drawReview(pendingImport());
+    await userEvent.click(importButton());
+
+    expect(await screen.findByText("Too many imports.")).toBeVisible();
+    expect(importButton()).toBeEnabled();
+  });
+});
+
+describe("discarding", () => {
+  const confirm = async () => {
+    await userEvent.click(screen.getByRole("button", { name: "Discard" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Discard" }),
+    );
+  };
+
+  it("asks once, deletes naming the status, and goes back to the picker", async () => {
+    mocks.remove.mockResolvedValueOnce(undefined);
+    await drawReview(pendingImport());
+    mocks.pending.mockReset();
+    mocks.pending.mockRejectedValue(notFound());
+
+    await userEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(mocks.remove).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Discard",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: /drop files or a folder here/i,
+      }),
+    ).toBeVisible();
+    expect(mocks.remove).toHaveBeenCalledWith("import-1", "pending");
+  });
+
+  it("reads the pending import again on a 409", async () => {
+    mocks.remove.mockRejectedValueOnce(refused(409));
+    await drawReview(pendingImport());
+    mocks.pending.mockReset();
+    mocks.pending.mockRejectedValue(notFound());
+    await confirm();
+
+    expect(
+      await screen.findByRole("button", {
+        name: /drop files or a folder here/i,
+      }),
+    ).toBeVisible();
+    expect(mocks.pending).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the result", () => {
+  async function drawResult(record: LogbookImportRead) {
+    mocks.get.mockResolvedValue(record);
+    render(<ImportDetailPageContent />);
+    await screen.findByRole("heading", { name: "Imported" });
+  }
+
+  it("links each card to its row's dive, and Done goes to the dives", async () => {
+    const overtaken = newRow(1);
+    await drawResult(
+      appliedImport({
+        // A row the apply settled onto a dive that held it names that dive.
+        dives: [{ ...overtaken, uuid: "stored-dive" }, modifiedRow(2)],
+      }),
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Dive #1" }).getAttribute("href"),
+    ).toMatch(/^\/dives\/stored-dive/);
+    expect(
+      screen.getByRole("link", { name: "Dive #2" }).getAttribute("href"),
+    ).toMatch(/^\/dives\/dive-2/);
+    expect(screen.getByRole("link", { name: "Done" })).toHaveAttribute(
+      "href",
+      "/dives",
+    );
+  });
+
+  it("counts a skipped row that keeps its dive, and draws it no card", async () => {
+    await drawResult(
+      appliedImport({
         dives: [
-          dive({ start_time: "2026-09-21T10:47:33" }),
-          dive({ start_time: "2002-06-18", uuid: "b" }),
+          { ...modifiedRow(2), outcome: "skipped", reason: "Deleted here." },
         ],
       }),
     );
 
-    // The start is the cell's first text; a phone's folded columns follow it.
-    const starts = screen
-      .getAllByRole("rowheader")
-      .map((header) => header.firstChild?.textContent);
-    expect(starts).toEqual(["Sep 21, 2026, 10:47", "Jun 18, 2002"]);
+    expect(screen.getByRole("link", { name: "1 skipped dive" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Dive #2" })).toBeNull();
   });
 
-  it("list each dive's notes as one list under its row, in the API's order", async () => {
-    await readWith(
-      preview({
-        members,
+  it("draws a row the review did not show that has no uuid without a link", async () => {
+    await drawResult(appliedImport({ dives: [{ ...newRow(4), uuid: null }] }));
+    expect(screen.getByText("Dive #4")).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Dive #4" })).toBeNull();
+  });
+
+  it("has no check-in section and no import controls", async () => {
+    await drawResult(appliedImport());
+    expect(screen.queryByRole("button", { name: /^import/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Discard" })).toBeNull();
+  });
+
+  it("offers Delete, which asks once and leaves for the import page", async () => {
+    mocks.remove.mockResolvedValueOnce(undefined);
+    await drawResult(appliedImport());
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(mocks.remove).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.remove).toHaveBeenCalledWith("import-1", "applied"),
+    );
+    await waitFor(() =>
+      expect(mocks.routerReplace).toHaveBeenCalledWith("/import"),
+    );
+  });
+
+  it("offers the renumber from the import's own numbering", async () => {
+    mocks.getDiveNumbering.mockResolvedValue(
+      numbering({ duplicate_count: 2, is_sequential: false }),
+    );
+    mocks.getNextDiveNumber.mockResolvedValue({ dive_number: 7 });
+    await drawResult(appliedImport({ dives: [newRow()] }));
+
+    expect(
+      await screen.findByRole("button", { name: "Renumber" }),
+    ).toBeVisible();
+    expect(mocks.getDiveNumbering).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer it where the log was as tangled at the upload", async () => {
+    const tangled = numbering({ duplicate_count: 2, is_sequential: false });
+    mocks.getDiveNumbering.mockResolvedValue(tangled);
+    await drawResult(appliedImport({ dives: [newRow()], numbering: tangled }));
+
+    await waitFor(() => expect(mocks.getDiveNumbering).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Renumber" })).toBeNull();
+  });
+});
+
+describe("an import by its address", () => {
+  it("renders a pending import's review on a reload", async () => {
+    mocks.get.mockResolvedValue(pendingImport({ dives: [newRow()] }));
+    render(<ImportDetailPageContent />);
+
+    await screen.findByRole("heading", { name: /review this import/i });
+    expect(mocks.get).toHaveBeenCalledWith("import-1");
+    expect(importButton()).toBeEnabled();
+  });
+
+  it("goes to /import when another device got there first", async () => {
+    mocks.get.mockResolvedValue(pendingImport());
+    mocks.apply.mockRejectedValueOnce(refused(409));
+    render(<ImportDetailPageContent />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: /^import/i }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.routerReplace).toHaveBeenCalledWith("/import"),
+    );
+  });
+
+  it("shows the result in place after its own apply", async () => {
+    mocks.get.mockResolvedValue(pendingImport());
+    mocks.apply.mockResolvedValueOnce(appliedImport());
+    render(<ImportDetailPageContent />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: /^import/i }),
+    );
+
+    await screen.findByRole("heading", { name: "Imported" });
+  });
+});
+
+describe("the log page", () => {
+  const drawLog = async (notes: LogbookImportNotes) => {
+    mocks.notes.mockResolvedValue(notes);
+    render(<ImportLogPageContent />);
+    await screen.findByRole("heading", { name: /^Dives|^Notes/ });
+  };
+
+  it("renders on a reload and links back to the import", async () => {
+    await drawLog(log({ dives: [logDive()] }));
+
+    expect(mocks.notes).toHaveBeenCalledWith("import-1");
+    expect(screen.getByRole("heading", { name: "Import log" })).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Back to import" }),
+    ).toHaveAttribute("href", "/import/import-1");
+  });
+
+  it("heads each dive with its start, device and outcome, and a skipped one's reason", async () => {
+    await drawLog(
+      log({
         dives: [
-          dive({
-            uuid: "a",
+          logDive({
+            outcome: "skipped",
+            uuid: null,
+            reason: "It has no start time.",
+          }),
+          logDive({ outcome: "new", device: null }),
+        ],
+      }),
+    );
+
+    const headings = screen.getAllByRole("heading", { level: 3 });
+    expect(headings[0]).toHaveTextContent(/\+03:00 · Perdix 3 · Skipped$/);
+    expect(headings[1]).toHaveTextContent(/\+03:00 · New$/);
+    expect(screen.getByText("It has no start time.")).toBeVisible();
+  });
+
+  it("shows no offset and no midnight for a naive start or a bare date", async () => {
+    await drawLog(
+      log({
+        dives: [
+          logDive({ start_time: "2026-09-07T11:04:58", device: null }),
+          logDive({ start_time: "2002-06-18", device: null }),
+        ],
+      }),
+    );
+
+    const [naive, bare] = screen.getAllByRole("heading", { level: 3 });
+    expect(naive).not.toHaveTextContent(/[+-]\d\d:\d\d/);
+    expect(bare.textContent).not.toMatch(/:/);
+  });
+
+  it("lists a dive's notes under it, and says where its cap cut them", async () => {
+    await drawLog(
+      log({
+        dives: [
+          logDive({
             notes: [
               {
-                code: "value_derived",
-                kind: "inferred",
-                collection: "dives",
-                message: "This dive records no bottom temperature.",
-              },
-              {
-                code: "fix_chosen_by_accuracy",
-                kind: "resolved",
-                collection: "dives",
-                message: "The most accurate fix is taken as the dive's exit.",
-              },
-              {
-                code: "oxygen_figure_missing",
-                kind: "absent",
-                collection: "dives",
-                message: "The file records no start CNS.",
-              },
-              {
-                code: "species_unresolved",
-                kind: "dropped",
-                collection: "sightings",
-                message: "A sighting names a species this app does not know.",
-              },
-              {
-                code: "record_linked",
+                code: "review_unshown",
                 kind: null,
                 collection: "dives",
-                message: "This dive is already in your logbook.",
+                message: "The review did not show this dive.",
               },
-            ],
-          }),
-          dive({ uuid: "b" }),
-        ],
-      }),
-    );
-
-    const rows = screen.getAllByRole("row");
-    const items = within(rows[2]).getAllByRole("listitem");
-    expect(items.map((item) => item.textContent)).toEqual([
-      "Worked outThis dive records no bottom temperature.",
-      "ResolvedThe most accurate fix is taken as the dive's exit.",
-      "Not recordedThe file records no start CNS.",
-      "DroppedSightings: A sighting names a species this app does not know.",
-      "This dive is already in your logbook.",
-    ]);
-    // Tone follows the kind alone: only a loss is a warning, an absence is
-    // quiet, and the rest - a note with no kind among them - is information.
-    expect(items.map((item) => item.className)).toEqual([
-      "text-foreground",
-      "text-foreground",
-      "text-muted-foreground",
-      "text-warning",
-      "text-foreground",
-    ]);
-    // The second dive has nothing to say, so no row follows it, and nothing on
-    // a row is in the report's notes as well.
-    expect(rows).toHaveLength(4);
-    expect(screen.queryByRole("heading", { name: /^Notes/ })).toBeNull();
-  });
-
-  it("read a code and a kind this build has never heard of as information", async () => {
-    await readWith(
-      preview({
-        members,
-        dives: [
-          dive({
-            notes: [
               {
-                code: "something_this_build_predates",
-                kind: "partially_carried",
+                code: "from_a_later_build",
+                kind: "from_a_later_build",
                 collection: "dives",
-                message: "Part of the dive's gas came across.",
-              },
-            ],
-          }),
-        ],
-      }),
-    );
-
-    const item = within(screen.getAllByRole("row")[2]).getByRole("listitem");
-    expect(item).toHaveClass("text-foreground");
-    expect(item).toHaveTextContent(
-      "Partially carriedPart of the dive's gas came across.",
-    );
-  });
-
-  it("say where a row's cap cut its notes", async () => {
-    await readWith(
-      preview({
-        members,
-        dives: [
-          dive({
-            notes: [
-              {
-                code: "gas_missing",
-                kind: "absent",
-                collection: "dives",
-                message: "No gas is recorded for one of this dive's cylinders.",
+                message: "A later note.",
               },
             ],
             notes_truncated: 2,
@@ -722,387 +1184,35 @@ describe("the dive rows", () => {
     );
 
     expect(
-      within(screen.getAllByRole("row")[2]).getByText(
-        "2 further notes about this dive are listed with the import's notes below.",
-      ),
+      screen.getByText("The review did not show this dive."),
     ).toBeVisible();
+    // A code and a kind this build has never heard of read as information.
+    expect(screen.getByText(/A later note\./)).toBeVisible();
+    expect(screen.getByText("From a later build")).toBeVisible();
+    expect(screen.getByText(/2 further notes about this dive/)).toBeVisible();
   });
-});
 
-describe("the report's notes", () => {
-  it("list each group once, with how often and where it came up", async () => {
-    await readWith(
-      preview({
-        dives: [dive()],
+  it("lists the report's groups, with how often and where they came up", async () => {
+    await drawLog(
+      log({
         notes: [
           group({
-            code: "position_zero",
-            kind: "absent",
-            collection: "sites",
-            message: "The site's position is 0, 0, so it is left empty.",
-            count: 5,
-            wheres: [
-              "dives.uddf/site/0",
-              "dives.uddf/site/1",
-              "dives.uddf/site/2",
-            ],
-          }),
-          group({
-            code: "tags_created",
-            message: "Two tags were created.",
-          }),
-          group({
-            code: "record_skipped",
+            code: "value_dropped",
             kind: "dropped",
-            collection: "dives",
-            message: "A dive with no start time is skipped.",
-            count: 3,
+            message: "Visibility has no metric equivalent.",
+            count: 5,
+            wheres: ["dives.uddf/dive/0"],
           }),
         ],
-        notes_truncated: 4,
+        notes_truncated: 1,
       }),
     );
 
-    const heading = screen.getByRole("heading", { name: "Notes (3)" });
-    expect(heading).toBeVisible();
-    const items = within(heading.parentElement!).getAllByRole("listitem");
-    expect(items.map((item) => item.textContent)).toEqual([
-      "Not recordedDive sites: The site's position is 0, 0, so it is left empty.5 places — dives.uddf/site/0, dives.uddf/site/1, dives.uddf/site/2 and 2 more",
-      "Two tags were created.",
-      "DroppedDives: A dive with no start time is skipped.3 times",
-    ]);
-    expect(items[2]).toHaveClass("text-warning");
+    expect(screen.getByRole("heading", { name: "Notes (1)" })).toBeVisible();
     expect(
-      screen.getByText(
-        "4 further notes are not shown. The counts above are complete.",
-      ),
+      screen.getByText(/5 places — dives.uddf\/dive\/0 and 4 more/),
     ).toBeVisible();
-  });
-
-  it("name no conversion anywhere", async () => {
-    await readWith(
-      preview({
-        dives: [dive()],
-        notes: [group({ message: "Two tags were created." })],
-      }),
-    );
-
-    expect(screen.queryByText(/original files/i)).toBeNull();
-    expect(screen.queryByText(/conver/i)).toBeNull();
-  });
-});
-
-describe("the counts and the files section", () => {
-  const counts = [
-    row("dives", { created: 23, skipped: 24 }),
-    row("sites", { linked: 1 }),
-  ];
-
-  it("leave the dives row to the dive rows wherever there are any", async () => {
-    await readWith(preview({ collections: counts, dives: [dive()] }));
-
-    const records = screen.getByRole("table", { name: /records by type/i });
-    expect(
-      within(records).queryByRole("rowheader", { name: "Dives" }),
-    ).toBeNull();
-    expect(
-      within(records).getByRole("rowheader", { name: "Dive sites" }),
-    ).toBeVisible();
-  });
-
-  it("keep the dives row where there are no dive rows", async () => {
-    await readWith(preview({ collections: counts }));
-
-    const records = screen.getByRole("table", { name: /records by type/i });
-    expect(
-      within(records).getByRole("rowheader", { name: "Dives" }),
-    ).toBeVisible();
-  });
-
-  it("are absent when nothing but dives counts", async () => {
-    await readWith(
-      preview({ collections: [row("dives", { created: 2 })], dives: [dive()] }),
-    );
-
-    expect(
-      screen.queryByRole("table", { name: /records by type/i }),
-    ).toBeNull();
-    expect(
-      screen.queryByText(/collection in this document is empty/),
-    ).toBeNull();
-  });
-
-  it("show the files section only for a document naming stored files, with its hint", async () => {
-    await readWith(preview());
-    expect(screen.queryByRole("heading", { name: "Stored Files" })).toBeNull();
-
-    mocks.preview.mockResolvedValueOnce(
-      preview({
-        files: { referenced: 4, restored: 0, not_contained: 4, skipped: 0 },
-      }),
-    );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Remove 1.json" }),
-    );
-    await userEvent.click(readButton());
-
-    expect(
-      await screen.findByRole("heading", { name: "Stored Files" }),
-    ).toBeVisible();
-    expect(screen.getByText(/import the full archive/i)).toBeVisible();
-  });
-});
-
-describe("the import button", () => {
-  it("counts the dives created or restored", async () => {
-    await readWith(
-      preview({
-        dives: [
-          dive(),
-          dive({ outcome: "restored" }),
-          dive({ outcome: "linked" }),
-        ],
-      }),
-    );
-    expect(importButton()).toHaveTextContent("Import 2 dives");
-  });
-
-  it("says what updated rows add where nothing is created", async () => {
-    await readWith(
-      preview({
-        dives: [
-          dive({ outcome: "updated", files_added: 1 }),
-          dive({ outcome: "updated", files_added: 1 }),
-        ],
-      }),
-    );
-    expect(importButton()).toHaveTextContent("Import 2 files");
-  });
-
-  it.each([
-    [
-      "linked and skipped rows alone",
-      preview({
-        dives: [
-          dive({ outcome: "linked" }),
-          dive({ outcome: "skipped", uuid: null }),
-        ],
-      }),
-    ],
-    [
-      "a DiveJSON document of gear alone",
-      preview({ collections: [row("gear", { created: 3 })] }),
-    ],
-    [
-      "an archive whose dives all link while it restores a trip",
-      preview({
-        archive: true,
-        collections: [
-          row("dives", { linked: 2 }),
-          row("trips", { restored: 1 }),
-        ],
-        dives: [dive({ outcome: "linked" }), dive({ outcome: "linked" })],
-      }),
-    ],
-    [
-      "a read whose only note is a filled recording",
-      preview({
-        dives: [dive({ outcome: "linked" })],
-        notes: [
-          group({
-            code: "recording_filled",
-            collection: "dives",
-            message: "A recording's blanks were filled.",
-          }),
-        ],
-      }),
-    ],
-  ])("reads Import, enabled, for %s", async (_, plan) => {
-    await readWith(plan);
-    expect(importButton()).toHaveTextContent(/^Import$/);
-    expect(importButton()).toBeEnabled();
-  });
-
-  it("is held back while an import is in flight, which shows its progress", async () => {
-    let finish: (value: ImportReport) => void = () => {};
-    mocks.apply.mockImplementationOnce((...args: unknown[]) => {
-      (args[4] as (sent: number, total: number) => void)(1, 2);
-      return new Promise((resolve) => (finish = resolve));
-    });
-    await readWith(preview({ dives: [dive()] }));
-    await userEvent.click(importButton());
-
-    expect(
-      await screen.findByRole("button", { name: /importing/i }),
-    ).toBeDisabled();
-    expect(screen.getByRole("progressbar")).toHaveAttribute(
-      "aria-valuenow",
-      "1",
-    );
-    finish(report());
-    await screen.findByRole("heading", { name: "Imported" });
-  });
-});
-
-describe("the result", () => {
-  it("lists its dive rows with their outcomes, each linking to its dive, and Done goes to the dives", async () => {
-    mocks.apply.mockResolvedValueOnce(
-      report({
-        members: [member(0, "1.fit"), member(1, "1.json")],
-        dives: [
-          dive({ uuid: "a" }),
-          dive({ uuid: "b", outcome: "linked" }),
-          dive({ uuid: null, outcome: "skipped", reason: "No samples." }),
-        ],
-      }),
-    );
-    await readWith(preview({ dives: [dive()] }));
-    await userEvent.click(importButton());
-
-    await screen.findByRole("heading", { name: "Imported" });
-    const table = screen.getByRole("table");
-    expect(within(table).getByText("New")).toBeVisible();
-    expect(within(table).getByText("Already in your logbook")).toBeVisible();
-    expect(within(table).getByText("Skipped: No samples.")).toBeVisible();
-    const links = within(table).getAllByRole("link");
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/dives/a?from=%2Fimport",
-      "/dives/b?from=%2Fimport",
-    ]);
-    expect(links[0]).not.toHaveAttribute("target");
-    expect(screen.getByRole("link", { name: "Done" })).toHaveAttribute(
-      "href",
-      "/dives",
-    );
-  });
-});
-
-describe("the result's renumber", () => {
-  const earliest = "2019-03-12T12:00:00Z";
-  const writeDives = () =>
-    mocks.apply.mockResolvedValueOnce(
-      report({
-        dives: [
-          dive({ uuid: "a", start_time: "2019-05-01T12:00:00Z" }),
-          dive({ uuid: "b", start_time: earliest }),
-          dive({ uuid: "c", outcome: "linked", start_time: "2018-01-01" }),
-        ],
-      }),
-    );
-
-  it("is offered from the earliest new dive's day where the import left dives sharing a number", async () => {
-    mocks.getDiveNumbering
-      .mockResolvedValueOnce(numbering())
-      .mockResolvedValueOnce(
-        numbering({
-          total_dives: 5,
-          highest: 3,
-          duplicate_count: 2,
-          is_sequential: false,
-        }),
-      );
-    mocks.getNextDiveNumber.mockResolvedValueOnce({
-      dive_number: 12,
-      is_taken: true,
-    });
-    mocks.renumberDives.mockResolvedValue({
-      dry_run: true,
-      dives_in_scope: 4,
-      changes: [],
-    });
-    writeDives();
-    await readWith(preview({ dives: [dive()] }));
-    await userEvent.click(importButton());
-
-    expect(
-      await screen.findByText(/Renumbering from Mar 12, 2019/),
-    ).toBeVisible();
-    expect(screen.getByText(/2 dives share a number/)).toBeVisible();
-    expect(mocks.getNextDiveNumber).toHaveBeenCalledWith(
-      "2019-03-11T23:59:59+02:00",
-    );
-
-    await userEvent.click(screen.getByRole("button", { name: "Renumber" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByLabelText("Start at")).toHaveValue(12);
-    await waitFor(() =>
-      expect(mocks.renumberDives).toHaveBeenCalledWith({
-        start_at: 12,
-        from_start_time: "2019-03-12T00:00:00+02:00",
-        dry_run: true,
-      }),
-    );
-  });
-
-  it("gives way to a status that takes focus once the renumber is written", async () => {
-    mocks.getDiveNumbering
-      .mockResolvedValueOnce(numbering())
-      .mockResolvedValueOnce(
-        numbering({ out_of_date_order_count: 1, is_sequential: false }),
-      );
-    mocks.getNextDiveNumber.mockResolvedValueOnce({
-      dive_number: 1,
-      is_taken: true,
-    });
-    const change = {
-      dive_uuid: "b",
-      start_time: earliest,
-      dive_number: 4,
-      new_dive_number: 1,
-    };
-    mocks.renumberDives.mockImplementation(
-      async ({ dry_run }: { dry_run?: boolean }) => ({
-        dry_run: Boolean(dry_run),
-        dives_in_scope: 4,
-        changes: [change],
-      }),
-    );
-    writeDives();
-    await readWith(preview({ dives: [dive()] }));
-    await userEvent.click(importButton());
-
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Renumber" }),
-    );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Renumber 1 dive" }),
-    );
-
-    const status = await screen.findByText("Your dives are renumbered.");
-    await waitFor(() => expect(status).toHaveFocus());
-    expect(
-      screen.queryByRole("button", { name: "Renumber" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("is not offered where the import left the log no more tangled than it was", async () => {
-    const tangled = numbering({ duplicate_count: 2, is_sequential: false });
-    mocks.getDiveNumbering.mockResolvedValue(tangled);
-    writeDives();
-    await readWith(preview({ dives: [dive()] }));
-    await userEvent.click(importButton());
-
-    await screen.findByRole("heading", { name: "Imported" });
-    await waitFor(() =>
-      expect(mocks.getDiveNumbering).toHaveBeenCalledTimes(2),
-    );
-    expect(
-      screen.queryByRole("button", { name: "Renumber" }),
-    ).not.toBeInTheDocument();
-    expect(mocks.getNextDiveNumber).not.toHaveBeenCalled();
-  });
-
-  it("is not offered where the log's numbering could not be read with the files", async () => {
-    mocks.getDiveNumbering.mockRejectedValueOnce(new Error("offline"));
-    writeDives();
-    await readWith(preview({ dives: [dive()] }));
-    await userEvent.click(importButton());
-
-    await screen.findByRole("heading", { name: "Imported" });
-    expect(mocks.getDiveNumbering).toHaveBeenCalledTimes(1);
-    expect(
-      screen.queryByRole("button", { name: "Renumber" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText(/1 further note is not shown/)).toBeVisible();
   });
 });
 
@@ -1113,9 +1223,9 @@ describe("the check-in details and the portrait", () => {
   const sha = "b".repeat(64);
   const proposed = "data:image/webp;base64,UklGRg==";
 
-  it("shows the details a document proposes without an archive, and sends them as edited", async () => {
-    mocks.apply.mockResolvedValueOnce(report());
-    await readWith(preview({ archive: false, check_in_details: details }));
+  it("shows the details a document proposes, and sends them as edited", async () => {
+    mocks.apply.mockResolvedValueOnce(appliedImport());
+    await drawReview(pendingImport({ check_in_details: details }));
 
     const phone = screen.getByRole("group", { name: "Phone number" });
     expect(within(phone).getByText(/yours now: \+44 1/i)).toBeVisible();
@@ -1123,14 +1233,15 @@ describe("the check-in details and the portrait", () => {
 
     await userEvent.click(importButton());
     await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
-    expect(mocks.apply.mock.calls[0][2]).toEqual({ phone: "+44 2" });
+    expect(mocks.apply.mock.calls[0][1].check_in_details).toEqual({
+      phone: "+44 2",
+    });
   });
 
   it("proposes a list whole, edits it as a list, and sends it whole", async () => {
-    mocks.apply.mockResolvedValueOnce(report());
-    await readWith(
-      preview({
-        archive: false,
+    mocks.apply.mockResolvedValueOnce(appliedImport());
+    await drawReview(
+      pendingImport({
         check_in_details: [
           {
             detail: "emergency_contacts",
@@ -1169,7 +1280,7 @@ describe("the check-in details and the portrait", () => {
 
     await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
     // The edited list whole; the kept one left out, which leaves the account's.
-    expect(mocks.apply.mock.calls[0][2]).toEqual({
+    expect(mocks.apply.mock.calls[0][1].check_in_details).toEqual({
       emergency_contacts: [
         { name: "Robin", phone: "0222", relationship: "Parent" },
       ],
@@ -1177,10 +1288,12 @@ describe("the check-in details and the portrait", () => {
   });
 
   it("offers the archive's portrait beside the account's, and sends keep after Keep mine", async () => {
-    mocks.apply.mockResolvedValueOnce(report());
-    await readWith(
-      preview({ archive: true, portrait: { account_sha256: sha, proposed } }),
-      new File(["PK"], "backup.zip", { type: "application/zip" }),
+    mocks.apply.mockResolvedValueOnce(appliedImport());
+    await drawReview(
+      pendingImport({
+        archive: true,
+        portrait: { account_sha256: sha, proposed },
+      }),
     );
 
     const portrait = screen.getByRole("group", { name: "Portrait" });
@@ -1193,15 +1306,16 @@ describe("the check-in details and the portrait", () => {
     await userEvent.click(importButton());
 
     await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
-    expect(mocks.apply.mock.calls[0][3]).toEqual({
+    expect(mocks.apply.mock.calls[0][1].portrait).toEqual({
       choice: "keep",
       account_sha256: sha,
     });
   });
 
-  it("re-reads the check-in details and the signed-in user only when a detail was written", async () => {
-    mocks.apply.mockResolvedValueOnce(
-      report({
+  it("re-reads the check-in details and the signed-in user when the log says a detail was written", async () => {
+    mocks.apply.mockResolvedValueOnce(appliedImport());
+    mocks.notes.mockResolvedValueOnce(
+      log({
         notes: [
           group({
             code: "check_in_detail_written",
@@ -1210,7 +1324,7 @@ describe("the check-in details and the portrait", () => {
         ],
       }),
     );
-    await readWith(preview({ check_in_details: details }));
+    await drawReview(pendingImport({ check_in_details: details }));
     await userEvent.click(importButton());
 
     await screen.findByRole("heading", { name: "Imported" });
@@ -1218,5 +1332,23 @@ describe("the check-in details and the portrait", () => {
     // the portrait's digest - one note marks both.
     expect(mocks.reloadCheckinDetails).toHaveBeenCalledTimes(1);
     expect(mocks.refreshUser).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves them alone where nothing was written", async () => {
+    mocks.apply.mockResolvedValueOnce(appliedImport());
+    await drawReview(pendingImport({ check_in_details: details }));
+    await userEvent.click(importButton());
+
+    await screen.findByRole("heading", { name: "Imported" });
+    expect(mocks.reloadCheckinDetails).not.toHaveBeenCalled();
+  });
+
+  it("reads no log where the import offered nothing", async () => {
+    mocks.apply.mockResolvedValueOnce(appliedImport());
+    await drawReview(pendingImport());
+    await userEvent.click(importButton());
+
+    await screen.findByRole("heading", { name: "Imported" });
+    expect(mocks.notes).not.toHaveBeenCalled();
   });
 });

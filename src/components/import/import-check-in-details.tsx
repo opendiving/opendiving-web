@@ -30,7 +30,7 @@ import {
   type CheckinDetailsFormValues,
 } from "@/lib/validations/checkin-details";
 
-/** What the apply sends beside the files and the token; each part omitted when empty. */
+/** What the apply sends; each part omitted when empty. */
 export interface ImportCheckInChoices {
   details?: ImportCheckInSubmission;
   portrait?: ImportPortraitChoice;

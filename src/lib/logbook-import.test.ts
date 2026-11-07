@@ -4,10 +4,13 @@ import {
   collectionRowIsEmpty,
   fileRestoreHint,
   importButtonLabel,
-  importDiveOutcomeSentence,
+  importCountsSentence,
   importFileRefusal,
-  importMemberNotKeptSentence,
+  importOutcomeLabel,
+  importRowHasCard,
   importSelectionRefusal,
+  importStartText,
+  importSummaryTerms,
   importTotals,
   isHiddenImportPath,
   isZipFile,
@@ -20,10 +23,10 @@ import {
 } from "./logbook-import";
 import type {
   ImportCollectionReport,
+  ImportFileReport,
   ImportNoteGroup,
-  ImportReport,
 } from "@/lib/api/logbook-import";
-import { importDiveReport as dive } from "@/test/dive-fixtures";
+import { importDiveRow as dive } from "@/test/dive-fixtures";
 
 function row(
   collection: string,
@@ -33,20 +36,19 @@ function row(
     collection,
     created: 0,
     linked: 0,
-    restored: 0,
     skipped: 0,
     ...counts,
   };
 }
 
-function report(overrides: Partial<ImportReport> = {}): ImportReport {
+function fileReport(
+  overrides: Partial<ImportFileReport> = {},
+): ImportFileReport {
   return {
-    collections: [],
-    files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
-    notes: [],
-    notes_truncated: 0,
-    members: [],
-    dives: [],
+    referenced: 0,
+    restored: 0,
+    not_contained: 0,
+    skipped: 0,
     ...overrides,
   };
 }
@@ -93,38 +95,25 @@ describe("collectionLabel", () => {
 });
 
 describe("importTotals", () => {
-  it("keeps restored as its own figure rather than folding it into created", () => {
-    // The whole reason the API keeps the four counts disjoint: a diver restoring
-    // a backup is entitled to see how much of it actually came back, and a total
-    // that absorbed restores into "created" would destroy exactly that.
+  it("sums each count across the rows", () => {
     const totals = importTotals([
-      row("dives", { created: 4, restored: 2, skipped: 1 }),
+      row("dives", { created: 4, skipped: 1 }),
       row("sites", { created: 1, linked: 3 }),
     ]);
 
-    expect(totals).toEqual({
-      created: 5,
-      linked: 3,
-      restored: 2,
-      skipped: 1,
-    });
+    expect(totals).toEqual({ created: 5, linked: 3, skipped: 1 });
   });
 
   it("is all zeroes for no rows", () => {
-    expect(importTotals([])).toEqual({
-      created: 0,
-      linked: 0,
-      restored: 0,
-      skipped: 0,
-    });
+    expect(importTotals([])).toEqual({ created: 0, linked: 0, skipped: 0 });
   });
 });
 
 describe("collectionRowIsEmpty", () => {
-  it("is true only when all four counts are zero", () => {
+  it("is true only when all three counts are zero", () => {
     expect(collectionRowIsEmpty(row("dives"))).toBe(true);
     expect(collectionRowIsEmpty(row("dives", { skipped: 1 }))).toBe(false);
-    expect(collectionRowIsEmpty(row("dives", { restored: 1 }))).toBe(false);
+    expect(collectionRowIsEmpty(row("dives", { linked: 1 }))).toBe(false);
   });
 });
 
@@ -152,9 +141,7 @@ describe("truncatedNotesSentence", () => {
 describe("fileRestoreHint", () => {
   it("tells a bare document's importer where the bytes are", () => {
     const hint = fileRestoreHint(
-      report({
-        files: { referenced: 3, restored: 0, not_contained: 3, skipped: 0 },
-      }),
+      fileReport({ referenced: 3, not_contained: 3 }),
       false,
     );
 
@@ -164,27 +151,17 @@ describe("fileRestoreHint", () => {
 
   it("says nothing after an archive import, where the bytes already came", () => {
     expect(
-      fileRestoreHint(
-        report({
-          files: { referenced: 3, restored: 3, not_contained: 0, skipped: 0 },
-        }),
-        true,
-      ),
+      fileRestoreHint(fileReport({ referenced: 3, restored: 3 }), true),
     ).toBeNull();
   });
 
   it("says nothing for a document that references no files at all", () => {
-    expect(fileRestoreHint(report(), false)).toBeNull();
+    expect(fileRestoreHint(fileReport(), false)).toBeNull();
   });
 
   it("does not say 'These 1 files'", () => {
     expect(
-      fileRestoreHint(
-        report({
-          files: { referenced: 1, restored: 0, not_contained: 1, skipped: 0 },
-        }),
-        false,
-      ),
+      fileRestoreHint(fileReport({ referenced: 1, not_contained: 1 }), false),
     ).toContain("This file is");
   });
 });
@@ -297,7 +274,7 @@ describe("truncatedDiveNotesSentence", () => {
 });
 
 describe("reviewCollectionRows", () => {
-  const counts = [
+  const collections = [
     row("dives", { created: 23, skipped: 24 }),
     row("sites", { linked: 1 }),
     row("trips"),
@@ -305,115 +282,120 @@ describe("reviewCollectionRows", () => {
 
   it("leaves the dives row to the dive rows wherever there are any", () => {
     // `collections` counts a pair's second file as a skipped dive; its row says
-    // "New". Showing both is "Skipped 24" under 23 new dives.
+    // "new". Showing both is "Skipped 24" under 23 new dives.
     expect(
-      reviewCollectionRows(
-        report({ collections: counts, dives: [dive()] }),
-      ).map((r) => r.collection),
+      reviewCollectionRows({ collections, dives: [dive()] }).map(
+        (r) => r.collection,
+      ),
     ).toEqual(["sites"]);
   });
 
   it("keeps the dives row where there are no dive rows to report them", () => {
     expect(
-      reviewCollectionRows(report({ collections: counts })).map(
-        (r) => r.collection,
-      ),
+      reviewCollectionRows({ collections, dives: [] }).map((r) => r.collection),
     ).toEqual(["dives", "sites"]);
   });
 
   it("is empty when nothing but dives counts", () => {
     expect(
-      reviewCollectionRows(
-        report({
-          collections: [row("dives", { created: 2 })],
-          dives: [dive()],
-        }),
-      ),
+      reviewCollectionRows({
+        collections: [row("dives", { created: 2 })],
+        dives: [dive()],
+      }),
     ).toEqual([]);
   });
 });
 
-describe("importDiveOutcomeSentence", () => {
+describe("importOutcomeLabel", () => {
   it("says each outcome in the diver's terms", () => {
-    expect(importDiveOutcomeSentence(dive())).toBe("New");
-    expect(importDiveOutcomeSentence(dive({ outcome: "restored" }))).toBe(
-      "Brought back from deletion",
+    expect(importOutcomeLabel("new")).toBe("New");
+    expect(importOutcomeLabel("modified")).toBe("Modified");
+    expect(importOutcomeLabel("unchanged")).toBe("Unchanged");
+    expect(importOutcomeLabel("skipped")).toBe("Skipped");
+  });
+});
+
+describe("importStartText", () => {
+  it("shows the wall clock with its offset, and nothing nothing recorded", () => {
+    expect(importStartText("2026-09-07T11:04:58+03:00")).toMatch(/\+03:00$/);
+    expect(importStartText("2026-09-07T11:04:58")).not.toMatch(/[+-]\d\d:\d\d/);
+    expect(importStartText("2026-09-07")).not.toMatch(/:/);
+    expect(importStartText(null)).toBe("—");
+  });
+});
+
+describe("importRowHasCard", () => {
+  it("is true for a new or modified row that carries its dive", () => {
+    expect(importRowHasCard(dive())).toBe(true);
+    expect(importRowHasCard(dive({ outcome: "modified" }))).toBe(true);
+    expect(importRowHasCard(dive({ dive: null }))).toBe(false);
+    expect(importRowHasCard(dive({ outcome: "unchanged" }))).toBe(false);
+    // A row the apply skipped keeps the dive the review showed.
+    expect(importRowHasCard(dive({ outcome: "skipped" }))).toBe(false);
+  });
+});
+
+describe("importSummaryTerms", () => {
+  const texts = (...outcomes: Parameters<typeof dive>[0][]) =>
+    importSummaryTerms(outcomes.map((row) => dive(row))).map(
+      (term) => term.text,
     );
-    expect(importDiveOutcomeSentence(dive({ outcome: "linked" }))).toBe(
-      "Already in your logbook",
+
+  it("counts the rows by outcome, the first term naming what is counted", () => {
+    expect(
+      texts(
+        {},
+        {},
+        { outcome: "modified" },
+        { outcome: "unchanged" },
+        { outcome: "skipped" },
+      ),
+    ).toEqual(["2 new dives", "1 modified", "1 unchanged", "1 skipped"]);
+  });
+
+  it("leaves out the zero terms, and is singular for one", () => {
+    expect(texts({ outcome: "unchanged" })).toEqual(["1 unchanged dive"]);
+    expect(importSummaryTerms([])).toEqual([]);
+  });
+});
+
+describe("importCountsSentence", () => {
+  it("says a history row's counts", () => {
+    expect(importCountsSentence({ new: 12, modified: 2 })).toBe(
+      "12 new, 2 modified",
+    );
+    expect(importCountsSentence({ unchanged: 5, skipped: 1 })).toBe(
+      "5 unchanged, 1 skipped",
     );
   });
 
-  it("says what an updated dive gains", () => {
-    expect(
-      importDiveOutcomeSentence(dive({ outcome: "updated", files_added: 1 })),
-    ).toBe("Adds a file to a dive you have");
-    expect(
-      importDiveOutcomeSentence(
-        dive({ outcome: "updated", files_added: 2, recordings_added: 1 }),
-      ),
-    ).toBe("Adds 2 files and another computer's recording to a dive you have");
-  });
-
-  it("says why a dive is skipped", () => {
-    expect(
-      importDiveOutcomeSentence(
-        dive({
-          outcome: "skipped",
-          uuid: null,
-          reason: "It has no start time.",
-        }),
-      ),
-    ).toBe("Skipped: It has no start time.");
+  it("says something for an import of no dives", () => {
+    expect(importCountsSentence({})).toBe("No dives");
   });
 });
 
 describe("importButtonLabel", () => {
-  it("counts the dives created or restored", () => {
+  it("counts the new and modified rows", () => {
     expect(
       importButtonLabel([
         dive(),
-        dive({ outcome: "restored" }),
-        dive({ outcome: "updated", files_added: 1 }),
-        dive({ outcome: "linked" }),
+        dive({ outcome: "modified" }),
+        dive({ outcome: "unchanged" }),
+        dive({ outcome: "skipped" }),
       ]),
     ).toBe("Import 2 dives");
     expect(importButtonLabel([dive()])).toBe("Import 1 dive");
   });
 
-  it("says what updated rows add where nothing is created", () => {
+  it("never claims the negative where no dive is written", () => {
+    // A check-in detail or a tag may still be written.
     expect(
       importButtonLabel([
-        dive({ outcome: "updated", files_added: 1 }),
-        dive({ outcome: "updated", files_added: 1, recordings_added: 1 }),
-        dive({ outcome: "linked" }),
-      ]),
-    ).toBe("Import 2 files and 1 recording");
-  });
-
-  it("never claims the negative for linked and skipped rows, or none", () => {
-    // A re-read of the same folder, a document of gear alone, a read whose only
-    // effect is a recording's filled blanks: each may still write, and whether
-    // it does is the writer's fact, which the report does not carry.
-    expect(
-      importButtonLabel([
-        dive({ outcome: "linked" }),
+        dive({ outcome: "unchanged" }),
         dive({ outcome: "skipped", uuid: null }),
       ]),
     ).toBe("Import");
     expect(importButtonLabel([])).toBe("Import");
-  });
-});
-
-describe("importMemberNotKeptSentence", () => {
-  it("says why for each reason, and something for one it does not know", () => {
-    expect(importMemberNotKeptSentence("several_dives")).toMatch(
-      /several dives/,
-    );
-    expect(importMemberNotKeptSentence("already_stored")).toMatch(
-      /already has this file/,
-    );
-    expect(importMemberNotKeptSentence("a_new_reason")).toBe("Not kept");
   });
 });
 

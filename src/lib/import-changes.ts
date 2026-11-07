@@ -20,7 +20,11 @@ import {
   formatDiveDateTime,
   formatDurationHoursMinutes,
 } from "@/lib/date-time";
-import { GAS_ROLE_LABELS, TANK_USAGE_LABELS, gasName } from "@/lib/dive-mixtures";
+import {
+  GAS_ROLE_LABELS,
+  TANK_USAGE_LABELS,
+  gasName,
+} from "@/lib/dive-mixtures";
 import {
   decoModelLabel,
   MODE_LABELS,
@@ -318,8 +322,10 @@ function recordingRow(
   }
   if (first === "files" && isIndex(second)) {
     if (rest.length === 2) {
-      return elementRow("File", change, (file: DiveFileInfo) =>
-        file.original_filename,
+      return elementRow(
+        "File",
+        change,
+        (file: DiveFileInfo) => file.original_filename,
       );
     }
     return rest.length === 3 && third === "original_filename"
@@ -374,9 +380,7 @@ function labelledRow(
   const [head, second, ...rest] = change.member.split("/");
   if (second === undefined) {
     const member = DIVE_MEMBERS[head];
-    return member
-      ? valueRow(member.label, change, member.format, units)
-      : null;
+    return member ? valueRow(member.label, change, member.format, units) : null;
   }
   if (!isIndex(second)) return null;
   const index = Number(second);
@@ -400,7 +404,6 @@ export function describeImportChange(
   units: UnitSystem,
 ): ImportChangeRow {
   return (
-    labelledRow(change, units) ??
-    valueRow(change.member, change, plain, units)
+    labelledRow(change, units) ?? valueRow(change.member, change, plain, units)
   );
 }

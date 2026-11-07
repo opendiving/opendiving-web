@@ -9,7 +9,7 @@ import {
 } from "./import-check-in";
 import type {
   ImportCheckInDetail,
-  ImportReport,
+  LogbookImportNotes,
 } from "@/lib/api/logbook-import";
 import { formatDateOnly } from "@/lib/date-time";
 import { EMPTY_CHECKIN_FORM_VALUES } from "@/lib/validations/checkin-details";
@@ -124,9 +124,7 @@ describe("checkInSubmission", () => {
 });
 
 describe("checkInWasWritten", () => {
-  const report = (codes: string[]): ImportReport => ({
-    collections: [],
-    files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
+  const report = (codes: string[]): LogbookImportNotes => ({
     // One group per written detail, as the API reports them: each detail's
     // sentence names its label, so no two share a group.
     notes: codes.map((code) => ({
@@ -138,7 +136,6 @@ describe("checkInWasWritten", () => {
       wheres: [],
     })),
     notes_truncated: 0,
-    members: [],
     dives: [],
   });
 
@@ -159,7 +156,7 @@ describe("checkInWasWritten", () => {
 describe("portraitChoice", () => {
   const sha = "a".repeat(64);
 
-  it("carries the preview's digest whichever way the diver chose", () => {
+  it("carries the review's digest whichever way the diver chose", () => {
     const offer = { account_sha256: sha, proposed: "data:image/webp;base64," };
     expect(portraitChoice(offer, false)).toEqual({
       choice: "take",

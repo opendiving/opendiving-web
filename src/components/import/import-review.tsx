@@ -25,10 +25,7 @@ import {
 } from "@/lib/api/logbook-import";
 import { formatDateTime } from "@/lib/date-time";
 import { checkInWasWritten } from "@/lib/import-check-in";
-import {
-  importButtonLabel,
-  importSummaryTerms,
-} from "@/lib/logbook-import";
+import { importButtonLabel, importSummaryTerms } from "@/lib/logbook-import";
 
 export interface ImportReviewProps {
   record: LogbookImportRead;

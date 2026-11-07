@@ -163,7 +163,7 @@ export type NoteKindTone = "warning" | "neutral" | "muted";
  * record, and the diver ends up without it. `absent` is what a file never
  * recorded at all, which is a property of the file rather than of the import,
  * so it is quietest. `inferred`, `resolved` and a note with no kind - a linked
- * or restored record, a recording attached to a dive it matched, a file whose
+ * record, a recording attached to a dive it matched, a file whose
  * bytes a bare document simply does not carry - are the import working as
  * designed, and colouring them as problems would teach a diver to distrust a
  * correct result.

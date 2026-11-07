@@ -3,11 +3,7 @@ import type {
   EmergencyContact,
   InsurancePolicy,
 } from "./checkin-details";
-import {
-  apiClient,
-  multipartRequest,
-  type PaginatedResponse,
-} from "./client";
+import { apiClient, multipartRequest, type PaginatedResponse } from "./client";
 import { labelOrFallback } from "./labels";
 import type { Dive, DiveNumberingSummary, RecordingDevice } from "./dives";
 

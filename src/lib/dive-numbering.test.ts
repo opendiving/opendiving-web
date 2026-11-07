@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DiveNumberingSummary } from "@/lib/api/dives";
-import type { ImportDiveReport } from "@/lib/api/logbook-import";
+import type { LogbookImportDive } from "@/lib/api/logbook-import";
 import {
   describeDiveNumbering,
   importRenumberScope,
@@ -145,22 +145,9 @@ describe("numberingTangledSince", () => {
 
 function importedDive(
   start_time: string | null,
-  outcome: ImportDiveReport["outcome"] = "created",
-): ImportDiveReport {
-  return {
-    uuid: outcome === "skipped" ? null : "d",
-    outcome,
-    files_added: 0,
-    recordings_added: 0,
-    reason: null,
-    start_time,
-    submerged_time: null,
-    max_depth: null,
-    device: null,
-    members: [],
-    notes: [],
-    notes_truncated: 0,
-  };
+  outcome: LogbookImportDive["outcome"] = "new",
+): Pick<LogbookImportDive, "outcome" | "start_time"> {
+  return { outcome, start_time };
 }
 
 describe("importRenumberScope", () => {
@@ -169,10 +156,10 @@ describe("importRenumberScope", () => {
       importRenumberScope(
         [
           importedDive("2019-05-01T09:00:00+02:00"),
-          importedDive("2019-03-12T09:00:00+02:00", "restored"),
+          importedDive("2019-03-12T09:00:00+02:00"),
           // Already in the log, so not where the import's dives begin.
-          importedDive("2018-01-01T09:00:00+02:00", "linked"),
-          importedDive("2017-01-01T09:00:00+02:00", "updated"),
+          importedDive("2018-01-01T09:00:00+02:00", "unchanged"),
+          importedDive("2017-01-01T09:00:00+02:00", "modified"),
           importedDive("2016-01-01T09:00:00+02:00", "skipped"),
         ],
         120,
@@ -187,7 +174,7 @@ describe("importRenumberScope", () => {
     expect(
       importRenumberScope(
         [
-          importedDive("2019-03-12T09:00:00+02:00", "linked"),
+          importedDive("2019-03-12T09:00:00+02:00", "unchanged"),
           importedDive(null, "skipped"),
         ],
         120,

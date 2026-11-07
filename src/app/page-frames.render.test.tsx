@@ -149,6 +149,19 @@ const DESTINATIONS = [
     page: () => import("./certifications/page"),
   },
   { route: "/checkin", path: "/checkin", page: () => import("./checkin/page") },
+  { route: "/import", path: "/import", page: () => import("./import/page") },
+  {
+    route: "/import/[id]",
+    path: "/import/import-1",
+    page: () => import("./import/[id]/page"),
+    params: { id: "import-1" },
+  },
+  {
+    route: "/import/[id]/log",
+    path: "/import/import-1/log",
+    page: () => import("./import/[id]/log/page"),
+    params: { id: "import-1" },
+  },
 ];
 
 // ------------------------------------------------------------------ the derivation
@@ -204,10 +217,10 @@ const destinations = files
   );
 
 // These destinations draw no frame, each for a reason of its own rather than by oversight:
-// the `/settings` sections and `/import` render a spinner on their auth bootstrap
-// and wait on no data of their own, so a frame there would draw grey where none is drawn,
-// and `/dives/new` renders its real form as soon as that same bootstrap settles.
-const NO_FRAME = ["/settings", "/import", "/dives/new"];
+// the `/settings` sections render a spinner on their auth bootstrap and wait on no data of
+// their own, so a frame there would draw grey where none is drawn, and `/dives/new` renders
+// its real form as soon as that same bootstrap settles.
+const NO_FRAME = ["/settings", "/dives/new"];
 
 // Each admin screen draws one, checked inside `app/admin` because nothing out here may
 // import that section (`lib/admin-isolation.test.ts`).

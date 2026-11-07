@@ -155,9 +155,7 @@ export const SALINITY_LABELS: Record<string, string> = {
  * nothing without the model and the computer beside it, which is exactly where
  * this line is rendered.
  */
-export function decoModelLabel(
-  model: RecordingDecoModel | null | undefined,
-) {
+export function decoModelLabel(model: RecordingDecoModel | null | undefined) {
   if (!model) return null;
 
   const named =

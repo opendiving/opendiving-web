@@ -12,11 +12,17 @@ import {
 
 vi.mock("./client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./client")>()),
-  apiClient: { post: vi.fn().mockResolvedValue({ data: {} }) },
+  apiClient: {
+    get: vi.fn().mockResolvedValue({ data: {} }),
+    post: vi.fn().mockResolvedValue({ data: {} }),
+    delete: vi.fn().mockResolvedValue({ data: {} }),
+  },
 }));
 
 const { apiClient } = await import("./client");
+const get = vi.mocked(apiClient.get);
 const post = vi.mocked(apiClient.post);
+const del = vi.mocked(apiClient.delete);
 
 describe("DIVE_COMPUTER_FILE_ACCEPT", () => {
   it("is the dive form's list, unchanged by the Import page filtering nothing", () => {
@@ -108,7 +114,7 @@ describe("the import ceilings", () => {
   });
 });
 
-describe("the batch requests", () => {
+describe("the import family", () => {
   const files = [
     new File(["a"], "1.fit"),
     new File(["b"], "1.json"),
@@ -121,10 +127,10 @@ describe("the batch requests", () => {
       onUploadProgress?: (event: { loaded: number; total?: number }) => void;
     };
 
-  it("sends every file as a `file` part, in order, to the preview", async () => {
-    await logbookImportAPI.preview(files);
+  it("uploads every file as a `file` part, in order", async () => {
+    await logbookImportAPI.create(files);
 
-    expect(post.mock.lastCall![0]).toBe("/import/logbook/preview");
+    expect(post.mock.lastCall![0]).toBe("/imports");
     expect(
       (sentForm().getAll("file") as File[]).map((file) => file.name),
     ).toEqual(["1.fit", "1.json", "logbook.zip"]);
@@ -132,42 +138,55 @@ describe("the batch requests", () => {
     expect(sentConfig().headers["Content-Type"]).toBeUndefined();
   });
 
-  it("sends the same files beside the token to the apply", async () => {
-    await logbookImportAPI.apply(files, "tok");
-
-    expect(post.mock.lastCall![0]).toBe("/import/logbook");
-    expect(sentForm().getAll("file")).toHaveLength(3);
-    expect(sentForm().get("token")).toBe("tok");
-  });
-
   it("reports the upload's bytes to a progress callback", async () => {
     const onProgress = vi.fn();
-    await logbookImportAPI.preview(files, onProgress);
+    await logbookImportAPI.create(files, onProgress);
 
     sentConfig().onUploadProgress!({ loaded: 40, total: 100 });
     expect(onProgress).toHaveBeenCalledWith(40, 100);
   });
 
   it("asks for no progress when nobody listens", async () => {
-    await logbookImportAPI.preview(files);
+    await logbookImportAPI.create(files);
     expect(sentConfig().onUploadProgress).toBeUndefined();
   });
 
-  it("sends the portrait's choice with the digest the preview showed", async () => {
-    await logbookImportAPI.apply(files, "tok", undefined, {
-      choice: "keep",
-      account_sha256: null,
-    });
-    // `account_sha256` goes even when null: the API requires the key.
-    expect(JSON.parse(sentForm().get("portrait") as string)).toEqual({
-      choice: "keep",
-      account_sha256: null,
-    });
-    expect(sentForm().get("check_in_details")).toBeNull();
+  it("reads the pending import, one import, its log and a page of the history", async () => {
+    await logbookImportAPI.pending();
+    expect(get.mock.lastCall![0]).toBe("/imports/pending");
+
+    await logbookImportAPI.get("u1");
+    expect(get.mock.lastCall![0]).toBe("/import/u1");
+
+    await logbookImportAPI.notes("u1");
+    expect(get.mock.lastCall![0]).toBe("/import/u1/notes");
+
+    await logbookImportAPI.list(2, 20);
+    expect(get.mock.lastCall).toEqual([
+      "/imports",
+      { params: { page: 2, items_per_page: 20 } },
+    ]);
   });
 
-  it("sends no portrait field without a choice, which keeps the account's", async () => {
-    await logbookImportAPI.apply(files, "tok");
-    expect(sentForm().has("portrait")).toBe(false);
+  it("applies with what the diver confirmed, and sends no bytes", async () => {
+    const portrait = { choice: "keep", account_sha256: null } as const;
+    await logbookImportAPI.apply("u1", {
+      check_in_details: { phone: "+44 2" },
+      portrait,
+    });
+
+    // `account_sha256` goes even when null: the API requires the key.
+    expect(post.mock.lastCall).toEqual([
+      "/import/u1/apply",
+      { check_in_details: { phone: "+44 2" }, portrait },
+    ]);
+  });
+
+  it("deletes naming the status it believes it is deleting", async () => {
+    await logbookImportAPI.remove("u1", "pending");
+    expect(del.mock.lastCall).toEqual([
+      "/import/u1",
+      { params: { status: "pending" } },
+    ]);
   });
 });
