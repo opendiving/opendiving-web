@@ -3,11 +3,19 @@ import {
   MAX_IMPORT_DOCUMENT_SIZE,
   MAX_IMPORT_FILES,
   type ImportCollectionReport,
-  type ImportDiveReport,
-  type ImportMemberNotKept,
+  type ImportDiveOutcome,
+  type ImportFileReport,
   type ImportNoteGroup,
-  type ImportReport,
+  type LogbookImportDive,
+  type LogbookImportRead,
+  type LogbookImportSummary,
 } from "@/lib/api/logbook-import";
+import {
+  formatDiveDateTime,
+  formatUtcOffset,
+  isDateOnlyStartTime,
+  parseUtcOffsetMinutes,
+} from "@/lib/date-time";
 import { countNoun } from "@/lib/format";
 import { labelOrFallback } from "@/lib/api/labels";
 
@@ -42,21 +50,16 @@ export function collectionLabel(collection: string): string {
   return labelOrFallback(COLLECTION_LABELS, collection);
 }
 
-/** The four disjoint counts, summed across collection rows. */
+/** The three disjoint counts, summed across collection rows. */
 export interface ImportTotals {
   created: number;
   linked: number;
-  restored: number;
   skipped: number;
 }
 
 /**
  * Adds the collection rows on screen up, so the total is the sum of what is
  * shown above it.
- *
- * `restored` stays its own figure here exactly as it is on the wire: the API
- * guarantees the four are disjoint, and folding restores into "created" would
- * throw away the one number that says a backup actually came back.
  */
 export function importTotals(
   rows: readonly ImportCollectionReport[],
@@ -65,40 +68,34 @@ export function importTotals(
     (totals, row) => ({
       created: totals.created + row.created,
       linked: totals.linked + row.linked,
-      restored: totals.restored + row.restored,
       skipped: totals.skipped + row.skipped,
     }),
-    { created: 0, linked: 0, restored: 0, skipped: 0 },
+    { created: 0, linked: 0, skipped: 0 },
   );
 }
 
 /** Whether a collection row has anything in it at all. */
 export function collectionRowIsEmpty(row: ImportCollectionReport): boolean {
-  return (
-    row.created === 0 &&
-    row.linked === 0 &&
-    row.restored === 0 &&
-    row.skipped === 0
-  );
+  return row.created === 0 && row.linked === 0 && row.skipped === 0;
 }
 
 /**
  * The collection rows the counts table shows.
  *
- * Empty rows are left out, and so is the dives row wherever the report has dive
+ * Empty rows are left out, and so is the dives row wherever the import has dive
  * rows: `collections` counts a document's records by what the planner does to
  * each, so a computer's second export of a dive, or a file adding to a dive the
- * diver has, counts there as a skipped dive while its dive row says "New" or
- * "Adds a file". The dive rows are the report on dives; the counts are the
- * report on everything else.
+ * diver has, counts there as a skipped dive while its dive row says "new" or
+ * "modified". The dive rows are the report on dives; the counts are the report
+ * on everything else.
  */
 export function reviewCollectionRows(
-  report: ImportReport,
+  record: Pick<LogbookImportRead, "collections" | "dives">,
 ): ImportCollectionReport[] {
-  return report.collections.filter(
+  return record.collections.filter(
     (row) =>
       !collectionRowIsEmpty(row) &&
-      !(row.collection === "dives" && report.dives.length > 0),
+      !(row.collection === "dives" && record.dives.length > 0),
   );
 }
 
@@ -125,11 +122,11 @@ export function truncatedNotesSentence(notesTruncated: number): string | null {
  * is worth naming at the moment they can see the number.
  */
 export function fileRestoreHint(
-  report: ImportReport,
+  files: ImportFileReport,
   archive: boolean,
 ): string | null {
-  if (archive || report.files.not_contained === 0) return null;
-  const n = report.files.not_contained;
+  if (archive || files.not_contained === 0) return null;
+  const n = files.not_contained;
   return `${n === 1 ? "This file is" : `These ${n} files are`} named by the document but not carried in it — import the full archive (.zip) to restore the bytes as well.`;
 }
 
@@ -215,88 +212,101 @@ export function truncatedDiveNotesSentence(truncated: number): string | null {
   return `${countNoun(truncated, "further note about this dive is", "further notes about this dive are")} listed with the import's notes below.`;
 }
 
-// Why a file that was read is not kept, in the diver's terms.
-const NOT_KEPT_SENTENCES: Record<ImportMemberNotKept, string> = {
-  several_dives: "Not kept: it holds several dives",
-  several_recordings: "Not kept: it holds several computers' records",
-  too_large: "Not kept: too large to keep as a dive's file",
-  already_stored: "Not kept: your account already has this file",
-  not_written: "Not kept: nothing is written for its dive",
+const OUTCOME_LABELS: Record<ImportDiveOutcome, string> = {
+  new: "New",
+  modified: "Modified",
+  unchanged: "Unchanged",
+  skipped: "Skipped",
 };
 
-/**
- * Why a file is not kept, tolerating a reason this build does not know - it
- * reads as the bare fact rather than as a blank.
- */
-export function importMemberNotKeptSentence(reason: string): string {
-  const sentences: Record<string, string> = NOT_KEPT_SENTENCES;
-  return sentences[reason] ?? "Not kept";
+/** An outcome in the diver's words, tolerating one this build does not know. */
+export function importOutcomeLabel(outcome: ImportDiveOutcome): string {
+  return labelOrFallback(OUTCOME_LABELS, outcome);
 }
 
 /**
- * What an import does to one dive, in the diver's words rather than the code.
- *
- * An updated dive says what it gains; a skipped one says why.
+ * A dive's start as the file gives it: its wall clock, then the offset that clock
+ * was on where it records one. A naive start stops after the clock, and a bare
+ * date after the date - no midnight, and no zone nothing recorded.
  */
-export function importDiveOutcomeSentence(row: ImportDiveReport): string {
-  switch (row.outcome) {
-    case "created":
-      return "New";
-    case "restored":
-      return "Brought back from deletion";
-    case "linked":
-      return "Already in your logbook";
-    case "updated": {
-      const gains = [
-        row.files_added > 0
-          ? row.files_added === 1
-            ? "a file"
-            : `${row.files_added} files`
-          : null,
-        row.recordings_added > 0
-          ? row.recordings_added === 1
-            ? "another computer's recording"
-            : `${row.recordings_added} other computers' recordings`
-          : null,
-      ].filter((gain): gain is string => gain !== null);
-      return gains.length > 0
-        ? `Adds ${gains.join(" and ")} to a dive you have`
-        : "Adds to a dive you have";
-    }
-    case "skipped":
-      return row.reason ? `Skipped: ${row.reason}` : "Skipped";
-    default:
-      return String(row.outcome);
-  }
+export function importStartText(startTime: string | null): string {
+  if (!startTime) return "—";
+  const when = formatDiveDateTime(startTime);
+  if (isDateOnlyStartTime(startTime)) return when;
+  const offset = parseUtcOffsetMinutes(startTime);
+  return offset === null ? when : `${when} ${formatUtcOffset(offset)}`;
 }
 
-/**
- * The import button's label, read from the dive rows alone.
- *
- * The dives created or restored where there are any; otherwise what the
- * updated rows add; otherwise just "Import". **It never says an import would
- * write nothing**: whether an apply changes a stored row is the writer's fact
- * and the report does not carry it - a fill of a recording's blanks, a
- * document's tags, a restored trip all write without a dive row saying so - so
- * the button stays offered and the rows and notes say what happens.
- */
-export function importButtonLabel(dives: readonly ImportDiveReport[]): string {
-  const brought = dives.filter(
-    (row) => row.outcome === "created" || row.outcome === "restored",
-  ).length;
-  if (brought > 0) return `Import ${countNoun(brought, "dive")}`;
-
-  const updated = dives.filter((row) => row.outcome === "updated");
-  const files = updated.reduce((sum, row) => sum + row.files_added, 0);
-  const recordings = updated.reduce(
-    (sum, row) => sum + row.recordings_added,
-    0,
+/** A row the review draws a card for: the rest are named on the log page. */
+export function importRowHasCard(row: LogbookImportDive): boolean {
+  return (
+    (row.outcome === "new" || row.outcome === "modified") && row.dive !== null
   );
-  const gains = [
-    files > 0 ? countNoun(files, "file") : null,
-    recordings > 0 ? countNoun(recordings, "recording") : null,
-  ].filter((gain): gain is string => gain !== null);
-  return gains.length > 0 ? `Import ${gains.join(" and ")}` : "Import";
+}
+
+const OUTCOME_ORDER: readonly ImportDiveOutcome[] = [
+  "new",
+  "modified",
+  "unchanged",
+  "skipped",
+];
+
+function outcomeCounts(
+  rows: readonly Pick<LogbookImportDive, "outcome">[],
+): Record<ImportDiveOutcome, number> {
+  const counts = { new: 0, modified: 0, unchanged: 0, skipped: 0 };
+  for (const row of rows) counts[row.outcome] += 1;
+  return counts;
+}
+
+export interface ImportSummaryTerm {
+  outcome: ImportDiveOutcome;
+  text: string;
+}
+
+/**
+ * The summary line's terms, "12 new dives", "2 modified", "5 unchanged", "1
+ * skipped", the zero ones left out. The first says what is being counted, and
+ * the rest lean on it.
+ */
+export function importSummaryTerms(
+  rows: readonly Pick<LogbookImportDive, "outcome">[],
+): ImportSummaryTerm[] {
+  const counts = outcomeCounts(rows);
+  return OUTCOME_ORDER.filter((outcome) => counts[outcome] > 0).map(
+    (outcome, index) => ({
+      outcome,
+      text:
+        index === 0
+          ? `${counts[outcome]} ${outcome} ${counts[outcome] === 1 ? "dive" : "dives"}`
+          : `${counts[outcome]} ${outcome}`,
+    }),
+  );
+}
+
+/** A history row's counts in a sentence: "12 new, 2 modified". */
+export function importCountsSentence(
+  counts: LogbookImportSummary["counts"],
+): string {
+  const terms = OUTCOME_ORDER.filter((outcome) => counts[outcome]).map(
+    (outcome) => `${counts[outcome]} ${outcome}`,
+  );
+  return terms.length > 0 ? terms.join(", ") : "No dives";
+}
+
+/**
+ * The import button's label: the dives the review draws a card for, or "Import"
+ * where there are none. **It never says an import would write nothing**: a
+ * check-in detail or a tag is written without a dive row saying so, so the button
+ * stays offered on every pending import.
+ */
+export function importButtonLabel(
+  dives: readonly Pick<LogbookImportDive, "outcome">[],
+): string {
+  const written = dives.filter(
+    (row) => row.outcome === "new" || row.outcome === "modified",
+  ).length;
+  return written > 0 ? `Import ${countNoun(written, "dive")}` : "Import";
 }
 
 /**

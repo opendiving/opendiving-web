@@ -59,41 +59,48 @@ export function RecordInfoDialog({
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-5">
-            {sections.map((section, index) => (
-              <section key={section.heading ?? index}>
-                {section.heading && (
-                  <h3 className="mb-2 text-sm font-semibold">
-                    {section.heading}
-                  </h3>
-                )}
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-                  {section.facts.map((fact) => (
-                    <div
-                      key={fact.label}
-                      className={cn("min-w-0", fact.wide && "col-span-full")}
-                    >
-                      <dt className="text-xs text-muted-foreground">
-                        {fact.label}
-                      </dt>
-                      <dd
-                        className={cn(
-                          "text-sm font-medium break-words",
-                          fact.wide && "whitespace-pre-wrap font-normal",
-                          isMissing(fact.value) && "text-muted-foreground",
-                        )}
-                      >
-                        {isMissing(fact.value) ? "-" : fact.value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
-            ))}
-          </div>
+          <RecordInfoSections sections={sections} />
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// The sections themselves, for a dialog that holds them behind a control of its own.
+export function RecordInfoSections({
+  sections,
+}: {
+  sections: RecordInfoSection[];
+}) {
+  return (
+    <div className="space-y-5">
+      {sections.map((section, index) => (
+        <section key={section.heading ?? index}>
+          {section.heading && (
+            <h3 className="mb-2 text-sm font-semibold">{section.heading}</h3>
+          )}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+            {section.facts.map((fact) => (
+              <div
+                key={fact.label}
+                className={cn("min-w-0", fact.wide && "col-span-full")}
+              >
+                <dt className="text-xs text-muted-foreground">{fact.label}</dt>
+                <dd
+                  className={cn(
+                    "text-sm font-medium break-words",
+                    fact.wide && "whitespace-pre-wrap font-normal",
+                    isMissing(fact.value) && "text-muted-foreground",
+                  )}
+                >
+                  {isMissing(fact.value) ? "-" : fact.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ))}
+    </div>
   );
 }
 

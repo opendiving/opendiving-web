@@ -21,6 +21,7 @@ import {
   formatTemperature,
   formatVisibility,
   formatWeight,
+  type UnitSystem,
 } from "@/lib/units";
 import {
   RecordInfoDialog,
@@ -36,14 +37,16 @@ const label = (
 // field. Training, People and Marine life link other records, as do the links
 // inside Location and Gear, and Tanks is a list of cylinders the page's own card
 // draws - so none of them is here.
-export function DiveInfoDialog({ dive }: { dive: Dive }) {
-  const units = useUnits();
+export function diveInfoSections(
+  dive: Dive,
+  units: UnitSystem,
+): RecordInfoSection[] {
   const measure = <T,>(
     value: T | null | undefined,
     format: (v: T) => string,
   ) => (value == null ? null : format(value));
 
-  const sections: RecordInfoSection[] = [
+  return [
     {
       heading: "Location",
       facts: [
@@ -124,6 +127,14 @@ export function DiveInfoDialog({ dive }: { dive: Dive }) {
       ],
     },
   ];
+}
 
-  return <RecordInfoDialog title="Dive information" sections={sections} />;
+export function DiveInfoDialog({ dive }: { dive: Dive }) {
+  const units = useUnits();
+  return (
+    <RecordInfoDialog
+      title="Dive information"
+      sections={diveInfoSections(dive, units)}
+    />
+  );
 }

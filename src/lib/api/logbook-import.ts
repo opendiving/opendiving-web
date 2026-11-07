@@ -3,9 +3,13 @@ import type {
   EmergencyContact,
   InsurancePolicy,
 } from "./checkin-details";
-import { apiClient, multipartRequest } from "./client";
+import {
+  apiClient,
+  multipartRequest,
+  type PaginatedResponse,
+} from "./client";
 import { labelOrFallback } from "./labels";
-import type { RecordingDevice } from "./dives";
+import type { Dive, DiveNumberingSummary, RecordingDevice } from "./dives";
 
 /**
  * A format the API's converter reads, as the converter itself names it.
@@ -214,7 +218,7 @@ export type ImportNoteCode =
   | "recording_attached"
   | "recording_filled"
   | "diver_not_applied"
-  // A check-in detail the document carries but the preview does not offer: a contact
+  // A check-in detail the document carries but the review does not offer: a contact
   // naming nobody, a policy naming no provider, a row past the cap, an address this
   // app cannot store, or this account's own sign-in address. A warning.
   | "check_in_detail_dropped"
@@ -222,17 +226,24 @@ export type ImportNoteCode =
   // the import page to re-read the shared check-in details and the signed-in user.
   | "check_in_detail_written"
   // The archive's portrait was taken, and the account's had changed since the
-  // preview, so the account's stayed. Information: nothing was lost.
+  // review, so the account's stayed. Information: nothing was lost.
   | "portrait_kept"
-  // A person was linked (apply), or would be (preview), to the account on this
-  // instance its entry names; the sentence names that account's current
+  // A person is linked, by the review's word or the apply's deed, to the account
+  // on this instance its entry names; the sentence names that account's current
   // username. Information: the link is what the file asked for, under the same
   // per-user limit a typed username counts against.
   | "account_linked"
-  // The tags the import adds to the diver's list (apply) or would (preview),
-  // named in one note. Tags are members of a dive rather than a collection, so
-  // no row of counts has them. Information: nothing is lost.
-  | "tags_created";
+  // The tags the import adds to the diver's list, named in one note. Tags are
+  // members of a dive rather than a collection, so no row of counts has them.
+  // Information: nothing is lost.
+  | "tags_created"
+  // What the apply could not hold to the review. A value the review listed had
+  // nowhere to land, the dive having changed since.
+  | "review_not_held"
+  // A dive the review showed as new reached the logbook another way first.
+  | "review_overtaken"
+  // The apply reached a dive the review has no row for, the logbook having moved.
+  | "review_unshown";
 
 /**
  * One line about one dive, whatever produced it: the import's own decision, or
@@ -277,20 +288,14 @@ export interface ImportNoteGroup extends ImportDiveNote {
 }
 
 /**
- * What would happen (preview) or did happen (apply) to one envelope collection.
- *
- * The four counts are disjoint and sum to what the document carries. `restored`
- * is its own figure and never hides inside `created` or `skipped`: un-deleting is
- * the one thing import does that nothing else in the app can, and a diver
- * restoring a backup is entitled to see it counted.
+ * What the import does to one envelope collection. The three counts are disjoint
+ * and sum to what the document carries.
  */
 export interface ImportCollectionReport {
   collection: string;
   created: number;
   /** Matched an existing row of the caller's; nothing was written. */
   linked: number;
-  /** A soft-deleted row of the caller's, brought back under its own uuid. */
-  restored: number;
   skipped: number;
 }
 
@@ -351,92 +356,58 @@ export interface ImportMemberReport {
   refusal: string | null;
 }
 
-/** What the import does to one dive, as the most that happens to it. */
-export type ImportDiveOutcome =
-  "created" | "restored" | "linked" | "updated" | "skipped";
+/**
+ * What the import does to one dive: the writer's fact, read off the dive before
+ * and after the pass rather than predicted from the plan.
+ */
+export type ImportDiveOutcome = "new" | "modified" | "unchanged" | "skipped";
 
-/** One dive the import creates or touches, and the files it came from. */
-export interface ImportDiveReport {
+/** One member of a dive the import changes, what it was and what it becomes. */
+export interface LogbookImportChange {
   /**
-   * The dive's identifier once written - the diver's own for a dive they
-   * already have - or `null` for a dive the import skips. The result's rows are
-   * the selection a later action over "the dives this import brought in" takes.
+   * Where in the dive's read shape, as a path: `recordings/0/device/name`,
+   * `mixtures/1/start_pressure`, `entry_latitude`. A list element added or
+   * removed is one entry naming the element, such as `recordings/1`. Not a closed
+   * set: what the writer changes is the list's to say, so `describeImportChange`
+   * shows a member this build has no label for by its path.
+   */
+  member: string;
+  /** The member as a dive read gives it; `null` where it did not exist. */
+  before: unknown;
+  /** Its value after the import; `null` where it no longer exists. */
+  after: unknown;
+}
+
+/** One dive the import's files hold, and what the import does to it. */
+export interface LogbookImportDive {
+  /**
+   * The dive's identifier, a new dive's as it will be written, or `null` for a
+   * row skipped with no dive to name. On an applied import, a `new` row that
+   * reached a dive the logbook already held carries that dive's: link to this,
+   * never to `dive.uuid`.
    */
   uuid: string | null;
   outcome: ImportDiveOutcome;
-  /** On an `updated` dive, how many files it gains. */
-  files_added: number;
-  /** On an `updated` dive, how many computers' recordings it gains. */
-  recordings_added: number;
-  /** On a `skipped` dive, why, in one sentence. */
-  reason: string | null;
+  /**
+   * The dive as the import leaves it, on a `new` or `modified` row, and on a row
+   * the apply skipped, the dive the review showed. Its recordings, files and
+   * profiles may hold identifiers the apply replaced, so nothing is downloaded
+   * or read through them.
+   */
+  dive: Dive | null;
+  /** Not empty exactly on a `modified` row. */
+  changes: LogbookImportChange[];
   /**
    * As the dive read gives it: with the dive's own UTC offset, naive where it
    * records none, a bare `YYYY-MM-DD` where it states no time.
    */
   start_time: string | null;
-  /** Seconds. */
-  submerged_time: number | null;
-  /** Metres. */
-  max_depth: number | null;
   /** Its first recording's device, whole, for `recordingDeviceLabel`. */
   device: RecordingDevice | null;
   /** The indexes in `members` of the files the dive came from. */
   members: number[];
-  /**
-   * Everything to say about this dive, in the import's order: its own decisions
-   * first, then what its files did not record, worked out, or read one way of
-   * several. None of these is in the report's `notes` as well.
-   */
-  notes: ImportDiveNote[];
-  /**
-   * This dive's notes past the row's cap, which `notes` leaves out and the
-   * report's `notes` holds.
-   */
-  notes_truncated: number;
-}
-
-/** The body of both responses: the same shape whether it is a plan or a result. */
-export interface ImportReport {
-  /** One entry per envelope collection, in the envelope's own order. */
-  collections: ImportCollectionReport[];
-  files: ImportFileReport;
-  /**
-   * Every note on no dive's row, and each row's overflow, grouped by code,
-   * collection and sentence in first-seen order.
-   *
-   * On the report rather than on the preview alone, so the panel that stays on
-   * screen after an import still tells a diver what their files left out - the
-   * same reason preview and result are one shape at all.
-   */
-  notes: ImportNoteGroup[];
-  /**
-   * Groups beyond the API's cap that are **not** in `notes`.
-   *
-   * Non-zero means the list above is not the whole story, and the UI has to say
-   * so. The collection counts stay complete either way; it is only the list of
-   * notes that is truncated.
-   */
-  notes_truncated: number;
-  /**
-   * One row per file, in the order the import reads them: each part of the
-   * request and each file a zip among them held.
-   */
-  members: ImportMemberReport[];
-  /**
-   * One row per dive the import creates or touches. The review and the result
-   * report dives through these alone: `collections` counts a document's records
-   * by what the planner does to each, so a pair's second file and a file adding
-   * to a stored dive count there as a skipped dive while their rows say "New"
-   * and "Adds a file".
-   */
-  dives: ImportDiveReport[];
-}
-
-/** What produced the document, if it said. */
-export interface ImportGenerator {
-  name: string | null;
-  version: string | null;
+  /** On a `skipped` row, why, in one sentence. */
+  reason: string | null;
 }
 
 /**
@@ -465,7 +436,7 @@ export type ImportCheckInDetail =
 export type ImportCheckInDetailKey = ImportCheckInDetail["detail"];
 
 /**
- * The details the diver confirmed, sent beside the token, keyed and bounded as
+ * The details the diver confirmed, sent with the apply, keyed and bounded as
  * `PATCH /user/checkin-details` keys and bounds them: a key left out is not written,
  * `null` clears a scalar, and a list replaces the account's whole.
  */
@@ -496,69 +467,110 @@ export interface ImportPortraitChoice {
   account_sha256: string | null;
 }
 
-/** What `POST /import/logbook/preview` returns. Nothing has been written. */
-export interface ImportPreview extends ImportReport {
-  /**
-   * The **first imported document's** own `format` marker, e.g. `divejson` -
-   * which for a converted file is the converter's output rather than the file
-   * the diver picked. What each file was is its `members` row.
-   */
-  format: string;
-  /** That document's declared version, e.g. `1.0`. */
-  version: string;
-  /**
-   * What produced that document, if it said. For a converted file this is the
-   * converter (`divejson convert`), not whatever wrote the diver's file.
-   */
-  generator: ImportGenerator | null;
+export type LogbookImportStatus = "pending" | "applied";
+
+/**
+ * An import the server holds: the review while it is `pending`, and the result
+ * once it is `applied`. One shape, so the review the diver approved and what
+ * became of it can be compared.
+ */
+export interface LogbookImportRead {
+  uuid: string;
+  status: LogbookImportStatus;
+  created_at: string;
+  /** `null` while pending. */
+  applied_at: string | null;
+  /** When the import is deleted, or `null` where this instance sets no limit. */
+  expires_at: string | null;
   /** Whether the import carries a full-export archive, which restores stored files. */
   archive: boolean;
   /**
-   * Hand this back to `apply` with the **same** files under the same names. It
-   * attests which bytes the report describes and nothing else - the import
-   * re-plans from scratch, so the token is not a stored plan to replay.
+   * One row per file, in the order the import reads them: each part of the
+   * upload and each file a zip among them held. A row with a `refusal` is a file
+   * that is not held.
    */
-  token: string;
+  members: ImportMemberReport[];
+  /** One entry per envelope collection, in the envelope's own order. */
+  collections: ImportCollectionReport[];
+  files: ImportFileReport;
+  /**
+   * One row per dive the files hold, newest first. On an applied import, a dive
+   * the review did not show follows them.
+   */
+  dives: LogbookImportDive[];
   /**
    * One entry per check-in detail the documents carry, in the order email, phone,
-   * date of birth, emergency contacts, insurance policies. Empty when they carry none.
+   * date of birth, emergency contacts, insurance policies. Empty when they carry
+   * none, and on an applied import.
    */
   check_in_details: ImportCheckInDetail[];
   /**
    * The archive's portrait, or `null` when the import carries none the API can
-   * offer - `notes` say why - or carries the account's own at the same crop.
+   * offer - the log says why - or carries the account's own at the same crop.
+   * Always `null` on an applied import.
    */
   portrait: ImportPortraitOffer | null;
+  /**
+   * The log's numbering as it stood at the upload, for the result to tell what
+   * the import changed in it.
+   */
+  numbering: DiveNumberingSummary;
 }
 
-/** What `POST /import/logbook` returns. Everything in it has been committed. */
-export type ImportResult = ImportReport;
+/** One applied import, as the history lists it. */
+export interface LogbookImportSummary {
+  uuid: string;
+  created_at: string;
+  applied_at: string;
+  /** How many of its dive rows came to each outcome; one none did is left out. */
+  counts: Partial<Record<ImportDiveOutcome, number>>;
+}
+
+/** Everything an import has to say about one dive. */
+export interface LogbookImportDiveNotes {
+  uuid: string | null;
+  start_time: string | null;
+  device: RecordingDevice | null;
+  outcome: ImportDiveOutcome;
+  /** Why a `skipped` dive was skipped. */
+  reason: string | null;
+  /**
+   * In the import's order: its own decisions first, then what the dive's files
+   * did not record, worked out, or read one way of several. None of these is in
+   * the log's `notes` as well.
+   */
+  notes: ImportDiveNote[];
+  /** This dive's notes past the row's cap, which the log's `notes` holds. */
+  notes_truncated: number;
+}
+
+/** The import's log: each dive's notes, and what is about no dive. */
+export interface LogbookImportNotes {
+  /** One per dive row, in the review's order. */
+  dives: LogbookImportDiveNotes[];
+  /**
+   * Every note on no dive's row, and each row's overflow, grouped by code,
+   * collection and sentence in first-seen order.
+   */
+  notes: ImportNoteGroup[];
+  /**
+   * Groups beyond the API's cap that are **not** in `notes`. Non-zero means the
+   * list is not the whole story, and the UI has to say so; the counts stay
+   * complete either way.
+   */
+  notes_truncated: number;
+}
+
+/** What the diver confirmed in the review. */
+export interface LogbookImportApply {
+  /** The check-in details to write; omitted, none is written. */
+  check_in_details?: ImportCheckInSubmission;
+  /** The choice for the review's `portrait`; omitted, the account keeps its own. */
+  portrait?: ImportPortraitChoice;
+}
 
 /** Bytes of the request sent so far, against the whole request's. */
 export type ImportUploadProgress = (sent: number, total: number) => void;
-
-function importForm(files: readonly File[]): FormData {
-  const formData = new FormData();
-  for (const file of files) formData.append("file", file);
-  return formData;
-}
-
-async function postImport<T>(
-  path: string,
-  formData: FormData,
-  onProgress?: ImportUploadProgress,
-): Promise<T> {
-  const response = await apiClient.post<T>(
-    path,
-    formData,
-    multipartRequest({
-      onUploadProgress: onProgress
-        ? ({ loaded, total }) => onProgress(loaded, total ?? loaded)
-        : undefined,
-    }),
-  );
-  return response.data;
-}
 
 /**
  * Logbook import: reading any number of files into the account that will hold
@@ -569,64 +581,99 @@ async function postImport<T>(
  * or a zip of any of those - and sorts them itself: nothing in the browser
  * parses a dive file or filters one by its name.
  *
- * **One import is two calls**, and they share a rate limit - the API allows 20 an
- * hour per user across both. Preview writes nothing and hands back a `token`;
- * apply takes that token plus the same files and commits in a single
- * transaction. The two-step exists so a diver approves a plan rather than
- * discovering what an import did afterwards, which is also why both return the
- * same `ImportReport` shape: a plan and a result are only worth comparing if
- * they are comparable.
+ * **The files go up once.** `create` leaves the readable ones on the server and
+ * answers with the review; `apply` sends no bytes. An account holds one pending
+ * import, so it can be finished from any device, and a second upload is a 409
+ * until the first is applied or discarded. An applied import stays readable as
+ * history for as long as the instance keeps it.
  *
- * Neither endpoint takes a user parameter. The bearer token names the only account
+ * Nothing here takes a user parameter. The bearer token names the only account
  * there is to import into.
  *
  * **A file the API cannot read is a row, never a status code.** A 4xx is about
  * the request as a whole: it was too large or carried too many files, no file
  * in it could be read at all, or its files would take the account past its
  * storage limit. Anything about an individual file, dive, site or record comes
- * back inside a 200 - in `members`, `dives` or `notes`.
+ * back inside a success - in `members`, `dives` or the log.
  */
 export const logbookImportAPI = {
   /**
-   * Plan the import and report what it would do. Writes nothing.
+   * Upload files, and read what importing them would do.
    *
-   * `onProgress` hears the upload's bytes: every read sends every byte.
+   * `onProgress` hears the upload's bytes.
    */
-  async preview(
+  async create(
     files: readonly File[],
     onProgress?: ImportUploadProgress,
-  ): Promise<ImportPreview> {
-    return postImport<ImportPreview>(
-      "/import/logbook/preview",
-      importForm(files),
-      onProgress,
+  ): Promise<LogbookImportRead> {
+    const formData = new FormData();
+    for (const file of files) formData.append("file", file);
+    const response = await apiClient.post<LogbookImportRead>(
+      "/imports",
+      formData,
+      multipartRequest({
+        onUploadProgress: onProgress
+          ? ({ loaded, total }) => onProgress(loaded, total ?? loaded)
+          : undefined,
+      }),
     );
+    return response.data;
+  },
+
+  /** The account's pending import, from any device; a 404 when it has none. */
+  async pending(): Promise<LogbookImportRead> {
+    const response = await apiClient.get<LogbookImportRead>("/imports/pending");
+    return response.data;
+  },
+
+  /** The account's applied imports, most recently applied first. */
+  async list(
+    page: number,
+    itemsPerPage?: number,
+  ): Promise<PaginatedResponse<LogbookImportSummary>> {
+    const response = await apiClient.get<
+      PaginatedResponse<LogbookImportSummary>
+    >("/imports", { params: { page, items_per_page: itemsPerPage } });
+    return response.data;
+  },
+
+  /** One import of the account's, pending or applied. */
+  async get(uuid: string): Promise<LogbookImportRead> {
+    const response = await apiClient.get<LogbookImportRead>(`/import/${uuid}`);
+    return response.data;
+  },
+
+  /** An import's log. */
+  async notes(uuid: string): Promise<LogbookImportNotes> {
+    const response = await apiClient.get<LogbookImportNotes>(
+      `/import/${uuid}/notes`,
+    );
+    return response.data;
   },
 
   /**
-   * Apply a previewed import, in one transaction.
-   *
-   * `files` must be the ones this `token`'s preview was sent, under the same
-   * names: the API hashes the parts again and refuses a token minted for a
-   * different set, which is what stops a diver approving one plan and
-   * uploading another.
-   *
-   * `checkIn` is the check-in details to write, as a JSON field; omitted, none is
-   * written.
-   * `portrait` is the choice for the preview's `portrait`; omitted, the account
-   * keeps its own.
+   * Write a pending import as it was reviewed. A 409 or a 404 means another
+   * device got there first.
    */
   async apply(
-    files: readonly File[],
-    token: string,
-    checkIn?: ImportCheckInSubmission,
-    portrait?: ImportPortraitChoice,
-    onProgress?: ImportUploadProgress,
-  ): Promise<ImportResult> {
-    const formData = importForm(files);
-    formData.append("token", token);
-    if (checkIn) formData.append("check_in_details", JSON.stringify(checkIn));
-    if (portrait) formData.append("portrait", JSON.stringify(portrait));
-    return postImport<ImportResult>("/import/logbook", formData, onProgress);
+    uuid: string,
+    body: LogbookImportApply,
+  ): Promise<LogbookImportRead> {
+    const response = await apiClient.post<LogbookImportRead>(
+      `/import/${uuid}/apply`,
+      body,
+    );
+    return response.data;
+  },
+
+  /**
+   * Discard a pending import, or delete an applied one from the history.
+   *
+   * `status` is the status the caller believes it is deleting: a 409 when it is
+   * not, so a discard sent from a review another device has applied deletes
+   * nothing.
+   */
+  async remove(uuid: string, status: LogbookImportStatus): Promise<void> {
+    await apiClient.delete(`/import/${uuid}`, { params: { status } });
   },
 };

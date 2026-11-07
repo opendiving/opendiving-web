@@ -1,390 +1,86 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import type { ImportCheckInChoices } from "@/components/import/import-check-in-details";
-import { ImportDiveTable } from "@/components/import/import-dive-table";
-import { ImportDropZone } from "@/components/import/import-drop-zone";
-import {
-  ImportFileList,
-  type SelectedImportFile,
-} from "@/components/import/import-file-list";
-import { ImportNumberingSuggestion } from "@/components/import/import-numbering-suggestion";
-import { ImportReportView } from "@/components/import/import-report-view";
+import { ImportBodySkeleton } from "@/components/import/import-page-frame";
+import { ImportHistory } from "@/components/import/import-history";
+import { ImportPicker } from "@/components/import/import-picker";
 import { ImportReview } from "@/components/import/import-review";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
-import { Meter } from "@/components/ui/meter";
-import { PageSpinner } from "@/components/ui/page-spinner";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 import { StatusMessage } from "@/components/ui/status-message";
-import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { useCheckinDetails } from "@/contexts/CheckinDetailsContext";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { divesAPI, type DiveNumberingSummary } from "@/lib/api/dives";
-import { getApiErrorMessage } from "@/lib/api/error";
+import { getApiErrorStatus } from "@/lib/api/error";
 import {
   logbookImportAPI,
-  MAX_IMPORT_DOCUMENT_SIZE,
-  type ImportPreview,
-  type ImportResult,
+  type LogbookImportRead,
 } from "@/lib/api/logbook-import";
-import type { WalkedDrop } from "@/lib/dropped-files";
-import { formatFileSize } from "@/lib/format";
-import { checkInWasWritten } from "@/lib/import-check-in";
-import {
-  importFileRefusal,
-  importSelectionRefusal,
-  isHiddenImportPath,
-  isZipFile,
-} from "@/lib/logbook-import";
-import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
-// The files a read was sent, in the order sent - a `members` row's `part` is an
-// index into it - held beside the token because the apply sends them again and
-// the API refuses a token minted for a different set.
-interface Plan {
-  sent: SelectedImportFile[];
-  preview: ImportPreview;
-  // The log's numbering beside the read, which writes nothing: the log as the
-  // import found it, for the result to tell what the import changed in it.
-  // Null when it could not be read, and the result then offers no renumber.
-  numbering: DiveNumberingSummary | null;
-}
+// `undefined` until the page has heard, `null` once it knows nothing is pending.
+type Shown = LogbookImportRead | null | undefined;
 
-interface Transfer {
-  sent: number;
-  total: number;
-}
+function ImportFlow({ enabled }: { enabled: boolean }) {
+  const [record, setRecord] = useState<Shown>(undefined);
+  const [loadFailed, setLoadFailed] = useState(false);
 
-const selectionKey = ({ file, path }: { file: File; path: string }) =>
-  `${path}\u0000${file.size}\u0000${file.lastModified}`;
-
-function UploadProgress({ transfer }: { transfer: Transfer }) {
-  const uploaded = transfer.sent >= transfer.total;
-  return (
-    <div className="space-y-2">
-      <Progress
-        value={transfer.sent}
-        max={transfer.total}
-        aria-label="Uploading the files"
-        valueText={`${formatFileSize(transfer.sent)} of ${formatFileSize(transfer.total)}`}
-      />
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        {uploaded ? (
-          <>
-            <ButtonSpinner />
-            Reading the files...
-          </>
-        ) : (
-          `Uploading ${formatFileSize(transfer.sent)} of ${formatFileSize(transfer.total)}`
-        )}
-      </p>
-    </div>
-  );
-}
-
-function ImportFlow() {
-  const { toast } = useToast();
-  const { refreshUser } = useAuth();
-  const { reload: reloadCheckinDetails } = useCheckinDetails();
-  const nextId = useRef(0);
-
-  const [files, setFiles] = useState<SelectedImportFile[]>([]);
-  const [plan, setPlan] = useState<Plan | null>(null);
-  const [stale, setStale] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
-  const [numberingBefore, setNumberingBefore] =
-    useState<DiveNumberingSummary | null>(null);
-  const [phase, setPhase] = useState<"idle" | "reading" | "importing">("idle");
-  const [transfer, setTransfer] = useState<Transfer | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  // What the browser could not read out of the last drop, which never reached
-  // the selection and so has no row to say so.
-  const [unreadable, setUnreadable] = useState<string[]>([]);
-
-  const [walking, setWalking] = useState(false);
-  const busy = phase !== "idle" || walking;
-  const sendable = files.filter((item) => item.refusal === null);
-  const selectionRefusal = importSelectionRefusal(
-    sendable.map((item) => item.file),
-  );
-  const unzippedBytes = sendable
-    .filter((item) => !isZipFile(item.file))
-    .reduce((sum, item) => sum + item.file.size, 0);
-
-  // A plan describes the files it was read from and no others, so any change to
-  // the selection discards it and offers the read again.
-  const selectionChanged = () => {
-    if (plan) setStale(true);
-    setPlan(null);
-    setError(null);
-  };
-
-  const addFiles = ({ picked, unreadable }: WalkedDrop) => {
-    setUnreadable(unreadable);
-    // Packaging and empty files are dropped without a row: the API reads nothing
-    // from either, and a `.DS_Store` among 46 dives is noise.
-    const known = new Set(files.map(selectionKey));
-    const added = picked
-      .filter(
-        (item) =>
-          item.file.size > 0 &&
-          !isHiddenImportPath(item.path) &&
-          !known.has(selectionKey(item)),
-      )
-      .map(({ file, path }) => ({
-        id: nextId.current++,
-        file,
-        path,
-        refusal: importFileRefusal(file),
-      }));
-    if (added.length === 0) return;
-    setFiles((current) => [...current, ...added]);
-    selectionChanged();
-  };
-
-  const removeFile = (id: number) => {
-    setFiles((current) => current.filter((item) => item.id !== id));
-    selectionChanged();
-  };
-
-  const trackTransfer = (sent: number, total: number) =>
-    setTransfer({ sent, total });
-
-  const read = async () => {
-    const sent = sendable;
-    // A new read supersedes whatever was on screen, so the old plan goes before
-    // the request rather than after it: a read that fails must not leave the
-    // previous files' rows standing.
-    setPlan(null);
-    setStale(false);
-    setError(null);
-    setPhase("reading");
-    setTransfer({
-      sent: 0,
-      total: sent.reduce((sum, item) => sum + item.file.size, 0),
-    });
+  const load = useCallback(async () => {
+    setLoadFailed(false);
     try {
-      const [preview, numbering] = await Promise.all([
-        logbookImportAPI.preview(
-          sent.map((item) => item.file),
-          trackTransfer,
-        ),
-        divesAPI.getDiveNumbering().catch((caught) => {
-          console.error("Failed to read the log's numbering:", caught);
-          return null;
-        }),
-      ]);
-      setPlan({ sent, preview, numbering });
+      setRecord(await logbookImportAPI.pending());
     } catch (caught) {
-      setError(
-        getApiErrorMessage(
-          caught,
-          // Shown only when the API sent no `detail` - a proxy's bare 413 among
-          // them. The API's own refusals name the formats and the bounds.
-          "The files could not be read. Please check them and try again.",
-        ),
-      );
-    } finally {
-      setPhase("idle");
-      setTransfer(null);
-    }
-  };
-
-  const apply = async ({ details, portrait }: ImportCheckInChoices) => {
-    if (!plan) return;
-    setError(null);
-    setPhase("importing");
-    setTransfer({
-      sent: 0,
-      total: plan.sent.reduce((sum, item) => sum + item.file.size, 0),
-    });
-    try {
-      const applied = await logbookImportAPI.apply(
-        plan.sent.map((item) => item.file),
-        plan.preview.token,
-        details,
-        portrait,
-        trackTransfer,
-      );
-      // Only when a detail or the portrait changed: the check-in surfaces show the
-      // shared copy, and the portrait's digest rides on the signed-in user - one
-      // note marks both.
-      if (checkInWasWritten(applied)) {
-        reloadCheckinDetails();
-        await refreshUser();
+      if (getApiErrorStatus(caught) === 404) setRecord(null);
+      else {
+        console.error("Failed to read the pending import:", caught);
+        setLoadFailed(true);
       }
-      setResult(applied);
-      setNumberingBefore(plan.numbering);
-      setPlan(null);
-      setFiles([]);
-      toast({
-        title: "Imported",
-        description: "Each dive below says what happened to it.",
-      });
-    } catch (caught) {
-      setError(
-        getApiErrorMessage(
-          caught,
-          "The import could not be completed. Nothing has been changed.",
-        ),
-      );
-    } finally {
-      setPhase("idle");
-      setTransfer(null);
     }
-  };
+  }, []);
 
-  if (result) {
+  useEffect(() => {
+    if (enabled) void load();
+  }, [enabled, load]);
+
+  if (loadFailed) {
     return (
-      <section aria-labelledby="import-result-heading" className="space-y-4">
-        {/* `role="status"` so the outcome is announced rather than only drawn;
-            the toast carries the announcement, and this is the copy that stays. */}
-        <div role="status">
-          <h2 id="import-result-heading" className="text-lg font-semibold">
-            Imported
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            The import is written. Each dive below says what happened to it.
-          </p>
-        </div>
-        {result.dives.length > 0 && (
-          <ImportDiveTable
-            dives={result.dives}
-            members={result.members}
-            written
-          />
-        )}
-        {numberingBefore && (
-          <ImportNumberingSuggestion
-            before={numberingBefore}
-            dives={result.dives}
-          />
-        )}
-        {/* `archive` is a property of the files, which the preview reported and
-            the result does not repeat; `true` suppresses advice to import the
-            archive about a decision already taken. */}
-        <ImportReportView report={result} archive />
-        <ButtonLink href="/dives">Done</ButtonLink>
-      </section>
+      <div className="space-y-3">
+        <StatusMessage variant="error">
+          Your import could not be loaded.
+        </StatusMessage>
+        <Button type="button" variant="outline" onClick={load}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (record === undefined) return <ImportBodySkeleton />;
+
+  if (record === null) {
+    return (
+      <div className="space-y-6">
+        <ImportPicker onCreated={setRecord} onOpenPending={load} />
+        <ImportHistory />
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <section aria-labelledby="import-files-heading" className="space-y-3">
-        <h2 id="import-files-heading" className="sr-only">
-          Files
-        </h2>
-        <ImportDropZone
-          disabled={busy}
-          onFiles={addFiles}
-          onWalking={setWalking}
-        />
-        {unreadable.length > 0 && (
-          <p role="status" className="text-sm text-muted-foreground">
-            {`The browser could not read ${unreadable.length === 1 ? "this from the drop" : `these ${unreadable.length} from the drop`}, so ${unreadable.length === 1 ? "it was" : "they were"} left out: ${unreadable.join(", ")}.`}
-          </p>
-        )}
-
-        {files.length > 0 && (
-          <>
-            <ImportFileList
-              files={files}
-              members={plan?.preview.members ?? []}
-              sent={plan?.sent ?? []}
-              disabled={busy}
-              onRemove={removeFile}
-            />
-            {/* Information rather than a refusal: only the API can tell a
-                full-export archive from a zip of computer files, so what one
-                import may read in all is counted over the files that are not
-                zips, and the API answers past it. */}
-            <div className="space-y-1">
-              <Meter
-                value={unzippedBytes}
-                max={MAX_IMPORT_DOCUMENT_SIZE}
-                aria-label="Files to read, against what one import can read"
-                valueText={`${formatFileSize(unzippedBytes)} of ${formatFileSize(MAX_IMPORT_DOCUMENT_SIZE)}`}
-              />
-              <p className="text-xs text-muted-foreground">
-                {`${formatFileSize(unzippedBytes)} of files that are not zips, of the ${formatFileSize(MAX_IMPORT_DOCUMENT_SIZE)} one import can read.`}
-              </p>
-            </div>
-            <StatusMessage variant="error">{selectionRefusal}</StatusMessage>
-            {!plan && (
-              <div className="space-y-2">
-                {stale && (
-                  <p className="text-sm text-muted-foreground">
-                    The files changed since they were read. Read them again to
-                    see what they would import.
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    onClick={read}
-                    disabled={
-                      busy || sendable.length === 0 || selectionRefusal !== null
-                    }
-                  >
-                    {stale ? "Read the files again" : "Read the files"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setFiles([]);
-                      setStale(false);
-                      setError(null);
-                    }}
-                    disabled={busy}
-                  >
-                    Remove all
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {phase === "reading" && transfer && (
-          <UploadProgress transfer={transfer} />
-        )}
-      </section>
-
-      <StatusMessage variant="error">{error}</StatusMessage>
-
-      {plan && (
-        <ImportReview
-          key={plan.preview.token}
-          preview={plan.preview}
-          isImporting={phase === "importing"}
-          disabled={busy}
-          onImport={apply}
-        />
-      )}
-
-      {phase === "importing" && transfer && (
-        <UploadProgress transfer={transfer} />
-      )}
-    </div>
+    <ImportReview
+      record={record}
+      onApplied={setRecord}
+      onRemoved={load}
+      onOvertaken={load}
+    />
   );
 }
 
-// `/import`: one door for every file the app reads. The files are read - which
-// writes nothing - and the page shows what each became and what would happen to
-// each dive; the import writes that, and the result is the dives it reached.
+// `/import`: one door for every file the app reads. The files go up once and the
+// server holds them, so what this page shows is the account's own state: a pending
+// import, from whichever device uploaded it, or the picker and what came before.
 export function ImportPageContent() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
 
-  if (isLoading) {
-    return <PageSpinner variant="inset" />;
-  }
-
-  if (!isAuthenticated || !user) {
+  if (!isLoading && (!isAuthenticated || !user)) {
     return null; // Will redirect to signin
   }
 
@@ -392,11 +88,11 @@ export function ImportPageContent() {
     <div>
       <IndexHero
         title="Import"
-        description="Bring dives in from your dive computer, another logbook or an OpenDiving archive. You see what each file becomes before anything is written."
+        description="Bring dives in from your dive computer, another logbook or an OpenDiving archive. Your files go up once, and you can review what they add and change on any device."
       />
 
       <div className={HERO_BODY}>
-        <ImportFlow />
+        <ImportFlow enabled={!!user} />
       </div>
     </div>
   );

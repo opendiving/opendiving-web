@@ -1,5 +1,5 @@
 import type { ConditionsLookup, Dive, DiveConditions } from "@/lib/api/dives";
-import type { ImportDiveReport } from "@/lib/api/logbook-import";
+import type { LogbookImportDive } from "@/lib/api/logbook-import";
 
 // A hand-logged dive with every required member and nothing else, so a test
 // states only the fields it is about. Spelled out rather than cast: a member

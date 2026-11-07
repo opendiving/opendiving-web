@@ -1,5 +1,5 @@
 import { DiveNumberingSummary } from "@/lib/api/dives";
-import type { ImportDiveReport } from "@/lib/api/logbook-import";
+import type { LogbookImportDive } from "@/lib/api/logbook-import";
 import { combineStartTime, diveStartInstant } from "@/lib/date-time";
 import { countNoun } from "@/lib/format";
 
@@ -88,11 +88,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // it starts always reaches the earliest dive: a day read in the dive's own zone
 // can begin after the dive does in the browser's.
 export function importRenumberScope(
-  dives: readonly ImportDiveReport[],
+  dives: readonly Pick<LogbookImportDive, "outcome" | "start_time">[],
   offsetMinutes: number,
 ): ImportRenumberScope | null {
   const instants = dives
-    .filter((dive) => dive.outcome === "created" || dive.outcome === "restored")
+    .filter((dive) => dive.outcome === "new")
     .map((dive) => dive.start_time)
     .filter((start): start is string => start !== null)
     .map(diveStartInstant)

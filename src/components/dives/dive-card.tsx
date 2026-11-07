@@ -24,6 +24,7 @@ import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatDepth, formatTemperature } from "@/lib/units";
+import { cn } from "@/lib/utils";
 import { Edit } from "lucide-react";
 
 // The profile's band at the foot of the backdrop, just clear of the name: the
@@ -44,6 +45,19 @@ interface DiveCardProps {
   // The control that adds a dive the trip page shows but the trip does not hold
   // yet. A card handed one is drawn muted, with it in place of the menu.
   addToTrip?: ReactNode;
+  // A dive of an import rather than of the log, which has no menu: it may not
+  // exist yet.
+  importRow?: DiveCardImportRow;
+}
+
+export interface DiveCardImportRow {
+  // Stands in the card's corner, where the menu would.
+  chip: ReactNode;
+  // The dive the card links to, which an import's row names apart from the dive
+  // it shows; left out, the card links to nothing.
+  linkTo?: string;
+  // Makes the card a button in place of its link.
+  open?: { onOpen: () => void; label: string };
 }
 
 // One dive as a card, in every list of dives: a map of its sites and fixes as
@@ -55,6 +69,7 @@ export function DiveCard({
   onDelete,
   isDeleting,
   addToTrip,
+  importRow,
 }: DiveCardProps) {
   const units = useUnits();
   // The dive's page and its edit form both return to the page the card is on.
@@ -80,31 +95,48 @@ export function DiveCard({
       }),
     });
   }
-  // Only into a spare slot: the card's row holds three figures.
-  if (figures.length < 3 && dive.species_count) {
-    figures.push({ label: "Species seen", value: dive.species_count });
+  // Only into a spare slot: the card's row holds three figures. An import's row
+  // carries the dive's detail shape, which has the sightings and not their count.
+  const speciesCount = dive.species_count ?? dive.sightings?.length;
+  if (figures.length < 3 && speciesCount) {
+    figures.push({ label: "Species seen", value: speciesCount });
   }
 
   const chips = diveChips(dive);
+  const title = (
+    <DiveTitle
+      diveNumber={dive.dive_number}
+      sites={dive.dive_sites}
+      course={dive.course_uuid != null}
+      rating={dive.rating}
+    />
+  );
+  const linkTo = importRow ? importRow.linkTo : dive.uuid;
 
   return (
     <BackdropCard
-      actionsLabel={`Actions for dive #${dive.dive_number}`}
-      corner={addToTrip}
+      {...(importRow
+        ? { corner: importRow.chip }
+        : {
+            actionsLabel: `Actions for dive #${dive.dive_number}`,
+            corner: addToTrip,
+            actions: (
+              <>
+                <DropdownMenuItem
+                  render={
+                    <Link href={withReturnTo(`/dives/${dive.uuid}/edit`)} />
+                  }
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                {onDelete && (
+                  <DeleteMenuItem onSelect={onDelete} disabled={isDeleting} />
+                )}
+              </>
+            ),
+          })}
       muted={!!addToTrip}
-      actions={
-        <>
-          <DropdownMenuItem
-            render={<Link href={withReturnTo(`/dives/${dive.uuid}/edit`)} />}
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </DropdownMenuItem>
-          {onDelete && (
-            <DeleteMenuItem onSelect={onDelete} disabled={isDeleting} />
-          )}
-        </>
-      }
       backdrop={(coveredBottom) => {
         // The map's places and the water's bubbles centre above the profile
         // and the chips rather than behind them.
@@ -153,18 +185,28 @@ export function DiveCard({
           <div className="absolute bottom-1 left-0 max-w-full">{chips}</div>
         </div>
       )}
-      <Link
-        href={withReturnTo(`/dives/${dive.uuid}`)}
-        className={BACKDROP_CARD_LINK}
-      >
-        <DiveTitle
-          diveNumber={dive.dive_number}
-          sites={dive.dive_sites}
-          course={dive.course_uuid != null}
-          rating={dive.rating}
-        />
-        {addToTrip && <span className="sr-only">{" (Not in this trip)"}</span>}
-      </Link>
+      {importRow?.open ? (
+        <button
+          type="button"
+          onClick={importRow.open.onOpen}
+          aria-label={importRow.open.label}
+          className={cn(BACKDROP_CARD_LINK, "w-full text-left")}
+        >
+          {title}
+        </button>
+      ) : linkTo ? (
+        <Link
+          href={withReturnTo(`/dives/${linkTo}`)}
+          className={BACKDROP_CARD_LINK}
+        >
+          {title}
+          {addToTrip && (
+            <span className="sr-only">{" (Not in this trip)"}</span>
+          )}
+        </Link>
+      ) : (
+        <div className="font-medium text-foreground">{title}</div>
+      )}
       <div className="text-xs">
         <FactsLine facts={diveFacts(dive)} />
       </div>

@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { divesAPI, type DiveNumberingSummary } from "@/lib/api/dives";
-import type { ImportDiveReport } from "@/lib/api/logbook-import";
+import type { LogbookImportDive } from "@/lib/api/logbook-import";
 import { formatDateOnly, getBrowserUtcOffsetMinutes } from "@/lib/date-time";
 import {
   describeDiveNumbering,
@@ -24,9 +24,9 @@ interface Suggestion {
 }
 
 interface ImportNumberingSuggestionProps {
-  /** The log's numbering as it stood when the files were read. */
+  /** The log's numbering as it stood when the files were uploaded. */
   before: DiveNumberingSummary;
-  dives: readonly ImportDiveReport[];
+  dives: readonly LogbookImportDive[];
 }
 
 // The result's offer to renumber, shown only where the import left more dives

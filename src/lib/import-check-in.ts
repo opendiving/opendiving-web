@@ -4,7 +4,7 @@ import type {
   ImportCheckInSubmission,
   ImportPortraitChoice,
   ImportPortraitOffer,
-  ImportReport,
+  LogbookImportNotes,
 } from "@/lib/api/logbook-import";
 import { formatDateOnly } from "@/lib/date-time";
 import {
@@ -15,7 +15,7 @@ import {
   type CheckinDetailsFormValues,
 } from "@/lib/validations/checkin-details";
 
-// Each detail is keyed by the member of the check-in details it is, so the preview
+// Each detail is keyed by the member of the check-in details it is, so the review
 // edits it in the field `/settings` edits it in, bounded and cleared by one set of
 // rules wherever it is typed.
 export const CHECK_IN_DETAIL_LABELS: Record<ImportCheckInDetailKey, string> = {
@@ -108,7 +108,7 @@ export function checkInSubmission(
 }
 
 /**
- * The apply's `portrait` field: the choice, with the account digest the preview
+ * The apply's `portrait` field: the choice, with the account digest the review
  * showed whichever way it went, or `undefined` when nothing was offered.
  */
 export function portraitChoice(
@@ -123,6 +123,6 @@ export function portraitChoice(
 }
 
 /** Whether an apply changed any of the account's check-in details or its portrait. */
-export function checkInWasWritten(report: ImportReport): boolean {
-  return report.notes.some((note) => note.code === "check_in_detail_written");
+export function checkInWasWritten(log: LogbookImportNotes): boolean {
+  return log.notes.some((note) => note.code === "check_in_detail_written");
 }

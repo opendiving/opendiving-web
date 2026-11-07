@@ -9,7 +9,7 @@ interface ImportDiveNotesProps {
   notesTruncated: number;
 }
 
-// Everything the import has to say about one dive, under that dive's row: each
+// Everything the import has to say about one dive, under that dive's heading: each
 // note is written as "this dive", and only reads right beside it.
 export function ImportDiveNotes({
   notes,

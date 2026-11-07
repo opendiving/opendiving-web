@@ -112,7 +112,7 @@ export function sameDevice(
  * because it is the source format's claim about its own default rather than the
  * device's about the dive.
  */
-const MODE_LABELS: Record<string, string> = {
+export const MODE_LABELS: Record<string, string> = {
   open_circuit: "Open circuit",
   closed_circuit: "Closed circuit",
   semi_closed: "Semi-closed",
@@ -132,7 +132,7 @@ const ALGORITHM_LABELS: Record<string, string> = {
  * `EN13319` is the European depth-gauge calibration, not a kind of water, and
  * keeps the standard's spelling because it has no other name.
  */
-const SALINITY_LABELS: Record<string, string> = {
+export const SALINITY_LABELS: Record<string, string> = {
   fresh: "Fresh",
   en13319: "EN13319",
   salt: "Salt",
@@ -155,7 +155,9 @@ const SALINITY_LABELS: Record<string, string> = {
  * nothing without the model and the computer beside it, which is exactly where
  * this line is rendered.
  */
-function decoModelLabel(model: RecordingDecoModel | null | undefined) {
+export function decoModelLabel(
+  model: RecordingDecoModel | null | undefined,
+) {
   if (!model) return null;
 
   const named =
