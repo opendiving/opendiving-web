@@ -48,7 +48,9 @@ export function ImportDiveCards({
 
   return (
     <>
-      {/* One dive to a row below `lg`, two above, as /dives. */}
+      {/* One dive to a row below `lg`, two above, as /dives. Not paged, the review
+          being one document: `BackdropCard` mounts a card's map only near the
+          viewport, so a long import asks for no tile it does not show. */}
       <BackdropCardList layout="grid gap-4 max-sm:gap-2.5 lg:grid-cols-2">
         {rows.map((row, index) => (
           <DiveCard
