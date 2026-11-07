@@ -10,7 +10,7 @@ import {
   type AcceptIntoTarget,
   type ProposalOutcome,
 } from "@/components/admin/proposal-decisions";
-import { ProposalMap } from "@/components/admin/proposal-map-lazy";
+import { ProposalMap } from "@/components/map/proposal-map-lazy";
 import {
   openStreetMapPinHref,
   pinMoveMetres,
@@ -99,7 +99,10 @@ export function ProposalReview({
           <div className="space-y-2">
             {markers.length > 0 ? (
               <>
-                <ProposalMap markers={markers} />
+                <ProposalMap
+                  markers={markers}
+                  unsupported="This browser cannot display the map. The pin can still be opened on OpenStreetMap, and the matches are listed here."
+                />
                 {moved !== null && (
                   <p className="text-sm">
                     The pin moves {formatDistance(moved, units)}.

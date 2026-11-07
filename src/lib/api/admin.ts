@@ -172,8 +172,9 @@ export interface AdminSpeciesPhotoCandidates {
  * would and nothing else, notes and tags included, whose it is being the proposer's.
  *
  * `current` is the site as it stands now. `proposed` is what is under review: a new
- * site as it stood when proposed, or the record with the change applied, with the
- * members the proposer named in `changed`. `matches` are the records it may be,
+ * site as the proposal holds it, which follows the proposer's edits while it waits,
+ * or the record with the change applied, with the members the proposer named in
+ * `changed`. `matches` are the records it may be,
  * strongest first.
  */
 export interface AdminDiveSiteProposal {

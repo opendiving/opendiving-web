@@ -16,6 +16,13 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
 }));
 
+// The real map is the browser lane's (`proposal-map.browser.test.tsx`).
+vi.mock("@/components/map/proposal-map-lazy", () => ({
+  ProposalMap: ({ markers }: { markers: { label: string }[] }) => (
+    <div data-testid="map">{markers.map((m) => m.label).join(", ")}</div>
+  ),
+}));
+
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const getCommonsMatches = vi.mocked(diveSitesAPI.getCommonsMatches);
 const proposeDiveSite = vi.mocked(diveSitesAPI.proposeDiveSite);
@@ -58,6 +65,7 @@ const open = (site: DiveSite = SITE) => {
   const onProposed = vi.fn();
   const onReplace = vi.fn();
   const onOpenChange = vi.fn();
+  const onEdit = vi.fn();
   render(
     <ProposeSiteDialog
       open
@@ -65,15 +73,14 @@ const open = (site: DiveSite = SITE) => {
       site={site}
       onProposed={onProposed}
       onReplace={onReplace}
+      onEdit={onEdit}
     />,
   );
-  return { onProposed, onReplace, onOpenChange };
+  return { onProposed, onReplace, onOpenChange, onEdit };
 };
 
-const continueAsNew = async () =>
-  userEvent.click(
-    await screen.findByRole("button", { name: "Continue as a new site" }),
-  );
+// No matches, so the review step is what opens.
+const reviewed = () => screen.findByText("What would be published");
 
 beforeEach(() => {
   getCommonsMatches.mockReset();
@@ -147,9 +154,49 @@ describe("ProposeSiteDialog", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("skips the matches step on an empty answer, with no step to go back to", async () => {
+    const { onOpenChange } = open();
+
+    await reviewed();
+    expect(
+      screen.queryByText("No Commons site looks like this one."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Back" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("goes back to the matches it came from", async () => {
+    getCommonsMatches.mockResolvedValue([match()]);
+    open();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Continue as a new site" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(
+      screen.getByRole("button", { name: "Replace with Commons site" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the site's pin on the map, and hands Edit to the host", async () => {
+    const { onEdit, onOpenChange } = open();
+    await reviewed();
+
+    expect(screen.getByTestId("map")).toHaveTextContent(SITE.name);
+
+    await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(onEdit).toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   it("shows exactly what would be published, and names what would not", async () => {
     open();
-    await continueAsNew();
+    await reviewed();
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent(SITE.uuid);
@@ -178,7 +225,7 @@ describe("ProposeSiteDialog", () => {
       decided_at: null,
     });
     const { onProposed, onOpenChange } = open();
-    await continueAsNew();
+    await reviewed();
 
     const send = screen.getByRole("button", { name: "Send proposal" });
     expect(send).toBeDisabled();
@@ -214,7 +261,7 @@ describe("ProposeSiteDialog", () => {
       response: { status: 429, data: { detail: "Too many proposals today" } },
     });
     const { onProposed } = open();
-    await continueAsNew();
+    await reviewed();
     await userEvent.click(screen.getByRole("checkbox"));
     await userEvent.click(
       screen.getByRole("button", { name: "Send proposal" }),

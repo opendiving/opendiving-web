@@ -47,6 +47,12 @@ const account = vi.hoisted(() => ({
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => account,
 }));
+const instance = vi.hoisted(() => ({
+  config: null as { commons_primary: boolean } | null,
+}));
+vi.mock("@/hooks/useInstanceConfig", () => ({
+  useInstanceConfig: () => ({ config: instance.config, isLoading: false }),
+}));
 
 const { geocodingAPI } = await import("@/lib/api/geocoding");
 const reverseGeocode = vi.mocked(geocodingAPI.reverseGeocode);
@@ -70,6 +76,7 @@ const THISTLEGORM: DiveSiteLookupItem = {
 };
 
 beforeEach(() => {
+  instance.config = null;
   account.user.units = "metric";
   localStorage.clear();
   reverseGeocode.mockReset();
@@ -328,7 +335,7 @@ describe("DiveSiteDialog Commons sites", () => {
       await screen.findByRole("button", { name: "Use SS Thistlegorm" }),
     );
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(SAVED));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(SAVED, false));
     expect(saveDiveSite).toHaveBeenCalledWith("commons-thistlegorm");
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(createDiveSite).not.toHaveBeenCalled();
@@ -857,6 +864,144 @@ describe("DiveSiteDialog registry entries", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved, false));
+  });
+
+  describe("the choice of private or public", () => {
+    const choice = () =>
+      screen.queryByRole("radiogroup", { name: "Visibility" });
+    const radio = (name: RegExp) => screen.getByRole("radio", { name });
+    const WAITING = {
+      uuid: "proposal-1",
+      kind: "new_site",
+      status: "waiting",
+      reason: null,
+      created_at: "2026-01-01T00:00:00Z",
+      decided_at: null,
+    } as const;
+    const editing = (
+      site: DiveSite,
+      over: Partial<React.ComponentProps<typeof DiveSiteDialog>> = {},
+    ) => {
+      const onSaved = vi.fn();
+      vi.mocked(diveSitesAPI.getDiveSite).mockResolvedValue(site);
+      render(
+        <DiveSiteDialog
+          open
+          onOpenChange={() => {}}
+          onSaved={onSaved}
+          diveSite={site}
+          {...over}
+        />,
+      );
+      return onSaved;
+    };
+    const save = () =>
+      userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
+
+    beforeEach(() => {
+      instance.config = { commons_primary: true };
+    });
+
+    it("shows only where the Commons is edited, and a null config is not that", () => {
+      const { unmount } = renderDialog();
+      expect(choice()).toBeInTheDocument();
+      expect(radio(/^Private/)).toBeChecked();
+      unmount();
+
+      instance.config = { commons_primary: false };
+      const second = renderDialog();
+      expect(choice()).not.toBeInTheDocument();
+      second.unmount();
+
+      instance.config = null;
+      renderDialog();
+      expect(choice()).not.toBeInTheDocument();
+    });
+
+    it("is never on a Commons record", () => {
+      editing({ ...OWN_SITE, owner: "opendivingcommons" });
+      expect(choice()).not.toBeInTheDocument();
+    });
+
+    it("is not on the form the review step's Edit opens", () => {
+      editing(OWN_SITE, { offersChoice: false });
+      expect(choice()).not.toBeInTheDocument();
+    });
+
+    it("sends the same body either way, and says Public was chosen", async () => {
+      const onSaved = editing(OWN_SITE);
+      await save();
+      await waitFor(() =>
+        expect(onSaved).toHaveBeenCalledWith(OWN_SITE, false),
+      );
+      const privateBody = updateDiveSite.mock.lastCall?.[1];
+
+      await userEvent.click(radio(/^Public/));
+      await save();
+
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(OWN_SITE, true));
+      expect(updateDiveSite.mock.lastCall?.[1]).toEqual(privateBody);
+    });
+
+    it("locks on Public while a proposal waits, and a save proposes nothing", async () => {
+      const site = { ...OWN_SITE, proposal: WAITING };
+      const onSaved = editing(site);
+
+      expect(radio(/^Public/)).toBeChecked();
+      expect(radio(/^Public/)).toBeDisabled();
+      expect(radio(/^Private/)).toBeDisabled();
+      expect(choice()).toHaveAccessibleDescription(
+        /waiting for review.*Withdraw/,
+      );
+
+      await save();
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(site, false));
+    });
+
+    it("reads Private after a decline, and can be chosen again", async () => {
+      const site = {
+        ...OWN_SITE,
+        proposal: { ...WAITING, status: "declined", reason: "Duplicate" },
+      } as DiveSite;
+      const onSaved = editing(site);
+
+      expect(radio(/^Private/)).toBeChecked();
+      await userEvent.click(radio(/^Public/));
+      await save();
+
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(site, true));
+    });
+
+    it("hands a new site back with the choice", async () => {
+      const onSaved = vi.fn();
+      createDiveSite.mockResolvedValue(OWN_SITE);
+      render(<DiveSiteDialog open onOpenChange={() => {}} onSaved={onSaved} />);
+
+      await userEvent.type(screen.getByLabelText("Name *"), "Walk Reef");
+      await userEvent.click(radio(/^Public/));
+      await userEvent.click(
+        screen.getByRole("button", { name: /Create dive site/ }),
+      );
+
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(OWN_SITE, true));
+    });
+
+    it("reads Private again the next time the form opens", async () => {
+      const props = {
+        onOpenChange: () => {},
+        onSaved: () => {},
+        diveSite: OWN_SITE,
+      };
+      const { rerender } = render(<DiveSiteDialog open {...props} />);
+      await userEvent.click(radio(/^Public/));
+
+      rerender(<DiveSiteDialog open={false} {...props} />);
+      rerender(<DiveSiteDialog open {...props} />);
+
+      expect(
+        await screen.findByRole("radio", { name: /^Private/ }),
+      ).toBeChecked();
+    });
   });
 });

@@ -59,8 +59,8 @@ export default async function PrivacyPage() {
   const proposingSection =
     12 + (googleClientId ? 1 : 0) + (diveConditions ? 1 : 0);
 
-  // Six things every copy has, the map tiles and the proposals where it has them.
-  const outsideTheButtons = ["Six", "Seven", "Eight"][
+  // Seven things every copy has, the map tiles and the proposals where it has them.
+  const outsideTheButtons = ["Seven", "Eight", "Nine"][
     Number(mapTiles) + Number(commonsPrimary)
   ];
 
@@ -336,10 +336,10 @@ export default async function PrivacyPage() {
                   <li>
                     <strong>Proposals for OpenDiving Commons:</strong> A dive
                     site of yours, or a change to a Commons site, that you
-                    propose: its shared facts as you proposed them, the words
-                    you ticked and when, and any message you add for the
-                    reviewer. Who reads that, and what is published, is section
-                    4.{proposingSection}
+                    propose: its shared facts, which follow your edits while a
+                    new site waits, the words you ticked and when, and any
+                    message you add for the reviewer. Who reads that, and what
+                    is published, is section 4.{proposingSection}
                   </li>
                 )}
                 <li>
@@ -400,11 +400,11 @@ export default async function PrivacyPage() {
                 2.2 Automatically Collected Information
               </h3>
               <p className="text-foreground mb-4">
-                Six things are recorded without you asking for them, and all six
-                are ordinary machinery. Two of them &mdash; signed-in devices
-                and account security events &mdash; are also counted, into daily
-                totals that name nobody, which the end of this section
-                describes:
+                Seven things are recorded without you asking for them, and all
+                seven are ordinary machinery. Two of them &mdash; signed-in
+                devices and account security events &mdash; are also counted,
+                into daily totals that name nobody, which the end of this
+                section describes:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
@@ -504,15 +504,23 @@ export default async function PrivacyPage() {
                   record. A browser sends none, so using this site adds none.
                   Section 7 says how long they are kept
                 </li>
+                <li>
+                  <strong>Replaced sites:</strong> When a dive site of yours is
+                  replaced with a Commons site, this copy keeps the removed
+                  site&rsquo;s identifier with your account, pointing at the
+                  record that took its place. Nothing else of the site is kept
+                  in it. Section 3 says what it is for and section 7 how long it
+                  stays
+                </li>
               </ul>
               <p className="text-foreground mb-4">
                 What is kept in your browser is a separate matter, and section
                 10 lists all of it. No usage data about <em>you</em> is
                 collected: nothing here measures which pages you visit, which
-                dives you open, or how long you spend, and none of the six above
-                is compared or profiled. The security record names things that
-                happened to your account &mdash; not what you were doing in the
-                app.
+                dives you open, or how long you spend, and none of the seven
+                above is compared or profiled. The security record names things
+                that happened to your account &mdash; not what you were doing in
+                the app.
               </p>
               <p className="text-foreground mb-4">
                 What is counted is a set of <strong>daily totals</strong>, each
@@ -648,6 +656,12 @@ export default async function PrivacyPage() {
                   from section 2.2, so that something the OpenDiving app, or a
                   tool of yours, sends again after a lost reply is created once
                   rather than twice
+                </li>
+                <li>
+                  <strong>Follow a replaced site:</strong> Keep the identifier
+                  of a site you replaced with a Commons site, from section 2.2,
+                  so that a write the OpenDiving app queued against the site, or
+                  a dive draft naming it, still lands on the record
                 </li>
                 {commonsPrimary && (
                   <li>
@@ -825,7 +839,7 @@ export default async function PrivacyPage() {
                 4.4 Map Tiles
               </h3>
               <p className="text-foreground mb-4">
-                {commonsPrimary ? "Four" : "Three"} places in the app show a map
+                {commonsPrimary ? "Five" : "Three"} places in the app show a map
                 your browser draws itself, and for those your browser fetches
                 the map&rsquo;s tiles directly from a third-party basemap
                 provider. That provider therefore sees your IP address and which
@@ -838,16 +852,19 @@ export default async function PrivacyPage() {
                 whether or not you interact with it: the form to add or edit a
                 dive site and the form to add or edit a trip, which load a map
                 as soon as they open — one to place a pin on, one to show you
-                the places you pick — and the form to add or edit a contact,
-                which loads one only when you ask it to show the map
+                the places you pick — {!commonsPrimary && "and "}the form to add
+                or edit a contact, which loads one only when you ask it to show
+                the map
                 {commonsPrimary && (
                   <>
-                    , and the screen where this copy&rsquo;s operator reviews
-                    what divers propose for OpenDiving Commons, which loads one
-                    when a proposal is opened
+                    , the step that checks a site of yours before it is
+                    proposed, which loads one when it opens, and the screen
+                    where this copy&rsquo;s operator reviews what divers propose
+                    for OpenDiving Commons, which loads one when a proposal is
+                    opened
                   </>
                 )}
-                . Apart from those {commonsPrimary ? "four" : "three"}, no page
+                . Apart from those {commonsPrimary ? "five" : "three"}, no page
                 has your browser contact the provider.
               </p>
               <p className="text-foreground mb-4">
@@ -927,19 +944,23 @@ export default async function PrivacyPage() {
               )}
               <p className="text-foreground mb-4">
                 The paragraphs above describe a browser. The OpenDiving app on a
-                phone draws a map of its own in four places: the form to add a
+                phone draws a map of its own in{" "}
+                {commonsPrimary ? "five" : "four"} places: the form to add a
                 dive site and the search for a site&rsquo;s location, the form
-                to add a trip, and the form to add a contact, which loads one
-                only when you ask it to show the map. It draws these maps only
-                where this server draws tiles, so on a copy that draws none
-                those forms show no map. To draw one, the OpenDiving app names
-                the phone&rsquo;s language to this server when it asks for the
-                map&rsquo;s style, and fetches the map directly from the same
-                basemap provider, which sees the phone&rsquo;s IP address, the
-                part of the world on screen, the OpenDiving app&rsquo;s name and
-                version and the iOS version that its requests&rsquo; User-Agent
-                header names, and the language settings that their
-                Accept-Language header names, and nothing of your account.
+                to add a trip, {!commonsPrimary && "and "}the form to add a
+                contact, which loads one only when you ask it to show the map
+                {commonsPrimary &&
+                  ", and the step that checks a site of yours before it is proposed"}
+                . It draws these maps only where this server draws tiles, so on
+                a copy that draws none those forms show no map. To draw one, the
+                OpenDiving app names the phone&rsquo;s language to this server
+                when it asks for the map&rsquo;s style, and fetches the map
+                directly from the same basemap provider, which sees the
+                phone&rsquo;s IP address, the part of the world on screen, the
+                OpenDiving app&rsquo;s name and version and the iOS version that
+                its requests&rsquo; User-Agent header names, and the language
+                settings that their Accept-Language header names, and nothing of
+                your account.
               </p>
               <p className="text-foreground mb-4">
                 If you run your own copy of OpenDiving you can point it at a
@@ -1478,14 +1499,16 @@ export default async function PrivacyPage() {
                   <p className="text-foreground mb-4">
                     OpenDiving Commons is edited on this copy. A dive site of
                     yours can be offered to it with{" "}
-                    <em>Propose for OpenDiving Commons</em>, and a Commons site
-                    can be corrected with <em>Propose a change</em>; both are on
-                    the site&rsquo;s own page, one site at a time, and neither
-                    goes anywhere until you tick the words it shows you and send
-                    it. This is the fourth place in the software where something
-                    about one person is shown to another, the second that shows
-                    what you entered, and the only one that publishes anything,
-                    and this section is the whole of it.
+                    <em>Propose for OpenDiving Commons</em>, which the form that
+                    adds or edits a site of yours offers to start as you save
+                    it, and which is on the site&rsquo;s own page too; a Commons
+                    site can be corrected with <em>Propose a change</em> on its
+                    page. Both go one site at a time, and neither goes anywhere
+                    until you tick the words it shows you and send it. This is
+                    the fourth place in the software where something about one
+                    person is shown to another, the second that shows what you
+                    entered, and the only one that publishes anything, and this
+                    section is the whole of it.
                   </p>
                   <p className="text-foreground mb-4">
                     <strong>What a reviewer is shown:</strong> whoever runs this
@@ -1496,11 +1519,11 @@ export default async function PrivacyPage() {
                     site&rsquo;s shared facts &mdash; its name and other names,
                     its pin, the name of its locality, its entries in registries
                     such as OpenStreetMap, its depths, its water, its altitude
-                    and how divers get in. For a site of your own that is both
-                    as you proposed it and as it stands while the proposal
-                    waits, so an edit you make meanwhile is in front of them
-                    too. Never your notes, your tags or your dives, and no other
-                    diver is shown any of it.
+                    and how divers get in. For a site of your own the proposal
+                    follows the site&rsquo;s edits while it waits, so an edit
+                    you make meanwhile is what is in front of them. Never your
+                    notes, your tags or your dives, and no other diver is shown
+                    any of it.
                   </p>
                   <p className="text-foreground mb-4">
                     <strong>What is published:</strong> if a reviewer accepts,
@@ -1516,7 +1539,9 @@ export default async function PrivacyPage() {
                     dives on it stay yours, as section 4.2 says. Where the
                     Commons already has the site, the reviewer may accept yours
                     into that record instead: your dives, notes and tags move to
-                    the record and your own site is removed.
+                    the record and your own site is removed, though its
+                    identifier is kept with your account, pointing at the
+                    record, until your account goes.
                   </p>
                   <p className="text-foreground mb-4">
                     <strong>Who can read it:</strong> anyone. This copy serves
@@ -1784,10 +1809,11 @@ export default async function PrivacyPage() {
                     for 30 days after.
                   </>
                 )}{" "}
-                And two records in section 2.2 are in neither, the account
-                security events and the retry records: nothing in the app shows
-                them to you and no button copies them, so a copy of either has
-                to be asked for like the rights below.
+                And three records in section 2.2 are in neither, the account
+                security events, the retry records and the identifiers of
+                replaced sites: nothing in the app shows them to you and no
+                button copies them, so a copy of any of them has to be asked for
+                like the rights below.
                 {commonsPrimary && (
                   <>
                     {" "}
@@ -1982,12 +2008,19 @@ export default async function PrivacyPage() {
                 expired one stays on the API keys card, marked, so that removing
                 it is yours to do.
               </p>
+              <p className="text-foreground mb-4">
+                The <strong>identifier of a replaced site</strong> has no expiry
+                of its own. Replacing a dive site of yours with a Commons site
+                removes the site, and its identifier stays with your account,
+                pointing at the record, until your account goes.
+              </p>
               {commonsPrimary && (
                 <p className="text-foreground mb-4">
                   A <strong>proposal for OpenDiving Commons</strong> is not
                   swept either. It is kept, whatever became of it, until your
                   account goes, and one on a dive site of your own goes sooner
-                  if that site is deleted or replaced with a Commons site. A{" "}
+                  if that site is deleted or replaced with a Commons site, whose
+                  identifier alone stays, as the paragraph above says. A{" "}
                   <strong>record accepted into the Commons</strong> is kept for
                   as long as the Commons is, whatever becomes of your account:
                   it belongs to no account, and section 4.{proposingSection}{" "}

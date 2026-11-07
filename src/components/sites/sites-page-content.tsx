@@ -17,6 +17,7 @@ import { DiveSiteCard } from "@/components/sites/dive-site-card";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { CommonsSiteDialog } from "@/components/sites/commons-site-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
+import { SiteProposalFlow } from "@/components/sites/site-proposal-flow";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -76,6 +77,7 @@ export function SitesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const openCreate = useQuickCreate();
   const [editingSite, setEditingSite] = useState<DiveSite | null>(null);
+  const [proposing, setProposing] = useState<DiveSite | null>(null);
 
   const {
     input: searchInput,
@@ -216,7 +218,26 @@ export function SitesPageContent() {
         open={editingSite !== null && !editingCommons}
         onOpenChange={closeEditing}
         diveSite={editingSite}
-        onSaved={applySaved}
+        onSaved={(saved, proposes) => {
+          applySaved(saved);
+          if (proposes) setProposing(saved);
+        }}
+      />
+
+      <SiteProposalFlow
+        site={proposing}
+        onClose={() => setProposing(null)}
+        onSaved={(saved) => {
+          applySaved(saved);
+          setProposing(saved);
+        }}
+        onProposed={(proposal) => {
+          if (proposing) applySaved({ ...proposing, proposal });
+        }}
+        onReplaced={() => {
+          setDeletions((count) => count + 1);
+          reload();
+        }}
       />
 
       <CommonsSiteDialog

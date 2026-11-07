@@ -9,7 +9,6 @@ import {
 import { Minus, Plus } from "lucide-react";
 import { useTheme } from "next-themes";
 
-import type { ReviewMarker } from "@/components/admin/proposal-markers";
 import { MapCanvas } from "@/components/map/map-canvas";
 import { MapCredit } from "@/components/map/map-credit";
 import { markerClassName } from "@/components/map/marker";
@@ -17,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useConfig } from "@/contexts/ConfigContext";
 import { clampLatitude, MAX_ZOOM } from "@/lib/basemap";
-import { haversineMeters } from "@/lib/geo-distance";
+import { haversineMeters, type GeoPoint } from "@/lib/geo-distance";
 import { TILE_SIZE } from "@/lib/map-grid";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +29,11 @@ const FIT_PADDING = 56;
 
 // Between two markers' centres, which clears their 12px dots of each other.
 const MARKER_GAP = 20;
+
+export interface ReviewMarker extends GeoPoint {
+  kind: "proposed" | "current" | "match";
+  label: string;
+}
 
 const MARKER_CLASSES: Record<ReviewMarker["kind"], string> = {
   proposed: markerClassName("pin"),
@@ -108,12 +112,16 @@ export interface ProposalMapProps {
   // At least one, the first being what the map centres on. Hold it stable: a new
   // array moves the camera back.
   markers: ReviewMarker[];
+  // What a browser with no WebGL2 reads instead, which is the host's to say: it
+  // knows where else the pins are shown.
+  unsupported: string;
 }
 
-// The reviewer's map, the one interactive map that places nothing: `MapPicker` is
+// The map a proposal is checked on, by the reviewer in the queue and by the diver
+// before sending, and the one interactive map that places nothing: `MapPicker` is
 // a write-back control, `LocationsMap` is drawn once and not touched. It stays on
 // the app's basemap, which has no imagery.
-export function ProposalMap({ markers }: ProposalMapProps) {
+export function ProposalMap({ markers, unsupported }: ProposalMapProps) {
   const { resolvedTheme } = useTheme();
   const { basemap } = useConfig();
   const [map, setMap] = useState<MapLibreMap | null>(null);
@@ -152,8 +160,8 @@ export function ProposalMap({ markers }: ProposalMapProps) {
 
   return (
     <div className="relative h-72 w-full overflow-hidden rounded-md border bg-muted sm:h-96">
-      {/* The names and distances are in the list beside the map, which is what
-          a screen reader is pointed at. */}
+      {/* What the markers say is in the text beside the map, which is what a
+          screen reader is pointed at. */}
       <div
         role="group"
         aria-label={`Map of ${markers.map((marker) => marker.label).join(", ")}`}
@@ -166,8 +174,7 @@ export function ProposalMap({ markers }: ProposalMapProps) {
           onMap={setMap}
           unsupported={
             <p className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
-              This browser cannot display the map. The pin can still be opened
-              on OpenStreetMap, and the matches are listed here.
+              {unsupported}
             </p>
           }
         />

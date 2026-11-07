@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { ThemeProvider } from "next-themes";
-import { ProposalMap } from "./proposal-map";
-import type { ReviewMarker } from "./proposal-markers";
+import { ProposalMap, type ReviewMarker } from "./proposal-map";
 import { resolveBasemap } from "@/lib/basemap";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 
@@ -28,7 +27,7 @@ const drawn = (markers: ReviewMarker[]) =>
         }}
       >
         <div style={{ width: 600 }}>
-          <ProposalMap markers={markers} />
+          <ProposalMap markers={markers} unsupported="No map here." />
         </div>
       </ConfigProvider>
     </ThemeProvider>,
@@ -77,6 +76,21 @@ describe("ProposalMap", () => {
     // Fitted, not merely centred: the furthest pin is inside the frame.
     const far = centreOf(marker("match")!);
     expect(far.x).toBeLessThan(frame.right);
+  });
+
+  it("centres a single marker and places nothing on a click", async () => {
+    drawn([PROPOSED]);
+
+    await waitFor(() => expect(marker("proposed")).not.toBeNull());
+    const frame = screen.getByRole("group").getBoundingClientRect();
+    await waitFor(() => {
+      const { x, y } = centreOf(marker("proposed")!);
+      expect(Math.abs(x - (frame.left + frame.right) / 2)).toBeLessThan(2);
+      expect(Math.abs(y - (frame.top + frame.bottom) / 2)).toBeLessThan(2);
+    });
+
+    screen.getByRole("group").click();
+    expect(document.querySelectorAll("[data-marker]")).toHaveLength(1);
   });
 
   it("opens with a match metres from the pin clear of it, even with another far off", async () => {

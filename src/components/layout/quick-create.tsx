@@ -1,8 +1,15 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { ProposeOnArrivalContext } from "@/contexts/ProposeOnArrivalContext";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
@@ -51,6 +58,14 @@ export function QuickCreateProvider({
 
   const openCreate = useCallback((next: QuickCreateKind) => setKind(next), []);
 
+  // A ref here rather than anything in the URL: a reload must not reopen the flow.
+  const proposingOnArrival = useRef<string | null>(null);
+  const proposeOnArrival = useCallback((uuid: string) => {
+    if (proposingOnArrival.current !== uuid) return false;
+    proposingOnArrival.current = null;
+    return true;
+  }, []);
+
   // Take the diver to what they just made - its own page where there is one,
   // which leads back to the page it was made on, otherwise the section list -
   // even from that section's own list, where the new row would land wherever
@@ -66,7 +81,9 @@ export function QuickCreateProvider({
 
   return (
     <QuickCreateContext.Provider value={openCreate}>
-      {children}
+      <ProposeOnArrivalContext.Provider value={proposeOnArrival}>
+        {children}
+      </ProposeOnArrivalContext.Provider>
 
       {user && (
         <>
@@ -78,9 +95,10 @@ export function QuickCreateProvider({
           <DiveSiteDialog
             open={kind === "site"}
             onOpenChange={close}
-            onSaved={(diveSite) =>
-              goTo(withReturnTo(`/sites/${diveSite.uuid}`))
-            }
+            onSaved={(diveSite, proposes) => {
+              proposingOnArrival.current = proposes ? diveSite.uuid : null;
+              goTo(withReturnTo(`/sites/${diveSite.uuid}`));
+            }}
           />
           <GearItemDialog
             open={kind === "gear"}

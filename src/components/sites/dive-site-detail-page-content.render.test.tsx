@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveSiteDetailPageContent } from "./dive-site-detail-page-content";
+import { ProposeOnArrivalContext } from "@/contexts/ProposeOnArrivalContext";
 import type { DiveSite } from "@/lib/api/dive-sites";
 
 // The page's own decisions, about a site's owner and whether it is saved; what
@@ -54,8 +55,22 @@ vi.mock("@/components/sites/dive-site-species-card", () => ({
   DiveSiteSpeciesCard: () => null,
 }));
 vi.mock("@/components/sites/dive-site-dialog", () => ({
-  DiveSiteDialog: ({ open }: { open: boolean }) =>
-    open ? <div>The whole form</div> : null,
+  DiveSiteDialog: ({
+    open,
+    diveSite,
+    onSaved,
+  }: {
+    open: boolean;
+    diveSite: DiveSite;
+    onSaved: (site: DiveSite, proposes: boolean) => void;
+  }) =>
+    open ? (
+      <div>
+        The whole form
+        <button onClick={() => onSaved(diveSite, false)}>Save private</button>
+        <button onClick={() => onSaved(diveSite, true)}>Save public</button>
+      </div>
+    ) : null,
   readBack: vi.fn(),
 }));
 vi.mock("@/components/sites/propose-site-dialog", () => ({
@@ -192,6 +207,51 @@ describe("DiveSiteDetailPageContent", () => {
     expect(
       await screen.findByText("Is it already in the Commons?"),
     ).toBeInTheDocument();
+  });
+
+  it("opens the flow from a save with Public chosen, and from no other save", async () => {
+    loaded.site = OWN;
+    loaded.primary = true;
+    render(<DiveSiteDetailPageContent />);
+
+    await openMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save private" }));
+    expect(
+      screen.queryByText("Is it already in the Commons?"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save public" }));
+    expect(
+      await screen.findByText("Is it already in the Commons?"),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the flow on arrival when the header's form asked for it", async () => {
+    loaded.site = OWN;
+    loaded.primary = true;
+    const proposeOnArrival = vi.fn((uuid: string) => uuid === OWN.uuid);
+    render(
+      <ProposeOnArrivalContext.Provider value={proposeOnArrival}>
+        <DiveSiteDetailPageContent />
+      </ProposeOnArrivalContext.Provider>,
+    );
+
+    expect(
+      await screen.findByText("Is it already in the Commons?"),
+    ).toBeInTheDocument();
+  });
+
+  it("opens no flow on an arrival nobody asked for", () => {
+    loaded.site = OWN;
+    loaded.primary = true;
+    render(<DiveSiteDetailPageContent />);
+
+    expect(
+      screen.queryByText("Is it already in the Commons?"),
+    ).not.toBeInTheDocument();
   });
 
   it("offers a change to any Commons record where the Commons is edited", async () => {

@@ -17,6 +17,7 @@ interface ReplaceWithCommonsDialogProps {
   target: DiveSiteCommonsMatchName | null;
   onCancel: () => void;
   onReplaced: (record: DiveSite) => void;
+  finalFocus?: React.ComponentProps<typeof ConfirmDialog>["finalFocus"];
 }
 
 // Replacing deletes the diver's own site, so it is stated before it is done.
@@ -25,6 +26,7 @@ export function ReplaceWithCommonsDialog({
   target,
   onCancel,
   onReplaced,
+  finalFocus,
 }: ReplaceWithCommonsDialogProps) {
   const { toast } = useToast();
   const [isReplacing, setIsReplacing] = useState(false);
@@ -62,9 +64,10 @@ export function ReplaceWithCommonsDialog({
         onCancel();
       }}
       title="Replace with Commons site"
-      description={`Your dives at ${site.name} will name ${recordName} instead, and your notes and tags move to it. ${site.name} is then deleted, with any proposal on it, and a dive draft naming it loses its site.`}
+      description={`Your dives at ${site.name} will name ${recordName} instead, and your notes and tags move to it. ${site.name} is then deleted, with any proposal on it, and a dive draft naming it names ${recordName} instead.`}
       confirmText="Replace with Commons site"
       isLoading={isReplacing}
+      finalFocus={finalFocus}
       onConfirm={replace}
     >
       <FormApiError error={error} />

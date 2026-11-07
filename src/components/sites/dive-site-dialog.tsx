@@ -16,7 +16,7 @@ import {
   parseFormCoordinate,
   parseFormPosition,
 } from "@/lib/validations/coordinates";
-import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { diveSitesAPI, DiveSite, isCommonsSite } from "@/lib/api/dive-sites";
 import {
   MAX_LOCATION_NAME_LENGTH,
   type LocationFormValue,
@@ -24,6 +24,7 @@ import {
 import { MapField } from "@/components/map/map-field";
 import { DiveSiteDetailsFields } from "@/components/sites/dive-site-details-fields";
 import { OtherNamesField } from "@/components/sites/other-names-field";
+import { SiteVisibilityField } from "@/components/sites/site-visibility-field";
 import { ExternalIdsField } from "@/components/sites/external-ids-field";
 import {
   LocationSearchDialog,
@@ -66,7 +67,12 @@ interface DiveSiteDialogProps {
   diveSite?: DiveSite | null;
   // Called with the created/updated dive site so the caller can refresh
   // whatever list it's showing - and, in the dive form, select it straight away.
-  onSaved: (diveSite: DiveSite) => void;
+  // `proposes` is the diver having chosen Public, which the caller answers by
+  // opening `SiteProposalFlow` for the saved site.
+  onSaved: (diveSite: DiveSite, proposes: boolean) => void;
+  // False on the form the proposal flow's Edit opens: the diver is already
+  // proposing, and the save goes back to the flow.
+  offersChoice?: boolean;
   // Forwarded to `DialogContent`; preventing it keeps focus from returning to
   // whatever opened the dialog.
   finalFocus?: React.ComponentProps<typeof DialogContent>["finalFocus"];
@@ -98,14 +104,17 @@ export function DiveSiteDialog({
   onOpenChange,
   diveSite,
   onSaved,
+  offersChoice = true,
   finalFocus,
 }: DiveSiteDialogProps) {
   const [isTakingCommonsSite, setIsTakingCommonsSite] = useState(false);
+  const [choosesPublic, setChoosesPublic] = useState(false);
   const [apiError, setApiError, handleOpenChange] = useDialogApiError(
     open,
     onOpenChange,
   );
   const isEdit = !!diveSite;
+  const isWaiting = diveSite?.proposal?.status === "waiting";
 
   const form = useForm<DiveSiteFormInput>({
     resolver: zodResolver(diveSiteFormSchema),
@@ -122,6 +131,7 @@ export function DiveSiteDialog({
     if (!open) return;
     reset(diveSiteFormValues(diveSite));
     setSearchOpen(false);
+    setChoosesPublic(false);
   }, [open, diveSite, reset]);
 
   // `useWatch` rather than `form.watch()`, which is what `mixture-fields.tsx`
@@ -214,7 +224,7 @@ export function DiveSiteDialog({
     setApiError(null);
     try {
       setIsTakingCommonsSite(true);
-      onSaved(await diveSitesAPI.saveDiveSite(uuid));
+      onSaved(await diveSitesAPI.saveDiveSite(uuid), false);
       setSearchOpen(false);
       onOpenChange(false);
     } catch (error) {
@@ -263,6 +273,9 @@ export function DiveSiteDialog({
         ? { ...data.location, name: data.location.name.trim() }
         : null;
       const members = diveSiteMembersFromForm(data);
+      // A waiting site's choice is locked, and the server's refresh carries the
+      // edit to the reviewer.
+      const proposes = choosesPublic && !isWaiting;
 
       if (diveSite) {
         const update = {
@@ -274,7 +287,7 @@ export function DiveSiteDialog({
           ...members,
         };
         await diveSitesAPI.updateDiveSite(diveSite.uuid, update);
-        onSaved(await readBack(diveSite, update));
+        onSaved(await readBack(diveSite, update), proposes);
       } else {
         const created = await diveSitesAPI.createDiveSite({
           name: data.name.trim(),
@@ -284,7 +297,7 @@ export function DiveSiteDialog({
           notes: data.notes || undefined,
           ...members,
         });
-        onSaved(created);
+        onSaved(created, proposes);
       }
 
       onOpenChange(false);
@@ -511,6 +524,14 @@ export function DiveSiteDialog({
                 </FormItem>
               )}
             />
+
+            {offersChoice && !(diveSite && isCommonsSite(diveSite)) && (
+              <SiteVisibilityField
+                isPublic={choosesPublic}
+                isWaiting={isWaiting}
+                onChange={setChoosesPublic}
+              />
+            )}
 
             <FormApiError error={apiError} />
 

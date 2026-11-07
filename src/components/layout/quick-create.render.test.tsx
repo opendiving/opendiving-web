@@ -2,8 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QuickCreateProvider, useQuickCreate } from "./quick-create";
+import { useProposeOnArrival } from "@/contexts/ProposeOnArrivalContext";
 
-const stable = vi.hoisted(() => ({ push: vi.fn() }));
+const stable = vi.hoisted(() => ({
+  push: vi.fn(),
+  arrivals: [] as boolean[],
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: stable.push }),
@@ -17,7 +21,23 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 vi.mock("@/components/trips/trip-dialog", () => ({ TripDialog: () => null }));
 vi.mock("@/components/sites/dive-site-dialog", () => ({
-  DiveSiteDialog: () => null,
+  DiveSiteDialog: ({
+    open,
+    onSaved,
+  }: {
+    open: boolean;
+    onSaved: (site: { uuid: string }, proposes: boolean) => void;
+  }) =>
+    open ? (
+      <>
+        <button onClick={() => onSaved({ uuid: "site-1" }, false)}>
+          Save private
+        </button>
+        <button onClick={() => onSaved({ uuid: "site-1" }, true)}>
+          Save public
+        </button>
+      </>
+    ) : null,
 }));
 vi.mock("@/components/gear/gear-item-dialog", () => ({
   GearItemDialog: () => null,
@@ -48,7 +68,41 @@ function NewPerson() {
   return <button onClick={() => openCreate("person")}>New person</button>;
 }
 
+function NewSite() {
+  const openCreate = useQuickCreate();
+  const proposeOnArrival = useProposeOnArrival();
+  return (
+    <>
+      <button onClick={() => openCreate("site")}>New site</button>
+      <button onClick={() => stable.arrivals.push(proposeOnArrival("site-1"))}>
+        Arrive
+      </button>
+    </>
+  );
+}
+
 describe("QuickCreateProvider", () => {
+  it.each([
+    ["Save public", [true, false]],
+    ["Save private", [false, false]],
+  ])("answers the site page once for %s", async (save, answers) => {
+    stable.arrivals = [];
+    render(
+      <QuickCreateProvider>
+        <NewSite />
+      </QuickCreateProvider>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "New site" }));
+    await userEvent.click(screen.getByRole("button", { name: save }));
+    expect(stable.push).toHaveBeenCalledWith("/sites/site-1?from=%2Fhome");
+
+    const arrive = screen.getByRole("button", { name: "Arrive" });
+    await userEvent.click(arrive);
+    await userEvent.click(arrive);
+    expect(stable.arrivals).toEqual(answers);
+  });
+
   it("opens the created person's page, leading back to where it was made", async () => {
     render(
       <QuickCreateProvider>

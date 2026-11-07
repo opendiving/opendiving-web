@@ -112,7 +112,7 @@ function SiteProposalsFrame({
               <EmptyState
                 icon={Landmark}
                 title="No proposals yet"
-                description="Propose one of your dive sites, or a change to a Commons site, from the site's own page."
+                description="Choose Public in the form that adds or edits one of your dive sites, or propose a site or a change to a Commons site from the site's own page."
               />
             ) : (
               <Table aria-busy={proposals.length === 0 || undefined}>

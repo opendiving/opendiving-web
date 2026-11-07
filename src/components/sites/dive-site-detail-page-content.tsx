@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useInstanceConfig } from "@/hooks/useInstanceConfig";
 import { useReturnTo, useWithReturnTo } from "@/hooks/useReturnTo";
+import { useProposeOnArrival } from "@/contexts/ProposeOnArrivalContext";
 import {
   diveSitesAPI,
   DiveSite,
@@ -31,12 +33,12 @@ import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
 import { DiveSiteHero } from "@/components/sites/dive-site-hero";
 import { DiveSiteInfoDialog } from "@/components/sites/dive-site-info-dialog";
 import { ProposeChangeDialog } from "@/components/sites/propose-change-dialog";
-import { ProposeSiteDialog } from "@/components/sites/propose-site-dialog";
 import { ReplaceWithCommonsDialog } from "@/components/sites/replace-with-commons-dialog";
 import {
   SiteCommonsMatchNotice,
   SiteProposalNotice,
 } from "@/components/sites/site-commons-notices";
+import { SiteProposalFlow } from "@/components/sites/site-proposal-flow";
 import {
   HERO_BODY,
   HERO_CONTROL,
@@ -77,6 +79,11 @@ export function DiveSiteDetailPageContent() {
     redirectTo: "/sites",
   });
   useDocumentTitle(diveSite?.name, "Dive Sites");
+
+  const proposeOnArrival = useProposeOnArrival();
+  useEffectOnChange(() => {
+    if (diveSite && proposeOnArrival(diveSite.uuid)) setIsProposeOpen(true);
+  }, [diveSite?.uuid, proposeOnArrival]);
 
   const del = useDeleteResource(diveSitesAPI.deleteDiveSite, {
     successMessage: DELETED_MESSAGE,
@@ -184,7 +191,10 @@ export function DiveSiteDetailPageContent() {
           open={isEditOpen}
           onOpenChange={setIsEditOpen}
           diveSite={diveSite}
-          onSaved={applySaved}
+          onSaved={(saved, proposes) => {
+            applySaved(saved);
+            if (proposes) setIsProposeOpen(true);
+          }}
         />
       )}
 
@@ -196,12 +206,12 @@ export function DiveSiteDetailPageContent() {
           onProposed={(proposal) => setDiveSite({ ...diveSite, proposal })}
         />
       ) : (
-        <ProposeSiteDialog
-          open={isProposeOpen}
-          onOpenChange={setIsProposeOpen}
-          site={diveSite}
+        <SiteProposalFlow
+          site={isProposeOpen ? diveSite : null}
+          onClose={() => setIsProposeOpen(false)}
+          onSaved={applySaved}
           onProposed={(proposal) => setDiveSite({ ...diveSite, proposal })}
-          onReplace={setReplaceTarget}
+          onReplaced={(record) => router.replace(`/sites/${record.uuid}`)}
         />
       )}
 
