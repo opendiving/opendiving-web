@@ -108,9 +108,9 @@ export default async function PrivacyPage() {
                 In Cloudflare R2, created under Cloudflare&rsquo;s EU
                 jurisdiction, which is its setting for keeping objects within
                 the European Union. That covers the dive-computer files kept
-                with a dive, certification card images, profile pictures and
-                portraits, and the species photographs §4.6 says this copy
-                downloads.
+                with a dive, the files of an import waiting to be applied,
+                certification card images, profile pictures and portraits, and
+                the species photographs §4.6 says this copy downloads.
                 {mapTiles && (
                   <>
                     {" "}
@@ -177,6 +177,10 @@ export default async function PrivacyPage() {
                 grace period, after which the data is destroyed; the 3-day
                 recovery window above is the longest a copy of it can survive in
                 a backup after that. Seventeen days at the outside.
+              </OperatorAnswer>
+              <OperatorAnswer question="How long an import is kept — §2.2, §7">
+                The files of an import are held for 24 hours at most, and the
+                review and log of one you applied are kept for thirty days.
               </OperatorAnswer>
               <OperatorAnswer question="How to check any of this against the source — §1, §5, §11, §12">
                 Those four sections invite you to read the code rather than
@@ -300,11 +304,19 @@ export default async function PrivacyPage() {
                   on the dive it becomes, under the filename it arrived with. A
                   logbook of several dives, and a DiveJSON document, leave no
                   file here, and importing a full archive puts back the files it
-                  carries. A dive the OpenDiving app downloads from a dive
-                  computer over Bluetooth keeps the computer&rsquo;s original
-                  download the same way, on the dive it becomes. A file from a
-                  computer with a wrist sensor or a heart-rate strap switched on
-                  carries your heart rate, which is read into the dive log above
+                  carries. The files of an import are held on the server from
+                  the upload until you apply or discard it, or until the limit
+                  whoever runs this copy has set, if there is one, runs out, so
+                  that you can finish it on another device; only files the app
+                  could read are held, and they are deleted once the import is
+                  applied. An import&rsquo;s review and log stay readable after
+                  that, for as long as whoever runs this copy keeps them, which
+                  may be until you delete them. A dive the OpenDiving app
+                  downloads from a dive computer over Bluetooth keeps the
+                  computer&rsquo;s original download the same way, on the dive
+                  it becomes. A file from a computer with a wrist sensor or a
+                  heart-rate strap switched on carries your heart rate, which is
+                  read into the dive log above
                 </li>
                 <li>
                   <strong>Equipment Data:</strong> Diving equipment details and
@@ -351,15 +363,15 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 Both pictures are kept as the file you picked &mdash; or, for
                 the portrait, the one a full archive carries, if you take it in
-                the import preview &mdash; so that you can change how either is
-                cropped later, with the location and camera details a phone
-                photo carries removed by this server before the file is stored;
-                what the app shows is drawn from that file at the crop you
-                chose. Your portrait is shown to you where you edit it and on
-                your check-in page, and to whoever holds a check-in link you
-                made (section 4.9), and never where your profile picture
-                appears. The full archive export carries both files, and both
-                are deleted with your account.
+                the import &mdash; so that you can change how either is cropped
+                later, with the location and camera details a phone photo
+                carries removed by this server before the file is stored; what
+                the app shows is drawn from that file at the crop you chose.
+                Your portrait is shown to you where you edit it and on your
+                check-in page, and to whoever holds a check-in link you made
+                (section 4.9), and never where your profile picture appears. The
+                full archive export carries both files, and both are deleted
+                with your account.
               </p>
               <p className="text-foreground mb-4">
                 One thing arrives without you typing it. If you create your
@@ -568,7 +580,7 @@ export default async function PrivacyPage() {
                   or portrait, or inside the portrait carried by a full archive
                   you import, which travel with the upload and are removed by
                   this server before the photo is stored &mdash; an
-                  archive&rsquo;s only if you take it in the import preview
+                  archive&rsquo;s only if you take it in the import
                 </li>
               </ul>
               <p className="text-foreground mb-4">
@@ -1949,6 +1961,14 @@ export default async function PrivacyPage() {
                 three months, the window section 10.1 describes &mdash; so that
                 something the app sends again days after a lost reply still
                 finds it.
+              </p>
+              <p className="text-foreground mb-4">
+                An <strong>import</strong> expires on its own too, if whoever
+                runs this copy has set a limit. Its held files go when you apply
+                or discard it, or at that limit if you do neither, and the
+                import goes with them. An import you applied keeps its review
+                and log, without the files, until the retention set here runs
+                out or you delete it from the Import page.
               </p>
               <p className="text-foreground mb-4">
                 Two more expire on their own where this copy is invite-only, and

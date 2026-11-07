@@ -16,25 +16,37 @@ import {
   type LogbookImportRead,
 } from "@/lib/api/logbook-import";
 
-// `undefined` until the page has heard, `null` once it knows nothing is pending.
-type Shown = LogbookImportRead | null | undefined;
+// What the account's pending import is, or `null` once it is known there is none.
+async function readPending(): Promise<LogbookImportRead | null> {
+  try {
+    return await logbookImportAPI.pending();
+  } catch (caught) {
+    if (getApiErrorStatus(caught) === 404) return null;
+    throw caught;
+  }
+}
 
 function ImportFlow({ enabled }: { enabled: boolean }) {
-  const [record, setRecord] = useState<Shown>(undefined);
+  // `undefined` until the page has heard.
+  const [record, setRecord] = useState<LogbookImportRead | null | undefined>(
+    undefined,
+  );
   const [loadFailed, setLoadFailed] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoadFailed(false);
-    try {
-      setRecord(await logbookImportAPI.pending());
-    } catch (caught) {
-      if (getApiErrorStatus(caught) === 404) setRecord(null);
-      else {
-        console.error("Failed to read the pending import:", caught);
-        setLoadFailed(true);
-      }
-    }
-  }, []);
+  const load = useCallback(
+    () =>
+      readPending().then(
+        (found) => {
+          setRecord(found);
+          setLoadFailed(false);
+        },
+        (caught) => {
+          console.error("Failed to read the pending import:", caught);
+          setLoadFailed(true);
+        },
+      ),
+    [],
+  );
 
   useEffect(() => {
     if (enabled) void load();

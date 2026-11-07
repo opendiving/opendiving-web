@@ -44,7 +44,7 @@ const CheckinDetailsContext = createContext<ContextValue | undefined>(
 /**
  * The one copy of the signed-in diver's check-in details, for every surface that shows
  * or saves them: the settings cards, the sheet and its dialogs, the bell's insurance
- * rows, the import preview. One copy rather than a read per surface, so a save on any
+ * rows, the import review. One copy rather than a read per surface, so a save on any
  * of them is what every other one shows at once.
  *
  * The copy is what a surface shows and never what it sends: a save sends the group the

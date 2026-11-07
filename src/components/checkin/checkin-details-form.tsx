@@ -342,7 +342,7 @@ function LoadedForm({
   };
 
   const signInEmail = user?.email;
-  // The cast narrows the form to the members it shares with the import preview's,
+  // The cast narrows the form to the members it shares with the import review's,
   // which is all a member field reads; `name` is this form's alone.
   const control = form.control as unknown as Control<CheckinDetailsFormValues>;
 

@@ -17,7 +17,7 @@ describe("describeImportChange", () => {
       kind: "value",
       label: "Water type",
       before: "—",
-      after: "Salt",
+      after: "Salt water",
     });
   });
 

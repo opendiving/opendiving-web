@@ -5667,22 +5667,31 @@ sent to a dive already in it.
 an offsetless date-time, ending the state; the layout stays for the form's life so the time box is
 not swapped out mid-entry. The create form never takes a bare date.
 
-## The Import page renders a plan, not a result, and the two are one shape
+## The Import page renders the import the server holds, and a review and a result are one shape
 
-Import is `POST /import/logbook/preview` then `POST /import/logbook` with the same files and the
-preview's `token`; `/import` renders both reports through one `ImportDiveTable` and one
-`ImportReportView`, so an approved plan and its result are comparable. The files stay in page state
-beside the token because the API hashes the parts again and refuses a token minted for another set.
-
-`restored` keeps its own column, never folded into `created`: un-deleting is the number a backup
-restore came for. Notes are a persistent list, never a toast; a non-zero `notes_truncated` marks the
-list incomplete and says the counts are not.
+`POST /imports` takes the files once and answers with the review; the apply sends no bytes, so the
+page holds no files and no plan. What `/import` draws is the account's state: `GET /imports/pending`
+decides between the review and the picker, which is why any device opens the same import and nothing
+on the page polls. `ImportReview` renders a pending import and an applied one, at `/import` and
+`/import/[id]`, so an approved review and its result are comparable. A 409 or a 404 from the apply
+or the discard means another device got there first, and the page reads the pending import again.
 
 A bare document's `not_contained` files are expected, so `file_not_contained` carries no kind and
 reads as information, and `fileRestoreHint` says to import the archive.
 `record_remapped_references_follow` and `record_remapped_references_stay` are two sentences, one per
 contract. An unrecognised code is information, not a warning — the `certificationAgencyLabel` and
-`collectionLabel` stance.
+`collectionLabel` stance. A non-zero `notes_truncated` marks the log's list incomplete and says the
+counts are not.
+
+## The review's cards hide the unchanged, and the panel lists the writer's changes
+
+A diver wants to know what an import adds and what it changes, so a card is drawn for a `new` or
+`modified` row and nothing else; the summary line counts the rest and links to the log, which names
+them. `describeImportChange` labels `changes` by member and falls back to the path, because the list
+is the writer's: a table of the members this build knows would hide what a later API writes.
+
+_Rejected:_ a card per row, which buries two changes under a re-import's hundreds of unchanged
+dives; and a client-side diff of two dives, a second account of the write.
 
 ## An import note's tone comes from its kind, and nothing else
 
@@ -6916,10 +6925,11 @@ page refuses, in another form.
 
 ## Import has its own page, and export lives in Settings → Data
 
-`/import` is the one door for every file the app reads. Settings → Data offers all four export
-formats alongside the uploaded files' usage; the old `/export` and `/data` addresses are gone rather
-than redirected. The import picker filters nothing: the API decides by the bytes, and a file it
-cannot read is a row, not a refusal.
+`/import` is the one door for every file the app reads, `/import/[id]` one import by its address,
+and `/import/[id]/log` its log. Settings → Data offers all four export formats alongside the
+uploaded files' usage; the old `/export` and `/data` addresses are gone rather than redirected. The
+import picker filters nothing: the API decides by the bytes, and a file it cannot read is a line
+above the review, not a refusal.
 
 ## The map renderer ships in the web image, as a command of its own
 
