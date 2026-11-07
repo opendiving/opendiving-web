@@ -6310,10 +6310,10 @@ provider rather than a URL parameter, because a reload must not reopen it.
 
 ## The proposal map sits in `components/map/`
 
-`ProposalMap` was the review queue's. A diver's dialog needs the same map, and nothing outside the
-admin directories may import from them, so the map moved rather than being copied. What a browser
-without WebGL2 reads is a prop, since the queue's sentence names an OpenStreetMap link and a list of
-matches the dialog does not have.
+The review queue and a diver's propose dialog draw the same `ProposalMap`, and nothing outside the
+admin directories may import from them, so it sits with the other maps; a copy in `sites/` is
+rejected as two maps to keep in step. What a browser without WebGL2 reads is a prop, since the
+queue's sentence names an OpenStreetMap link and a list of matches the dialog does not have.
 
 ## The source offer names the repositories, and still leads with the request
 
