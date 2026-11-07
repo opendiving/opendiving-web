@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import { useTheme } from "next-themes";
@@ -99,15 +98,9 @@ function frameGeometry(
 // The static picture of the whole world `world` draws, per theme: the grid's
 // one square at zoom 0, which `scripts/generate-world-map.mjs` renders from the
 // shipped styles without their lettering or borders.
-const WORLD_MAP: Record<MapTileTheme, { src: string; pinRing?: string }> = {
-  light: { src: "/world-map/light.webp" },
-  // The page's colour at half strength rings the pins, over whatever is under
-  // them: the page's near-black at full strength reads on this picture as a
-  // hard outline.
-  dark: {
-    src: "/world-map/dark.webp",
-    pinRing: "hsl(var(--background) / 0.5)",
-  },
+const WORLD_MAP: Record<MapTileTheme, string> = {
+  light: "/world-map/light.webp",
+  dark: "/world-map/dark.webp",
 };
 
 // The tiles and pins `placed` shows in `frame`, fitted for it and floored - or,
@@ -133,7 +126,7 @@ function tileSetFor(
     bottom: frame.height - anchor.y,
   });
   const tiles = layout.tiles.map(({ z, x, y, left, top }) => ({
-    url: world ? WORLD_MAP[theme].src : mapTileUrl(theme, z, x, y),
+    url: world ? WORLD_MAP[theme] : mapTileUrl(theme, z, x, y),
     left,
     top,
   }));
@@ -375,14 +368,10 @@ export function MapBackdrop({
             shown.fade &&
               "animate-in fade-in duration-300 motion-reduce:animate-none",
           )}
-          style={
-            {
-              left: geometry.canvas.left,
-              width: geometry.canvas.width,
-              "--marker-ring":
-                world && theme ? WORLD_MAP[theme].pinRing : undefined,
-            } as CSSProperties
-          }
+          style={{
+            left: geometry.canvas.left,
+            width: geometry.canvas.width,
+          }}
         >
           {shown.tiles.map(({ left, top }, index) => (
             // A blob URL of a tile this page fetched, or the world picture,
