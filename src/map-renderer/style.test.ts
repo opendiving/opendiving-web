@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { basemapStyle } from "@/lib/basemap";
+import { basemapStyle, rasterStyle } from "@/lib/basemap";
 import { readRuntimeConfig } from "@/lib/runtime-config";
 import type { Resources } from "./resources";
-import { loadStyle, readRendererConfig } from "./style";
+import { loadStyle, readRendererConfig, tileStyle } from "./style";
 
 // One basemap, two drawers: the renderer resolves the same variables with the
 // web's own functions, and arrives at the style the browser would hand MapLibre.
@@ -48,6 +48,71 @@ function recordingResources(siteUrl: string) {
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("what a tile draws of a style", () => {
+  const liberty = () =>
+    JSON.parse(
+      readFileSync(path.join(PUBLIC, "basemap", "liberty.json"), "utf8"),
+    );
+  const symbols = (style: ReturnType<typeof tileStyle>) =>
+    style.layers.filter((layer) => layer.type === "symbol");
+
+  it("draws every label and its icon at half strength", () => {
+    const drawn = symbols(tileStyle(liberty(), 5));
+
+    expect(drawn).toHaveLength(symbols(liberty()).length);
+    for (const layer of drawn) {
+      expect(layer.paint).toMatchObject({
+        "text-opacity": 0.5,
+        "icon-opacity": 0.5,
+      });
+    }
+  });
+
+  it("keeps a label's own paint, and every other layer as it was", () => {
+    const style = liberty();
+    const drawn = tileStyle(style, 5);
+
+    drawn.layers.forEach((layer, index) => {
+      const { paint, ...rest } = layer as { paint?: object };
+      const { paint: stylePaint, ...styleRest } = style.layers[index];
+      expect(rest).toEqual(styleRest);
+      expect(paint).toMatchObject(stylePaint ?? {});
+      if (layer.type !== "symbol") expect(paint).toEqual(stylePaint);
+    });
+  });
+
+  it("draws the whole world with no labels or borders, and all the rest", () => {
+    const style = liberty();
+    const drawn = tileStyle(style, 0);
+
+    expect(drawn.layers).toEqual(
+      style.layers.filter(
+        (layer: { type: string; "source-layer"?: string }) =>
+          layer.type !== "symbol" && layer["source-layer"] !== "boundary",
+      ),
+    );
+    expect(drawn.layers.map((layer) => layer.id)).toContain("natural_earth");
+    expect(drawn.layers.length).toBeLessThan(style.layers.length);
+  });
+
+  // The engine keeps a theme's style and answers `GET /style` from it, so a
+  // draw that wrote to it would quieten the labels of every live map.
+  it("leaves the style it was handed as it was", () => {
+    const style = liberty();
+    tileStyle(style, 5);
+    tileStyle(style, 0);
+
+    expect(style).toEqual(liberty());
+  });
+
+  it("draws a raster basemap as it is, at every zoom", () => {
+    const style = rasterStyle("https://tiles.example.com/{z}/{x}/{y}.png");
+
+    expect(tileStyle(style, 0)).toEqual(style);
+    expect(tileStyle(style, 5)).toEqual(style);
+  });
+});
 
 describe("the renderer's basemap", () => {
   const ENVIRONMENTS = {

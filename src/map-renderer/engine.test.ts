@@ -7,7 +7,7 @@ import { tileCenter, TILE_SIZE } from "@/lib/map-grid";
 import { createEngine, PIXEL_RATIO, type NativeModule } from "./engine";
 import { parsePayload } from "./payload";
 import { createResources } from "./resources";
-import { readRendererConfig } from "./style";
+import { readRendererConfig, tileStyle } from "./style";
 
 // The engine against a stand-in for MapLibre Native, which records what it is
 // asked and answers each render as a test says - so a failed render and one
@@ -153,15 +153,15 @@ describe("the engine", () => {
     ]);
   });
 
-  // Nothing of any record: the style as loaded, with no source or layer of
-  // this app's own.
-  it("draws the theme's style as it loaded, and nothing over it", async () => {
+  // Nothing of any record: the style as a tile has it, with no source or layer
+  // of this app's own.
+  it("draws the theme's style as a tile has it, and nothing over it", async () => {
     const { engine, maps, drawn } = await engineWith();
     await engine.draw({ ...TILE, theme: "dark" });
 
     const [, darkWarm] = maps;
     const [style] = drawn()[0].loaded;
-    expect(style).toEqual(darkWarm.loaded[0]);
+    expect(style).toEqual(tileStyle(darkWarm.loaded[0] as never, TILE.z));
   });
 
   it("labels a tile in its language, and the next one without it in English", async () => {
@@ -171,21 +171,45 @@ describe("the engine", () => {
 
     const [lightWarm] = maps;
     const [inArabic, inEnglish] = drawn().map((map) => map.loaded[0]);
+    const asLoaded = lightWarm.loaded[0] as never;
     expect(inArabic).toEqual(
-      withLabelLanguage(lightWarm.loaded[0] as never, "ar"),
+      tileStyle(withLabelLanguage(asLoaded, "ar"), TILE.z),
     );
-    expect(inArabic).not.toEqual(lightWarm.loaded[0]);
-    expect(inEnglish).toEqual(lightWarm.loaded[0]);
+    expect(inArabic).not.toEqual(inEnglish);
+    expect(inEnglish).toEqual(tileStyle(asLoaded, TILE.z));
   });
 
-  it("answers the style a draw in that theme and language hands its map", async () => {
+  it("answers the style behind a draw in that theme and language", async () => {
     const { engine, drawn } = await engineWith();
     await engine.draw({ ...TILE, theme: "dark", language: "ar" });
     await engine.draw(TILE);
 
     const [inArabic, inEnglish] = drawn().map((map) => map.loaded[0]);
-    expect(await engine.style("dark", "ar")).toEqual(inArabic);
-    expect(await engine.style("light")).toEqual(inEnglish);
+    const behind = async (theme: "dark" | "light", language?: "ar") =>
+      tileStyle((await engine.style(theme, language)) as never, TILE.z);
+    expect(await behind("dark", "ar")).toEqual(inArabic);
+    expect(await behind("light")).toEqual(inEnglish);
+  });
+
+  // A live map draws this style, and a diver choosing a place reads its labels.
+  it("keeps the labels of the style it answers at full strength after a draw", async () => {
+    const { engine, maps } = await engineWith();
+    await engine.draw(TILE);
+
+    const [lightWarm] = maps;
+    expect(await engine.style("light")).toEqual(lightWarm.loaded[0]);
+  });
+
+  it("draws the whole world with no lettering, and its zoom as it asked", async () => {
+    const { engine, drawn } = await engineWith();
+    await engine.draw({ ...TILE, z: 0, x: 0, y: 0 });
+
+    const [map] = drawn();
+    expect(map.renders[0].zoom).toBe(0);
+    expect(map.loaded[0].layers.length).toBeGreaterThan(0);
+    expect(map.loaded[0].layers).not.toContainEqual(
+      expect.objectContaining({ type: "symbol" }),
+    );
   });
 
   it("names the vendored sprite against this instance's origin", async () => {

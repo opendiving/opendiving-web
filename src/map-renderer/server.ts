@@ -4,8 +4,9 @@
 //   GET  /signature  200 {"signature": "<64 lowercase hex>",
 //                         "attribution": "<the basemap's credit, markdown links>"}
 //   GET  /style/{theme}?language=
-//                    200 application/json, the style a tile in that theme and
-//                    language is drawn on; no language is English alone;
+//                    200 application/json, the style behind a tile in that
+//                    theme and language, its labels as a live map draws them;
+//                    no language is English alone;
 //                    400 for another theme, or a language outside the label
 //                    languages; 503 when it cannot render or has no style.
 //                    It takes no place in the queue, and waits for no draw
@@ -46,7 +47,7 @@ export interface Renderer {
   isHealthy(): boolean;
   /** One tile, or a thrown error. */
   draw(payload: TilePayload): Promise<Buffer>;
-  /** The style such a tile is drawn on, or a thrown error. */
+  /** The style behind such a tile, or a thrown error. */
   style(theme: Theme, language?: LabelLanguage): Promise<object>;
 }
 

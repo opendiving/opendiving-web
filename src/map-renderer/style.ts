@@ -1,13 +1,23 @@
 // The basemap a tile is drawn on: the web's own, resolved from the same
 // variables by the same functions, so on one instance a card's tiles and a live
-// map draw the same thing.
+// map show the same map, a tile's lettering quieter (`tileStyle`).
 
-import { rasterStyle, type Basemap, type BasemapStyle } from "@/lib/basemap";
+import {
+  MIN_ZOOM,
+  rasterStyle,
+  type Basemap,
+  type BasemapStyle,
+} from "@/lib/basemap";
 import { readRuntimeConfig } from "@/lib/runtime-config";
 import type { Theme } from "./payload";
 import { describe, type Resources } from "./resources";
 
 type StyleDocument = Exclude<BasemapStyle, string>;
+
+// How strongly a tile draws the basemap's labels. A tile lies under a card's or
+// a page head's own text, and at full strength its labels are that text's
+// colour and weight.
+const TILE_LABEL_OPACITY = 0.5;
 
 export interface RendererConfig {
   basemap: Basemap;
@@ -65,4 +75,39 @@ export async function loadStyle(
     style.sprite = new URL(style.sprite, config.siteUrl).toString();
   }
   return style;
+}
+
+/**
+ * What a tile at `zoom` draws of a style: its labels at `TILE_LABEL_OPACITY`,
+ * and at `MIN_ZOOM`, the whole world, neither labels nor borders, as
+ * `scripts/generate-world-map.mjs` draws the Home hero's picture. See
+ * DECISIONS.md, "A tile draws its labels at half strength, and none of the
+ * whole world".
+ */
+export function tileStyle(style: StyleDocument, zoom: number): StyleDocument {
+  if (zoom === MIN_ZOOM) {
+    return {
+      ...style,
+      layers: style.layers.filter(
+        (layer) =>
+          layer.type !== "symbol" &&
+          !("source-layer" in layer && layer["source-layer"] === "boundary"),
+      ),
+    };
+  }
+  return {
+    ...style,
+    layers: style.layers.map((layer) =>
+      layer.type === "symbol"
+        ? {
+            ...layer,
+            paint: {
+              ...layer.paint,
+              "text-opacity": TILE_LABEL_OPACITY,
+              "icon-opacity": TILE_LABEL_OPACITY,
+            },
+          }
+        : layer,
+    ),
+  };
 }

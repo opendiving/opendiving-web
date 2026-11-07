@@ -6950,6 +6950,16 @@ nothing. A tile request sends the tag raw, and the API reduces it to one of `LAB
 basemap's own `name:xx` fields, mirrored there — or to none, because every variant is a set of tiles
 it stores; `parsePayload` refuses anything else.
 
+## A tile draws its labels at half strength, and none of the whole world
+
+A tile lies under a card's or a page head's own text, and at full strength its labels are that
+text's colour and weight. `tileStyle` halves their opacity in the draw path, so `GET /style`, the
+live maps and the vendored styles keep full labels for a diver choosing a place. At `MIN_ZOOM` it
+drops labels and borders, as the Home hero's picture does: a trip with no place asks for zoom 0 on
+both clients. The renderer sees a zoom and not a trip, so a placed trip wide enough to draw at zoom
+0 goes unlettered too; telling them apart would take a new tile variant and an iOS release.
+Rejected: a denser tint over the map, whose fade reads as a fog bank across the band.
+
 ## The renderer's signature covers what changes a tile's pixels
 
 The signature hashes the sources that reach the renderer's bundle, the MapLibre Native version, each
