@@ -5667,7 +5667,7 @@ sent to a dive already in it.
 an offsetless date-time, ending the state; the layout stays for the form's life so the time box is
 not swapped out mid-entry. The create form never takes a bare date.
 
-## The Import page renders the import the server holds, and a review and a result are one shape
+## The Import page renders the import the server holds
 
 `POST /imports` takes the files once and answers with the review; the apply sends no bytes, so the
 page holds no files and no plan. What `/import` draws is the account's state: `GET /imports/pending`
@@ -5677,9 +5677,8 @@ on the page polls. `ImportReview` renders a pending import and an applied one, a
 address: `/import` stays mounted and reads the pending import each time it is shown. A 409 or a 404
 from the apply or the discard means another device got there first.
 
-A bare document's `not_contained` files are expected, so `file_not_contained` carries no kind and
-reads as information. An unrecognised code is information, not a warning — the
-`certificationAgencyLabel` and `collectionLabel` stance.
+A bare document's `not_contained` files are expected, so `file_not_contained` carries no kind. An
+unrecognised code is information, not a warning.
 
 ## The review's cards hide the unchanged, and the panel lists the writer's changes
 
