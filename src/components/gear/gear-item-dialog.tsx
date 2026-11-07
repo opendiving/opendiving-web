@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
@@ -41,6 +42,7 @@ import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import {
   VolumeCombobox,
+  type PresetVessel,
   type VolumeOption,
 } from "@/components/dives/volume-combobox";
 import { UnitNumberInput } from "@/components/unit-number-input";
@@ -352,18 +354,30 @@ export function GearItemDialog({
 function CylinderFactFields() {
   const units = useUnits();
   const { control, getValues, setValue } = useFormContext<GearItemInput>();
-  // A named preset fills only what is still blank: a figure the diver typed, or
-  // the one the item stores, outranks the name's.
+  // What the last preset pick wrote, which the next pick replaces - a diver
+  // correcting AL80 to HP100 means steel. Anything else a field holds, typed or
+  // stored on the item, outranks a name, so a pick fills only what is blank.
+  const presetFilled = useRef<Partial<PresetVessel>>({});
   const fillFromPreset = ({ vessel }: VolumeOption) => {
-    if (!vessel) return;
-    if (getValues("working_pressure") == null) {
-      setValue("working_pressure", vessel.working_pressure, {
-        shouldDirty: true,
-      });
+    const filled = presetFilled.current;
+    const next: Partial<PresetVessel> = {};
+    const pressure = getValues("working_pressure");
+    if (pressure == null || pressure === filled.working_pressure) {
+      const value = vessel?.working_pressure ?? null;
+      if (value !== pressure) {
+        setValue("working_pressure", value, { shouldDirty: true });
+      }
+      if (vessel) next.working_pressure = vessel.working_pressure;
     }
-    if (!getValues("material")) {
-      setValue("material", vessel.material, { shouldDirty: true });
+    const material = getValues("material");
+    if (!material || material === filled.material) {
+      const value = vessel?.material ?? "";
+      if (value !== material) {
+        setValue("material", value, { shouldDirty: true });
+      }
+      if (vessel) next.material = vessel.material;
     }
+    presetFilled.current = next;
   };
   return (
     <>

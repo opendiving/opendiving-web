@@ -6747,8 +6747,9 @@ a named preset serves the traveller handed an unfamiliar tank, whom a units filt
 steel, Twin sets), the reader's own singles first; headings are `aria-hidden` labels on a
 `role="group"` wrapper with no index, so `nextActiveIndex` skips them.
 
-HP117 and LP95 are both 15.0 L, so the list is keyed by label. The mixture must not record working
-pressure: a preset is only a litre hint.
+HP117 and LP95 are both 15.0 L, so the list is keyed by label. A named row also carries the working
+pressure and material its name pins down, which a gear item takes through `onPick`; a dive's mixture
+records only the litres, so there a preset is a litre hint.
 
 ## Hidden dive-form fields leave a ragged edge, never a hole
 

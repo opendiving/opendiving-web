@@ -219,6 +219,38 @@ describe("GearItemDialog's volume presets", () => {
     });
   });
 
+  it("replaces what an earlier pick filled, and only that", async () => {
+    renderDialog({ initialType: "cylinder", initialName: "Tank" });
+
+    await pickPreset("11.1 L (AL80)");
+    await pickPreset("12.9 L (HP100)");
+    expect(screen.getByLabelText("Material")).toHaveValue("steel");
+
+    // A row whose litres pin nothing takes back what the last name filled.
+    await pickPreset("12 L");
+    expect(await createAndSend()).toMatchObject({
+      volume: 12,
+      working_pressure: null,
+      material: null,
+    });
+  });
+
+  it("keeps a typed pressure across a second pick", async () => {
+    renderDialog({ initialType: "cylinder", initialName: "Tank" });
+
+    await pickPreset("11.1 L (AL80)");
+    const pressure = screen.getByLabelText("Working pressure (bar)");
+    await userEvent.clear(pressure);
+    await userEvent.type(pressure, "232");
+    await pickPreset("12.9 L (HP100)");
+
+    expect(await createAndSend()).toMatchObject({
+      volume: 12.9,
+      working_pressure: 232,
+      material: "steel",
+    });
+  });
+
   it("never overwrites the facts an edited item stores", async () => {
     renderDialog({
       gearItem: item({ volume: 12, working_pressure: 300, material: "carbon" }),
