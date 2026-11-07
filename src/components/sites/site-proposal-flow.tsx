@@ -24,9 +24,11 @@ interface SiteProposalFlowProps {
   finalFocus?: React.ComponentProps<typeof ProposeSiteDialog>["finalFocus"];
 }
 
-// Everything that can follow a save with Public chosen, for every host of
-// `DiveSiteDialog`: the propose dialog, the choiceless form its Edit opens and the
-// replace its matches offer. Leaving any of them leaves the site private.
+// Everything that can follow a save with Public chosen: the propose dialog, the
+// choiceless form its Edit opens and the replace its matches offer. Each host of
+// `DiveSiteDialog` mounts it beside the form, bar the header's, which navigates and
+// leaves the site page to open it from `useProposeOnArrival`. Leaving any of them
+// leaves the site private.
 export function SiteProposalFlow({
   site,
   onClose,
