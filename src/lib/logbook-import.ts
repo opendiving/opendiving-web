@@ -104,13 +104,11 @@ export function reviewCollectionRows(
  *
  * The API caps the groups and ships the overflow as a count precisely so a
  * client can say this; without it a capped list reads as though it were all of
- * them. The record counts above stay complete either way, and so does each
- * group's own count, which is the part the wording has to keep straight:
- * nothing is missing from the numbers, only from the list of remarks.
+ * them.
  */
 export function truncatedNotesSentence(notesTruncated: number): string | null {
   if (notesTruncated <= 0) return null;
-  return `${countNoun(notesTruncated, "further note is", "further notes are")} not shown. The counts above are complete.`;
+  return `${countNoun(notesTruncated, "further note is", "further notes are")} not shown.`;
 }
 
 /**

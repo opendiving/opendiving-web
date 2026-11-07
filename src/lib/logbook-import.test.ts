@@ -122,19 +122,15 @@ describe("truncatedNotesSentence", () => {
     expect(truncatedNotesSentence(0)).toBeNull();
   });
 
-  it("says how many are missing, and that the counts are not", () => {
-    // Both halves matter: without the first a capped list reads as if it were
-    // all of them, and without the second the diver has no way to know the
-    // numbers above are still complete.
+  it("says how many are missing", () => {
+    // Without it a capped list reads as if it were all of them.
     expect(truncatedNotesSentence(112)).toBe(
-      "112 further notes are not shown. The counts above are complete.",
+      "112 further notes are not shown.",
     );
   });
 
   it("does not say '1 further notes'", () => {
-    expect(truncatedNotesSentence(1)).toBe(
-      "1 further note is not shown. The counts above are complete.",
-    );
+    expect(truncatedNotesSentence(1)).toBe("1 further note is not shown.");
   });
 });
 

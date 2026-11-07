@@ -548,8 +548,7 @@ export interface LogbookImportNotes {
   notes: ImportNoteGroup[];
   /**
    * Groups beyond the API's cap that are **not** in `notes`. Non-zero means the
-   * list is not the whole story, and the UI has to say so; the counts stay
-   * complete either way.
+   * list is not the whole story, and the UI has to say so.
    */
   notes_truncated: number;
 }
@@ -645,8 +644,8 @@ export const logbookImportAPI = {
   },
 
   /**
-   * Write a pending import as it was reviewed. A 409 or a 404 means another
-   * device got there first.
+   * Write a pending import as it was reviewed. A 409 means another device got
+   * there first, and a 404 that it did or that the import expired.
    */
   async apply(
     uuid: string,

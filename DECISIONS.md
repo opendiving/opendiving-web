@@ -5675,7 +5675,7 @@ decides between the review and the picker, which is why any device opens the sam
 on the page polls. `ImportReview` renders a pending import and an applied one, at `/import` and
 `/import/[id]`, so an approved review and its result are comparable. A result lives at its own
 address: `/import` stays mounted and reads the pending import each time it is shown. A 409 or a 404
-from the apply or the discard means another device got there first.
+from the apply or the discard means another device got there first, or the import expired.
 
 A bare document's `not_contained` files are expected, so `file_not_contained` carries no kind. An
 unrecognised code is information, not a warning.

@@ -32,15 +32,15 @@ export interface ImportReviewProps {
   onApplied: (applied: LogbookImportRead) => void;
   /** The import is gone from where it stood: discarded, or deleted. */
   onRemoved: () => void;
-  /** Another device got there first, so what is on screen no longer stands. */
+  /** Another device got there first, or the import expired. */
   onOvertaken: () => void;
 }
 
 const logHref = (record: LogbookImportRead) => `/import/${record.uuid}/log`;
 
 const OVERTAKEN = {
-  title: "Finished elsewhere",
-  description: "This import changed on another device.",
+  title: "No longer waiting",
+  description: "This import was finished on another device, or it expired.",
 };
 
 // The files the import could not read, ahead of everything else: the one thing
