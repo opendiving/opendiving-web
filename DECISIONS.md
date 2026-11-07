@@ -5673,15 +5673,13 @@ not swapped out mid-entry. The create form never takes a bare date.
 page holds no files and no plan. What `/import` draws is the account's state: `GET /imports/pending`
 decides between the review and the picker, which is why any device opens the same import and nothing
 on the page polls. `ImportReview` renders a pending import and an applied one, at `/import` and
-`/import/[id]`, so an approved review and its result are comparable. A 409 or a 404 from the apply
-or the discard means another device got there first, and the page reads the pending import again.
+`/import/[id]`, so an approved review and its result are comparable. A result lives at its own
+address: `/import` stays mounted and reads the pending import each time it is shown. A 409 or a 404
+from the apply or the discard means another device got there first.
 
 A bare document's `not_contained` files are expected, so `file_not_contained` carries no kind and
-reads as information, and `fileRestoreHint` says to import the archive.
-`record_remapped_references_follow` and `record_remapped_references_stay` are two sentences, one per
-contract. An unrecognised code is information, not a warning — the `certificationAgencyLabel` and
-`collectionLabel` stance. A non-zero `notes_truncated` marks the log's list incomplete and says the
-counts are not.
+reads as information. An unrecognised code is information, not a warning — the
+`certificationAgencyLabel` and `collectionLabel` stance.
 
 ## The review's cards hide the unchanged, and the panel lists the writer's changes
 

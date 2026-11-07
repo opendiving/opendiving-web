@@ -323,6 +323,12 @@ async function drawReview(record: LogbookImportRead) {
   await screen.findByRole("heading", { name: /review this import/i });
 }
 
+// A result has an address of its own, so `/import` leaves for it.
+const resultShown = () =>
+  waitFor(() =>
+    expect(mocks.routerReplace).toHaveBeenCalledWith("/import/import-1"),
+  );
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.pending.mockReset();
@@ -882,17 +888,17 @@ describe("the import button", () => {
     expect(screen.getByRole("button", { name: "Discard" })).toBeDisabled();
 
     finish(appliedImport());
-    await screen.findByRole("heading", { name: "Imported" });
+    await resultShown();
   });
 });
 
 describe("applying", () => {
-  it("sends no files, and shows the result", async () => {
+  it("sends no files, and moves to the import's own address", async () => {
     mocks.apply.mockResolvedValueOnce(appliedImport({ dives: [newRow()] }));
     await drawReview(pendingImport({ dives: [newRow()] }));
     await userEvent.click(importButton());
 
-    await screen.findByRole("heading", { name: "Imported" });
+    await resultShown();
     expect(mocks.apply).toHaveBeenCalledWith("import-1", {
       check_in_details: undefined,
       portrait: undefined,
@@ -1327,7 +1333,7 @@ describe("the check-in details and the portrait", () => {
     await drawReview(pendingImport({ check_in_details: details }));
     await userEvent.click(importButton());
 
-    await screen.findByRole("heading", { name: "Imported" });
+    await resultShown();
     // The shared copy every check-in surface shows, and the user record that carries
     // the portrait's digest - one note marks both.
     expect(mocks.reloadCheckinDetails).toHaveBeenCalledTimes(1);
@@ -1339,7 +1345,7 @@ describe("the check-in details and the portrait", () => {
     await drawReview(pendingImport({ check_in_details: details }));
     await userEvent.click(importButton());
 
-    await screen.findByRole("heading", { name: "Imported" });
+    await resultShown();
     expect(mocks.reloadCheckinDetails).not.toHaveBeenCalled();
   });
 
@@ -1348,7 +1354,7 @@ describe("the check-in details and the portrait", () => {
     await drawReview(pendingImport());
     await userEvent.click(importButton());
 
-    await screen.findByRole("heading", { name: "Imported" });
+    await resultShown();
     expect(mocks.notes).not.toHaveBeenCalled();
   });
 });

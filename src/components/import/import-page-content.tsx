@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { ImportBodySkeleton } from "@/components/import/import-page-frame";
 import { ImportHistory } from "@/components/import/import-history";
@@ -27,6 +28,7 @@ async function readPending(): Promise<LogbookImportRead | null> {
 }
 
 function ImportFlow({ enabled }: { enabled: boolean }) {
+  const router = useRouter();
   // `undefined` until the page has heard.
   const [record, setRecord] = useState<LogbookImportRead | null | undefined>(
     undefined,
@@ -51,6 +53,14 @@ function ImportFlow({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     if (enabled) void load();
   }, [enabled, load]);
+
+  // At the import's own address, since this route stays mounted and reads the
+  // pending import again whenever it is shown: a result held here would go the
+  // first time a diver followed a card to its dive and came back.
+  const showResult = ({ uuid }: LogbookImportRead) => {
+    setRecord(undefined);
+    router.replace(`/import/${uuid}`);
+  };
 
   if (loadFailed) {
     return (
@@ -79,7 +89,7 @@ function ImportFlow({ enabled }: { enabled: boolean }) {
   return (
     <ImportReview
       record={record}
-      onApplied={setRecord}
+      onApplied={showResult}
       onRemoved={load}
       onOvertaken={load}
     />

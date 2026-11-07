@@ -178,7 +178,7 @@ export default async function PrivacyPage() {
                 recovery window above is the longest a copy of it can survive in
                 a backup after that. Seventeen days at the outside.
               </OperatorAnswer>
-              <OperatorAnswer question="How long an import is kept — §2.2, §7">
+              <OperatorAnswer question="How long an import is kept — §2.1, §7">
                 The files of an import are held for 24 hours at most, and the
                 review and log of one you applied are kept for thirty days.
               </OperatorAnswer>

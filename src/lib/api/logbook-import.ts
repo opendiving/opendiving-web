@@ -188,7 +188,6 @@ export type ImportNoteCode =
   | "record_linked"
   | "record_remapped_references_follow"
   | "record_remapped_references_stay"
-  | "record_restored"
   // A document an earlier version of this app, or of the reference converter,
   // wrote before a change to the format - read as its writer meant it: an axis in
   // seconds, a readout on the dive, `en13319` as a dive's water. Nothing was lost,
@@ -315,10 +314,8 @@ export interface ImportFileReport {
 }
 
 /**
- * Why a file that was read is not kept as a file of the dive it becomes.
- *
- * Mirrors the API's `ImportMemberNotKept`; `importMemberNotKeptSentence` falls
- * back to plain words for a value this build does not know.
+ * Why a file that was read is not kept as a file of the dive it becomes. Mirrors
+ * the API's `ImportMemberNotKept`.
  */
 export type ImportMemberNotKept =
   | "several_dives"
