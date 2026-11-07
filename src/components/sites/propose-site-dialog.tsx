@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CommonsAttestation } from "@/components/sites/commons-attestation";
 import {
   COMMONS_MATCH_RULE_LABELS,
   CommonsCredit,
   commonsCredits,
 } from "@/components/sites/commons-site";
+import { ProposalMap } from "@/components/map/proposal-map-lazy";
 import { SHARED_MEMBER_ROWS } from "@/components/sites/shared-member-rows";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
@@ -50,13 +51,19 @@ function publishedMembers(site: DiveSite): DiveSiteSharedMembers {
   };
 }
 
+const hasPin = (site: DiveSite) =>
+  site.latitude != null && site.longitude != null;
+
 interface ProposeSiteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // The diver's own site.
   site: DiveSite;
   onProposed: (proposal: DiveSiteProposal) => void;
+  // These two hand the diver on, and closing is the caller's: `open` going false.
   onReplace: (match: DiveSiteCommonsMatch) => void;
+  onEdit: () => void;
+  finalFocus?: React.ComponentProps<typeof DialogContent>["finalFocus"];
 }
 
 function MatchesStep({
@@ -75,7 +82,7 @@ function MatchesStep({
   onReplace: (match: DiveSiteCommonsMatch) => void;
 }) {
   const units = useUnits();
-  const hasPin = site.latitude != null && site.longitude != null;
+  const pinned = hasPin(site);
   const hasIdentityMatch = !!matches?.some(
     (match) => match.rule === "identity",
   );
@@ -102,8 +109,10 @@ function MatchesStep({
               className="flex flex-wrap items-start justify-between gap-3 p-3"
             >
               <div className="min-w-0 flex-1 text-sm">
+                {/* A new tab, since the flow can be open over a half-filled dive. */}
                 <Link
                   href={`/sites/${match.uuid}`}
+                  target="_blank"
                   className="font-medium break-words underline hover:text-muted-foreground"
                 >
                   {match.name}
@@ -138,7 +147,7 @@ function MatchesStep({
       {credits.map((credit) => (
         <CommonsCredit key={credit} attribution={credit} />
       ))}
-      {matches !== null && !hasPin && (
+      {matches !== null && !pinned && (
         <p className="text-sm">
           A site needs a pin to be proposed. Edit this site to add one.
         </p>
@@ -153,7 +162,7 @@ function MatchesStep({
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        {matches !== null && hasPin && !hasIdentityMatch && (
+        {matches !== null && pinned && !hasIdentityMatch && (
           <Button type="button" onClick={onContinue}>
             Continue as a new site
           </Button>
@@ -163,13 +172,38 @@ function MatchesStep({
   );
 }
 
+function SitePinMap({
+  name,
+  latitude,
+  longitude,
+}: {
+  name: string;
+  latitude: number;
+  longitude: number;
+}) {
+  const markers = useMemo(
+    () => [{ kind: "proposed" as const, label: name, latitude, longitude }],
+    [name, latitude, longitude],
+  );
+  return (
+    <ProposalMap
+      markers={markers}
+      unsupported="This browser cannot display the map. The pin is listed here."
+    />
+  );
+}
+
 function ReviewStep({
   site,
+  backLabel,
   onBack,
+  onEdit,
   onProposed,
 }: {
   site: DiveSite;
+  backLabel: string;
   onBack: () => void;
+  onEdit: () => void;
   onProposed: (proposal: DiveSiteProposal) => void;
 }) {
   const units = useUnits();
@@ -178,6 +212,7 @@ function ReviewStep({
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const members = publishedMembers(site);
+  const { latitude, longitude } = members;
 
   const send = async () => {
     setError(null);
@@ -203,7 +238,25 @@ function ReviewStep({
   return (
     <>
       <section className="space-y-2 text-sm">
-        <h3 className="font-semibold">What would be published</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-semibold">What would be published</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isSending}
+            onClick={onEdit}
+          >
+            Edit
+          </Button>
+        </div>
+        {latitude !== null && longitude !== null && (
+          <SitePinMap
+            name={site.name}
+            latitude={latitude}
+            longitude={longitude}
+          />
+        )}
         <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 rounded-md border bg-muted/40 p-3">
           <dt className="text-muted-foreground">Identifier</dt>
           <dd className="break-all">
@@ -254,7 +307,7 @@ function ReviewStep({
           disabled={isSending}
           onClick={onBack}
         >
-          Back
+          {backLabel}
         </Button>
         <Button
           type="button"
@@ -275,22 +328,28 @@ function ProposeSiteSteps({
   onCancel,
   onProposed,
   onReplace,
+  onEdit,
 }: {
   site: DiveSite;
   onCancel: () => void;
   onProposed: (proposal: DiveSiteProposal) => void;
   onReplace: (match: DiveSiteCommonsMatch) => void;
+  onEdit: () => void;
 }) {
   const [matches, setMatches] = useState<DiveSiteCommonsMatch[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isReviewing, setIsReviewing] = useState(false);
+  const pinned = hasPin(site);
 
   useEffect(() => {
     let active = true;
     diveSitesAPI
       .getCommonsMatches(site.uuid)
       .then((found) => {
-        if (active) setMatches(found);
+        if (!active) return;
+        setMatches(found);
+        // Nothing for the matches step to say. Without a pin it says that.
+        if (found.length === 0 && pinned) setIsReviewing(true);
       })
       .catch((failure: unknown) => {
         if (active) {
@@ -305,7 +364,7 @@ function ProposeSiteSteps({
     return () => {
       active = false;
     };
-  }, [site.uuid]);
+  }, [site.uuid, pinned]);
 
   return (
     <>
@@ -320,7 +379,10 @@ function ProposeSiteSteps({
       {isReviewing ? (
         <ReviewStep
           site={site}
-          onBack={() => setIsReviewing(false)}
+          // Reached by the skip, there is no step to go back to.
+          backLabel={matches?.length ? "Back" : "Cancel"}
+          onBack={matches?.length ? () => setIsReviewing(false) : onCancel}
+          onEdit={onEdit}
           onProposed={onProposed}
         />
       ) : (
@@ -338,19 +400,21 @@ function ProposeSiteSteps({
 }
 
 // A diver's own site on its way to the Commons: first whether it is there already,
-// then exactly what would be published, then the attestation. The site is sent as
-// it stands, so nothing here is a form. No map, so nothing here adds one to `/privacy`
-// §4.4.
+// where that has anything to say, then exactly what would be published, then the
+// attestation. The site is sent as it stands, so nothing here is a form; Edit leaves
+// for the one that is. The review step's map is one of those `/privacy` §4.4 counts.
 export function ProposeSiteDialog({
   open,
   onOpenChange,
   site,
   onProposed,
   onReplace,
+  onEdit,
+  finalFocus,
 }: ProposeSiteDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent finalFocus={finalFocus}>
         <ProposeSiteSteps
           site={site}
           onCancel={() => onOpenChange(false)}
@@ -358,10 +422,8 @@ export function ProposeSiteDialog({
             onProposed(proposal);
             onOpenChange(false);
           }}
-          onReplace={(match) => {
-            onOpenChange(false);
-            onReplace(match);
-          }}
+          onReplace={onReplace}
+          onEdit={onEdit}
         />
       </DialogContent>
     </Dialog>

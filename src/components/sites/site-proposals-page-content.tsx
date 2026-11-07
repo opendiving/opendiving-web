@@ -41,7 +41,7 @@ import {
   type DiveSiteProposalStatus,
 } from "@/lib/api/dive-sites";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { formatDateOnly } from "@/lib/date-time";
+import { formatDateTime } from "@/lib/date-time";
 
 const noop = () => {};
 
@@ -112,7 +112,7 @@ function SiteProposalsFrame({
               <EmptyState
                 icon={Landmark}
                 title="No proposals yet"
-                description="Propose one of your dive sites, or a change to a Commons site, from the site's own page."
+                description="Choose Public in the form that adds or edits one of your dive sites, or propose a site or a change to a Commons site from the site's own page."
               />
             ) : (
               <Table aria-busy={proposals.length === 0 || undefined}>
@@ -143,7 +143,11 @@ function SiteProposalsFrame({
                         </TableCell>
                         <TableCell>{KIND_LABELS[proposal.kind]}</TableCell>
                         <TableCell>
-                          {formatDateOnly(proposal.created_at)}
+                          {formatDateTime(proposal.created_at, {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </TableCell>
                         <TableCell className="whitespace-normal">
                           {STATUS_LABELS[proposal.status]}

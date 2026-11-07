@@ -24,10 +24,44 @@ vi.mock("@/components/layout/quick-create", () => ({
   useQuickCreate: () => vi.fn(),
 }));
 vi.mock("@/components/sites/dive-site-card", () => ({
-  DiveSiteCard: ({ site }: { site: DiveSite }) => <li>{site.name}</li>,
+  DiveSiteCard: ({ site, onEdit }: { site: DiveSite; onEdit: () => void }) => (
+    <li>
+      {site.name}
+      <button onClick={onEdit}>Edit {site.name}</button>
+    </li>
+  ),
 }));
 vi.mock("@/components/sites/dive-site-dialog", () => ({
-  DiveSiteDialog: () => null,
+  DiveSiteDialog: ({
+    open,
+    diveSite,
+    onSaved,
+  }: {
+    open: boolean;
+    diveSite: DiveSite;
+    onSaved: (site: DiveSite, proposes: boolean) => void;
+  }) =>
+    open ? (
+      <>
+        <button onClick={() => onSaved(diveSite, false)}>Save private</button>
+        <button onClick={() => onSaved(diveSite, true)}>Save public</button>
+      </>
+    ) : null,
+}));
+vi.mock("@/components/sites/site-proposal-flow", () => ({
+  SiteProposalFlow: ({
+    site,
+    onReplaced,
+  }: {
+    site: DiveSite | null;
+    onReplaced: (record: DiveSite) => void;
+  }) =>
+    site && (
+      <>
+        <p>Proposing {site.name}</p>
+        <button onClick={() => onReplaced(site)}>Replace</button>
+      </>
+    ),
 }));
 vi.mock("@/components/sites/commons-site-dialog", () => ({
   CommonsSiteDialog: () => null,
@@ -98,6 +132,26 @@ describe("SitesPageContent", () => {
       screen.getByRole("button", { name: "Show all sites" }),
     );
     expect(await screen.findByText("Own site")).toBeInTheDocument();
+  });
+
+  it("opens the flow from a save with Public chosen, and re-reads the rows after a replace", async () => {
+    answerWith([]);
+    render(<SitesPageContent />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit Own site" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save private" }));
+    expect(screen.queryByText("Proposing Own site")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save public" }));
+    expect(await screen.findByText("Proposing Own site")).toBeInTheDocument();
+
+    const reads = getDiveSites.mock.calls.length;
+    await userEvent.click(screen.getByRole("button", { name: "Replace" }));
+    await waitFor(() =>
+      expect(getDiveSites.mock.calls.length).toBeGreaterThan(reads),
+    );
   });
 
   it("reaches the diver's proposals only where the Commons is edited", async () => {

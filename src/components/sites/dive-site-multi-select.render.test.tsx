@@ -29,7 +29,7 @@ vi.mock("@/components/sites/dive-site-dialog", async () => {
     }: {
       open: boolean;
       onOpenChange: (open: boolean) => void;
-      onSaved: (site: unknown) => void;
+      onSaved: (site: unknown, proposes: boolean) => void;
       finalFocus?: React.ComponentProps<typeof DialogContent>["finalFocus"];
     }) => (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -38,17 +38,62 @@ vi.mock("@/components/sites/dive-site-dialog", async () => {
           <button
             type="button"
             onClick={() => {
-              onSaved({ uuid: "site-new", name: "Canyon", location: null });
+              onSaved(
+                { uuid: "site-new", name: "Canyon", location: null },
+                false,
+              );
               onOpenChange(false);
             }}
           >
             Save
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onSaved(
+                { uuid: "site-new", name: "Canyon", location: null },
+                true,
+              );
+              onOpenChange(false);
+            }}
+          >
+            Save public
           </button>
         </DialogContent>
       </Dialog>
     ),
   };
 });
+
+vi.mock("@/components/sites/site-proposal-flow", () => ({
+  SiteProposalFlow: ({
+    site,
+    onClose,
+    onReplaced,
+  }: {
+    site: { name: string } | null;
+    onClose: () => void;
+    onReplaced: (record: unknown) => void;
+  }) =>
+    site && (
+      <>
+        <p>Proposing {site.name}</p>
+        <button
+          type="button"
+          onClick={() => {
+            onReplaced({
+              uuid: "commons-1",
+              name: "Blue Hole Arch",
+              location: null,
+            });
+            onClose();
+          }}
+        >
+          Replace
+        </button>
+      </>
+    ),
+}));
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
@@ -117,6 +162,40 @@ const openMenu = async () => {
 };
 
 describe("DiveSiteMultiSelect", () => {
+  describe("a new site saved with Public chosen", () => {
+    const addPublicSite = async () => {
+      await openMenu();
+      await userEvent.click(
+        screen.getByRole("option", { name: /Add dive site/ }),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Save public" }),
+      );
+    };
+
+    it("selects it and opens the flow", async () => {
+      render(<Field />);
+      await addPublicSite();
+
+      expect(await screen.findByText("Proposing Canyon")).toBeInTheDocument();
+      expect(rows()).toEqual([expect.stringContaining("Canyon")]);
+    });
+
+    it("swaps the selection to the record a replace leaves", async () => {
+      render(<Field />);
+      await addPublicSite();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Replace" }),
+      );
+
+      await waitFor(() =>
+        expect(rows()).toEqual([expect.stringContaining("Blue Hole Arch")]),
+      );
+      expect(screen.queryByText("Proposing Canyon")).not.toBeInTheDocument();
+    });
+  });
+
   describe("with Commons rows in the answer", () => {
     beforeEach(() => {
       lookupDiveSites.mockResolvedValue({

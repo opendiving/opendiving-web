@@ -1,13 +1,9 @@
+import type { ReviewMarker } from "@/components/map/proposal-map";
 import type { AdminDiveSiteProposal } from "@/lib/api/admin";
 import type { DiveSiteSharedMembers } from "@/lib/api/dive-sites";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
 import type { GeoPoint } from "@/lib/geo-distance";
 import type { UnitSystem } from "@/lib/units";
-
-export interface ReviewMarker extends GeoPoint {
-  kind: "proposed" | "current" | "match";
-  label: string;
-}
 
 function pinOf(
   place: Pick<DiveSiteSharedMembers, "latitude" | "longitude">,

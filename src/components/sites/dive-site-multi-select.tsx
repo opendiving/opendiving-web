@@ -12,6 +12,7 @@ import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { DiveSiteSummary } from "@/lib/api/dives";
 import { diveSiteSearchResult } from "@/components/sites/commons-site";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
+import { SiteProposalFlow } from "@/components/sites/site-proposal-flow";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import { useLookupLabels } from "@/hooks/useLookupLabels";
 import { useUnits } from "@/hooks/useUnits";
@@ -77,6 +78,7 @@ export function DiveSiteMultiSelect({
   );
   const units = useUnits();
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [proposing, setProposing] = useState<DiveSite | null>(null);
   // Set by a save in the new-site dialog, so its close doesn't hand focus back
   // to the input - which would reopen the menu `blurOnSelect` just shut.
   const savedFromDialogRef = useRef(false);
@@ -125,10 +127,22 @@ export function DiveSiteMultiSelect({
     disabled,
   });
 
-  const handleCreated = (newDiveSite: DiveSite) => {
+  const handleCreated = (newDiveSite: DiveSite, proposes: boolean) => {
     savedFromDialogRef.current = true;
     rememberRecord(newDiveSite);
     addSite(newDiveSite.uuid);
+    if (proposes) setProposing(newDiveSite);
+  };
+
+  // The record takes the retired site's place in the order, or the site simply
+  // goes where the dive already names the record.
+  const swapSite = (retired: string, record: DiveSite) => {
+    rememberRecord(record);
+    onChange(
+      value.includes(record.uuid)
+        ? value.filter((id) => id !== retired)
+        : value.map((id) => (id === retired ? record.uuid : id)),
+    );
   };
 
   return (
@@ -254,6 +268,20 @@ export function DiveSiteMultiSelect({
           savedFromDialogRef.current = false;
           return restore;
         }}
+      />
+
+      <SiteProposalFlow
+        site={proposing}
+        onClose={() => setProposing(null)}
+        onSaved={(saved) => {
+          rememberRecord(saved);
+          setProposing(saved);
+        }}
+        onReplaced={(record) => {
+          if (proposing) swapSite(proposing.uuid, record);
+        }}
+        // Focus handed back to the input would reopen its menu, as above.
+        finalFocus={false}
       />
     </div>
   );

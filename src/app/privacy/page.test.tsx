@@ -181,8 +181,8 @@ describe.each([
   ["with Google sign-in configured", true],
   ["without Google sign-in", false],
 ])("the page's other closed lists %s", (_label, google) => {
-  // §2.2 opens by counting itself, twice in one sentence: "Six things are
-  // recorded ... and all six are ordinary machinery".
+  // §2.2 opens by counting itself, twice in one sentence: "Seven things are
+  // recorded ... and all seven are ordinary machinery".
   it("§2.2 counts the things it says are recorded automatically", async () => {
     await renderPage({ google });
 
@@ -867,16 +867,20 @@ describe("the map tiles", () => {
     expect(text).not.toMatch(/proposal|OpenDiving Commons/);
   });
 
-  // The review queue's map, which only the copy that edits the Commons has.
-  it("counts the review map where the Commons is edited", async () => {
+  // The review queue's map and the propose flow's, which only the copy that edits
+  // the Commons has.
+  it("counts the proposal maps where the Commons is edited", async () => {
     await renderPage({ google: false, commonsPrimary: true });
 
     const text = mapSection();
-    expect(text).toMatch(/Four places in the app show a map your browser/);
+    expect(text).toMatch(/Five places in the app show a map your browser/);
     expect(text).toMatch(
-      /which loads one only when you ask it to show the map, and the screen where this copy’s operator reviews what divers propose for OpenDiving Commons, which loads one when a proposal is opened\. Apart from those four, no page has your browser contact the provider\./,
+      /which loads one only when you ask it to show the map, the step that checks a site of yours before it is proposed, which loads one when it opens, and the screen where this copy’s operator reviews what divers propose for OpenDiving Commons, which loads one when a proposal is opened\. Apart from those five, no page has your browser contact the provider\./,
     );
-    expect(text).not.toMatch(/Three places|those three/);
+    expect(text).toMatch(
+      /draws a map of its own in five places:.*and the step that checks a site of yours before it is proposed\. It draws/,
+    );
+    expect(text).not.toMatch(/Three places|those three|Four places/);
   });
 
   // Its own paragraph, on both copies: the browser's sentences say "the app"
@@ -914,9 +918,9 @@ describe("the map tiles", () => {
       /map pictures?|tiles this copy draws/i,
     );
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Six things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Seven things sit outside those buttons/);
     expect(rights).toHaveTextContent(
-      /two records in section 2\.2 are in neither, the account security events and the retry records/,
+      /three records in section 2\.2 are in neither, the account security events, the retry records and the identifiers of replaced sites/,
     );
     expect(rights).toHaveTextContent(
       /The email address you sign in with, your username, the list of signed-in devices and your API keys are in Settings but are not part of the export/,
@@ -955,7 +959,7 @@ describe("the map tiles", () => {
 
     // §6.2: outside the export, and outside the deletion, because not yours.
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Seven things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Eight things sit outside those buttons/);
     expect(rights).toHaveTextContent(
       /The email address you sign in with, your username, the list of signed-in devices and your API keys are in Settings but are not part of the export/,
     );
@@ -1641,15 +1645,53 @@ describe("proposing for OpenDiving Commons", () => {
 
   it("§6.2 counts proposals among what sits outside the buttons", async () => {
     await renderPage({ google: false, commonsPrimary: true });
-    expect(pageText()).toContain("Seven things sit outside those buttons");
+    expect(pageText()).toContain("Eight things sit outside those buttons");
 
     cleanup();
     await renderPage({ google: false, commonsPrimary: true, mapTiles: true });
-    expect(pageText()).toContain("Eight things sit outside those buttons");
+    expect(pageText()).toContain("Nine things sit outside those buttons");
     expect(pageText()).toMatch(
       /Nor is a proposal for OpenDiving Commons in the export/,
     );
   });
+
+  it("§4 says the form offers proposing and the proposal follows the site", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    const section = sectionText(/4\.12 Proposing for OpenDiving Commons/);
+    expect(section).toMatch(
+      /the form that adds or edits a site of yours offers to start as you save it/,
+    );
+    expect(section).toMatch(
+      /the proposal follows the site’s edits while it waits/,
+    );
+    expect(section).toMatch(
+      /your own site is removed, though its identifier is kept with your account, pointing at the record, until your account goes/,
+    );
+    expect(pageText()).toMatch(/its shared facts, which follow your edits/);
+    expect(pageText()).not.toMatch(/as you proposed/);
+  });
+
+  it.each([[true], [false]])(
+    "says what is kept of a replaced site where commons_primary is %s",
+    async (commonsPrimary) => {
+      await renderPage({ google: false, commonsPrimary });
+
+      const text = pageText();
+      expect(text).toMatch(
+        /Replaced sites: When a dive site of yours is replaced/,
+      );
+      expect(text).toMatch(
+        /Follow a replaced site: .*still lands on the record/,
+      );
+      expect(text).toMatch(
+        /The identifier of a replaced site has no expiry of its own/,
+      );
+      expect(text).toMatch(
+        /three records in section 2\.2 are in neither, the account security events, the retry records and the identifiers of replaced sites/,
+      );
+    },
+  );
 
   it("§6.2's ordinals still add up here", async () => {
     await renderPage({ google: false, commonsPrimary: true });

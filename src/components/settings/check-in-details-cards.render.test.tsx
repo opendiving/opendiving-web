@@ -192,6 +192,9 @@ describe("AboutYouCard", () => {
     );
 
     expect(screen.getByLabelText("Email")).toHaveValue("sam@example.com");
+    expect(
+      screen.queryByRole("button", { name: "Use my sign-in email" }),
+    ).not.toBeInTheDocument();
     expect(update).not.toHaveBeenCalled();
 
     await save();
@@ -200,6 +203,18 @@ describe("AboutYouCard", () => {
         expect.objectContaining({ email: "sam@example.com" }),
       ),
     );
+  });
+
+  it("offers no sign-in email link when the check-in email already is it", async () => {
+    server.email = "Sam@Example.com";
+    withCopy(<AboutYouCard />);
+
+    expect(await screen.findByLabelText("Email")).toHaveValue(
+      "Sam@Example.com",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Use my sign-in email" }),
+    ).not.toBeInTheDocument();
   });
 
   it("refuses a birth date in the future, and an email that is not one, before any request", async () => {

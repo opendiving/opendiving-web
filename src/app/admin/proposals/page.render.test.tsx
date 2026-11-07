@@ -25,7 +25,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 vi.mock("@/hooks/useInstanceConfig", () => ({ useInstanceConfig: vi.fn() }));
 
 // The real map is the browser lane's (`proposal-map.browser.test.tsx`).
-vi.mock("@/components/admin/proposal-map-lazy", () => ({
+vi.mock("@/components/map/proposal-map-lazy", () => ({
   ProposalMap: ({ markers }: { markers: { label: string }[] }) => (
     <ul aria-label="map">
       {markers.map((marker) => (

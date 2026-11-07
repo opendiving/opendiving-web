@@ -36,6 +36,8 @@ interface ConfirmDialogProps {
   // a way out of one. Blocked by `isLoading` alongside Cancel, since the
   // destructive request it diverts from is already gone.
   secondaryAction?: { label: string; onClick: () => void };
+  // Forwarded to `DialogContent`, as `DiveSiteDialog` does.
+  finalFocus?: React.ComponentProps<typeof DialogContent>["finalFocus"];
   onConfirm: () => void | Promise<void>;
 }
 
@@ -53,6 +55,7 @@ export function ConfirmDialog({
   confirmDisabled = false,
   children,
   secondaryAction,
+  finalFocus,
   onConfirm,
 }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -66,6 +69,7 @@ export function ConfirmDialog({
         // Cancel is the safe initial focus for a destructive confirmation.
         // Focusing a combobox would open its list over the action buttons.
         initialFocus={cancelRef}
+        finalFocus={finalFocus}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

@@ -6299,6 +6299,28 @@ published" contradicts it. So each such sentence varies inline on `commons_prima
 put because the new section sits last. `page.test.tsx` on both pages holds each sentence in both
 renderings.
 
+## Private or public is dialog state, read from the proposal
+
+The site form's choice is not a member: `diveSiteFormSchema` gains nothing and the body sent does
+not change. Public is what a site with a waiting proposal reads as, and choosing it asks for the
+flow, carried to `onSaved` beside the record. A stored visibility would repeat the proposal's status
+and could disagree with it. Cancelling the flow leaves the site private, so a form reopened after
+one reads Private.
+
+## The propose flow lives with every host of the site dialog
+
+`DiveSiteDialog` never navigates, so what follows a save is its host's, and `SiteProposalFlow` is
+mounted beside it in each: only the host knows what a replace does there. The header's form hosts
+none. It navigates, and the site page opens the flow from `useProposeOnArrival`, a ref in the
+provider rather than a URL parameter, because a reload must not reopen it.
+
+## The proposal map sits in `components/map/`
+
+The review queue and a diver's propose dialog draw the same `ProposalMap`, and nothing outside the
+admin directories may import from them, so it sits with the other maps; a copy in `sites/` is
+rejected as two maps to keep in step. What a browser without WebGL2 reads is a prop, since the
+queue's sentence names an OpenStreetMap link and a list of matches the dialog does not have.
+
 ## The source offer names the repositories, and still leads with the request
 
 The operator block offers both routes to the source, the request and the repositories, with the

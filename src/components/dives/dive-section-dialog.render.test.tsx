@@ -84,6 +84,8 @@ beforeEach(() => {
 describe("a card's edit dialog", () => {
   it("sends its section's fields and nothing else", async () => {
     const { onSaved, onOpenChange } = renderNotes(storedDive());
+    // Wait for the dialog's initial focus before editing a field inside it.
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
 
     const notes = screen.getByRole("textbox", { name: /^notes$/i });
     await userEvent.clear(notes);
