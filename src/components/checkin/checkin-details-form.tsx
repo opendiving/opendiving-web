@@ -1,7 +1,12 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { useForm, type Control, type Resolver } from "react-hook-form";
+import {
+  useForm,
+  useWatch,
+  type Control,
+  type Resolver,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle } from "lucide-react";
 
@@ -342,6 +347,13 @@ function LoadedForm({
   };
 
   const signInEmail = user?.email;
+  // Watched so the link goes away once the box already holds the sign-in address,
+  // whether it was stored that way, typed, or filled by the link itself.
+  const typedEmail = useWatch({ control: form.control, name: "email" });
+  const emailIsSignIn =
+    !!signInEmail &&
+    typeof typedEmail === "string" &&
+    typedEmail.trim().toLowerCase() === signInEmail.toLowerCase();
   // The cast narrows the form to the members it shares with the import preview's,
   // which is all a member field reads; `name` is this form's alone.
   const control = form.control as unknown as Control<CheckinDetailsFormValues>;
@@ -390,7 +402,7 @@ function LoadedForm({
               />
               {/* Filled here and saved with the rest, so choosing to hand out the
                   sign-in address costs one click and no request of its own. */}
-              {member === "email" && signInEmail && (
+              {member === "email" && signInEmail && !emailIsSignIn && (
                 <Button
                   type="button"
                   variant="link"
