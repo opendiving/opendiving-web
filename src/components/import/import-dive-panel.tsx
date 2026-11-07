@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { diveInfoSections } from "@/components/dives/dive-info-dialog";
@@ -14,6 +15,7 @@ import {
   RecordInfoSections,
   type RecordInfoSection,
 } from "@/components/ui/record-info-dialog";
+import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { useUnits } from "@/hooks/useUnits";
 import type { Dive } from "@/lib/api/dives";
 import {
@@ -141,15 +143,19 @@ function ChangeList({
 
 // What one card of the review stands for: a new dive whole, as the dive page's
 // Info shows one with its cylinders and recordings beside it, or only what the
-// import changes on a dive the diver has.
+// import changes on a dive the diver has. On an applied import it leads to the
+// dive, by the row's `uuid`: the identifiers inside `dive` may name nothing.
 export function ImportDivePanel({
   row,
+  applied,
   onClose,
 }: {
   row: LogbookImportDive | null;
+  applied: boolean;
   onClose: () => void;
 }) {
   const units = useUnits();
+  const withReturnTo = useWithReturnTo();
   const dive = row?.dive;
 
   return (
@@ -169,6 +175,19 @@ export function ImportDivePanel({
             <ChangeList changes={row.changes} units={units} />
           ) : (
             <RecordInfoSections sections={reviewSections(dive, units)} />
+          )}
+          {applied && row.uuid && (
+            <p className="text-sm">
+              {/* Closed on the way out: this route stays mounted, and the way
+                  back should not land on an open dialog. */}
+              <Link
+                href={withReturnTo(`/dives/${row.uuid}`)}
+                onClick={onClose}
+                className="underline underline-offset-2"
+              >
+                Open this dive
+              </Link>
+            </p>
           )}
         </DialogContent>
       )}

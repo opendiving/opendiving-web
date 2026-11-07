@@ -25,16 +25,17 @@ function OutcomeChip({ row }: { row: LogbookImportDive }) {
 }
 
 // The dive a card opens, in words a screen reader can tell from the next card's.
-function openLabel(row: LogbookImportDive): string {
+function openLabel(row: LogbookImportDive, applied: boolean): string {
   const dive = row.dive!;
   const name = `${diveTitleText(dive.dive_number, dive.dive_sites)}, ${formatDiveDateTime(dive.start_time)}`;
-  return row.outcome === "new"
-    ? `New dive: ${name}`
-    : `What changes on ${name}`;
+  if (row.outcome === "new") return `New dive: ${name}`;
+  return `What ${applied ? "changed" : "changes"} on ${name}`;
 }
 
 // One card per dive the import adds or changes. In a review a card opens the
-// panel, the dive not being written yet; in a result it links to the dive.
+// panel, the dive not being written yet. In a result a new dive's card links to
+// the dive, and a modified one's still opens the panel, whose before and after
+// are nowhere else to be read, with that link inside it.
 export function ImportDiveCards({
   dives,
   applied,
@@ -60,19 +61,23 @@ export function ImportDiveCards({
             dive={row.dive!}
             importRow={{
               chip: <OutcomeChip row={row} />,
-              ...(applied
+              ...(applied && row.outcome === "new"
                 ? { linkTo: row.uuid ?? undefined }
                 : {
                     open: {
                       onOpen: () => setOpened(row),
-                      label: openLabel(row),
+                      label: openLabel(row, applied),
                     },
                   }),
             }}
           />
         ))}
       </BackdropCardList>
-      <ImportDivePanel row={opened} onClose={() => setOpened(null)} />
+      <ImportDivePanel
+        row={opened}
+        applied={applied}
+        onClose={() => setOpened(null)}
+      />
     </>
   );
 }

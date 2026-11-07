@@ -988,25 +988,79 @@ describe("the result", () => {
     await screen.findByRole("heading", { name: "Imported" });
   }
 
-  it("links each card to its row's dive, and Done goes to the dives", async () => {
+  it("links a new card to its row's dive, and Done goes to the dives", async () => {
     const overtaken = newRow(1);
     await drawResult(
       appliedImport({
         // A row the apply settled onto a dive that held it names that dive.
-        dives: [{ ...overtaken, uuid: "stored-dive" }, modifiedRow(2)],
+        dives: [{ ...overtaken, uuid: "stored-dive" }],
       }),
     );
 
     expect(
       screen.getByRole("link", { name: "Dive #1" }).getAttribute("href"),
     ).toMatch(/^\/dives\/stored-dive/);
-    expect(
-      screen.getByRole("link", { name: "Dive #2" }).getAttribute("href"),
-    ).toMatch(/^\/dives\/dive-2/);
     expect(screen.getByRole("link", { name: "Done" })).toHaveAttribute(
       "href",
       "/dives",
     );
+  });
+
+  it("opens a modified card's changes, with a link to its row's dive", async () => {
+    const row = modifiedRow(2);
+    await drawResult(
+      appliedImport({
+        // The dive inside the row may carry an identifier that names nothing.
+        dives: [
+          {
+            ...row,
+            uuid: "stored-dive",
+            dive: storedDive({ ...row.dive!, uuid: "stale" }),
+          },
+        ],
+      }),
+    );
+
+    expect(screen.queryByRole("link", { name: "Dive #2" })).toBeNull();
+    await userEvent.click(
+      screen.getByRole("button", { name: /^What changed on Dive #2/ }),
+    );
+
+    const panel = await screen.findByRole("dialog");
+    expect(within(panel).getByText("21 m")).toBeVisible();
+    expect(within(panel).getByText("21.8 m")).toBeVisible();
+    expect(
+      within(panel)
+        .getByRole("link", { name: "Open this dive" })
+        .getAttribute("href"),
+    ).toMatch(/^\/dives\/stored-dive/);
+  });
+
+  it("closes the panel on the way to the dive, for the way back", async () => {
+    await drawResult(appliedImport({ dives: [modifiedRow(2)] }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^What changed on Dive #2/ }),
+    );
+
+    const panel = await screen.findByRole("dialog");
+    const link = within(panel).getByRole("link", { name: "Open this dive" });
+    // jsdom has no navigation for the link to perform.
+    link.addEventListener("click", (event) => event.preventDefault());
+    await userEvent.click(link);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("offers a review's panel no link to a dive not yet written", async () => {
+    await drawReview(pendingImport({ dives: [modifiedRow(2)] }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^What changes on Dive #2/ }),
+    );
+
+    const panel = await screen.findByRole("dialog");
+    expect(
+      within(panel).queryByRole("link", { name: "Open this dive" }),
+    ).toBeNull();
   });
 
   it("counts a skipped row that keeps its dive, and draws it no card", async () => {
@@ -1020,6 +1074,7 @@ describe("the result", () => {
 
     expect(screen.getByRole("link", { name: "1 skipped dive" })).toBeVisible();
     expect(screen.queryByRole("link", { name: "Dive #2" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Dive #2/ })).toBeNull();
   });
 
   it("draws a row the review did not show that has no uuid without a link", async () => {
