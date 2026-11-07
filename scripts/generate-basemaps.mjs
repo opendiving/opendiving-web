@@ -223,9 +223,11 @@ for (const layer of style.layers) {
     paint["text-halo-width"] ??= 1;
   }
 
-  // The Natural Earth relief is a light raster; dimmed, it stays texture.
+  // The Natural Earth relief is a light raster, strongest at the zooms that
+  // show the most land. Dimmed this far it stays texture, and land keeps about
+  // the colour it has where the relief has faded out.
   if (layer.type === "raster") {
-    paint["raster-brightness-max"] = 0.7;
+    paint["raster-brightness-max"] = 0.3;
     paint["raster-saturation"] = -0.3;
   }
 
