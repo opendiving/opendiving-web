@@ -1399,6 +1399,7 @@ describe("channelsOnAxis", () => {
 
 describe("axisUnitSuffix", () => {
   it("carries the separator as well as the unit", () => {
+    // Depth is no panel row; it stands in for a unit written after a space.
     expect(axisUnitSuffix("depth", "metric")).toBe(" m");
     expect(axisUnitSuffix("percent", "metric")).toBe("%");
   });

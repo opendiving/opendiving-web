@@ -469,9 +469,9 @@ export function temperatureDomain(
 }
 
 // What follows the number on a panel row's top tick - the separator and the unit
-// both, so "12 m" and "100%" each get the spacing that quantity is written with.
-// Read off the channels themselves rather than written out again, so a row
-// cannot come to disagree with the curves in it.
+// both, so "100%" is written the way that quantity is. Read off the channels
+// themselves rather than written out again, so a row cannot come to disagree with
+// the curves in it.
 //
 // Minutes, beats per minute and bar get none. The legend already names a no-deco
 // limit, a time to surface, a heart rate and a ppO2, and the widest label in the
