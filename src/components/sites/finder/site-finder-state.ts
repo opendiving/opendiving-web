@@ -21,17 +21,22 @@ export interface FinderState {
 }
 
 export type FinderAction =
-  | { type: "open"; opening: FinderTarget | null }
+  | { type: "open"; opening: FinderTarget | null; term?: string }
   | { type: "search"; term: string }
   | { type: "moved"; view: FinderView }
   | { type: "area"; view: FinderView }
   | { type: "place"; target: FinderTarget }
   | { type: "locate"; point: LatLon };
 
-export function openFinder(opening: FinderTarget | null): FinderState {
+// `term` is what the box already holds: a diver may type before the finder
+// knows where it opens.
+export function openFinder(
+  opening: FinderTarget | null,
+  term = "",
+): FinderState {
   const camera = opening && targetCenter(opening);
   return {
-    term: "",
+    term,
     camera,
     sent: { camera, view: null },
     moved: false,
@@ -48,20 +53,29 @@ export function finderReducer(
   state: FinderState | null,
   action: FinderAction,
 ): FinderState | null {
-  if (action.type === "open") return state ?? openFinder(action.opening);
+  if (action.type === "open") {
+    return state ?? openFinder(action.opening, action.term);
+  }
   if (!state) return state;
   switch (action.type) {
     // A typed term goes from where the map is now. The view searched last is
     // kept only while the map still shows it.
-    case "search":
+    case "search": {
+      const view = state.moved ? null : state.sent.view;
+      // Nothing new to ask: the term the finder opened with, arriving late.
+      if (
+        action.term === state.term &&
+        state.camera === state.sent.camera &&
+        view === state.sent.view
+      ) {
+        return state;
+      }
       return {
         ...state,
         term: action.term,
-        sent: {
-          camera: state.camera,
-          view: state.moved ? null : state.sent.view,
-        },
+        sent: { camera: state.camera, view },
       };
+    }
     // Nothing is asked: the diver offered *Search this area* instead.
     case "moved":
       return { ...state, camera: action.view.center, moved: true };

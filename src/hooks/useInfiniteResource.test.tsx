@@ -552,6 +552,44 @@ describe("useInfiniteResource", () => {
       };
     }
 
+    // The site finder's list is ordered by distance and counts nothing, so its
+    // total is 0 while more rows remain.
+    it("keeps offering more where the answer says so, whatever it counts", async () => {
+      const fetchFn = vi.fn(async (page: number, perPage: number) => ({
+        data: Array.from({ length: perPage }, (_, i) => ({
+          uuid: `row-${(page - 1) * perPage + i}`,
+        })),
+        total_count: 0,
+        has_more: true,
+        page,
+        items_per_page: perPage,
+      }));
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.hasMore).toBe(true));
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+      expect(latest!.hasMore).toBe(true);
+    });
+
     it("re-reads the rows it holds instead of reloading page one", async () => {
       const { fetchFn } = ledger();
       const Host = hosted(fetchFn);

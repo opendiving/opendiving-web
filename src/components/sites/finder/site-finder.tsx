@@ -156,11 +156,11 @@ export function SiteFinder({
   const { toast } = useToast();
   const [state, dispatch] = useReducer(finderReducer, null);
   // Opened once, the moment the host knows where: the opening move is not a pan.
+  const [input, setInput] = useState("");
   if (opening !== undefined && state === null) {
-    dispatch({ type: "open", opening });
+    dispatch({ type: "open", opening, term: input.trim() });
   }
 
-  const [input, setInput] = useState("");
   const typing = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {

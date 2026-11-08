@@ -96,4 +96,10 @@ describe("finderReducer", () => {
       target: { kind: "point", latitude: 1, longitude: 2 },
     });
   });
+
+  it("opens with a term already typed, and asks nothing new when its debounce lands", () => {
+    const opened = run(null, { type: "open", opening: null, term: "canyon" });
+    expect(opened.term).toBe("canyon");
+    expect(run(opened, { type: "search", term: "canyon" })).toBe(opened);
+  });
 });

@@ -461,4 +461,16 @@ describe("SiteFinder", () => {
       longitude: 34.51688,
     });
   });
+
+  it("searches for what was typed before it knew where it opens", async () => {
+    const { rerender } = render(<Finder opening={undefined} />);
+    await userEvent.type(screen.getByRole("searchbox"), "canyon");
+    await act(() => new Promise((resolve) => setTimeout(resolve, 500)));
+    expect(search).not.toHaveBeenCalled();
+
+    rerender(<Finder opening={null} />);
+
+    await waitFor(() => expect(search).toHaveBeenCalledTimes(1));
+    expect(lastQuery()?.search).toBe("canyon");
+  });
 });

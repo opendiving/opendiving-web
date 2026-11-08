@@ -248,7 +248,9 @@ export function useInfiniteResource<T>(
       // Derived from what is held now, not from what was fetched: `loadMore` has to
       // ask for the page containing the boundary, which a shrunk list moved nearer.
       nextPage.current = Math.floor(kept.length / itemsPerPage) + 1;
-      setHasMore(kept.length < response.total_count);
+      // Read off the answer rather than the count: a list ordered by distance has
+      // no total, and a trimmed overshoot is more rows by definition.
+      setHasMore(rows.length > kept.length || response.has_more);
     } catch (error) {
       // The rows on screen stay: they are still the best answer available, and a
       // re-read the diver did not ask for has no business toasting at them.
