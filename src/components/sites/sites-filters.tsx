@@ -42,8 +42,8 @@ export interface SitesFiltersProps {
   tags?: readonly Tag[];
 }
 
-// The tag and the order, in the header card above the site cards. The API AND-s
-// the tag with the header's search; the two summary orders put every site with
+// The tag and the order, in the finder's panel under *Your sites*. The API AND-s
+// the tag with the finder's search; the two summary orders put every site with
 // no dive after every one with some.
 export function SitesFilters({
   filters,

@@ -14,7 +14,7 @@ import { formatDepth } from "@/lib/units";
 import type { ReturnTarget } from "@/lib/return-to";
 
 /**
- * The site page's heading: the site's card drawn the width of the window, with
+ * The site page's heading: its pin's map drawn the width of the window, with
  * every figure the diver's own dives there add up to, as the API counts them -
  * every live dive naming the site at any position. Derived, never typed, so it
  * is the place for a deepest dive rather than a member a diver would have to
@@ -30,7 +30,7 @@ export function DiveSiteHero({
   actions?: ReactNode;
 }) {
   const units = useUnits();
-  // The pin alone, as the site's card maps it.
+  // The pin alone: the locality's centre is the town the geocoder resolved.
   const isPlaced = site.latitude != null && site.longitude != null;
   const facts = diveSiteFacts(site, units);
 
@@ -40,7 +40,7 @@ export function DiveSiteHero({
   if (site.max_dive_depth != null) {
     figures.push({
       label: "Deepest",
-      // Whole units, as the site's card and a trip's page round theirs.
+      // Whole units, as the finder's rows and a trip's page round theirs.
       value: formatDepth(site.max_dive_depth, units, { decimals: 0 }),
     });
   }
@@ -63,7 +63,7 @@ export function DiveSiteHero({
       actions={actions}
       title={site.name}
       overline={isCommonsSite(site) ? <CommonsBadge /> : undefined}
-      // The line under the name, as the site's card has it.
+      // The line under the name, as the finder's row has it.
       subtitle={facts}
       figures={figures}
       mapCredit={isPlaced}

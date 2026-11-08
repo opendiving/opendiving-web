@@ -104,14 +104,22 @@ export type TripDiveAddScope =
   | { part: { start_date?: string; end_date?: string } }
   | Record<string, never>;
 
+/** A part as a picker's row carries it: when and where, which a form opens a map on. */
+export interface TripLookupPart {
+  start_date?: string | null;
+  end_date?: string | null;
+  location?: Location | null;
+}
+
 /**
- * One row of `GET /trips/lookup`: the name, which usually carries its year, and the
- * people a dive form fills in from the pick.
+ * One row of `GET /trips/lookup`: the name, which usually carries its year, the
+ * people a dive form fills in from the pick, and the parts' dates and places.
  */
 export interface TripLookupItem {
   uuid: string;
   name: string;
   people?: PersonReference[];
+  parts?: TripLookupPart[];
 }
 
 const lookupTrips = lookupFetcher<TripLookupItem, UuidLookupQuery>(

@@ -421,13 +421,16 @@ export default async function PrivacyPage() {
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
                   <strong>Server logs:</strong> Your IP address and browser user
-                  agent, written by the web server the way every web server
-                  writes them. How long <em>those</em> are kept, and whether
-                  they are kept at all, is a question about the operator&rsquo;s
-                  deployment rather than about this software. The next two
-                  entries are a different matter: there the app stores the same
-                  two facts itself, in its own database, and section 7 says for
-                  how long
+                  agent, and the address of each request, written by the web
+                  server the way every web server writes them. For a search of
+                  the dive site map, that address carries the centre of the map
+                  and, when you search the area on screen, its edges, each cut
+                  to about a kilometre, as section 2.3 describes. How long{" "}
+                  <em>those</em> are kept, and whether they are kept at all, is
+                  a question about the operator&rsquo;s deployment rather than
+                  about this software. The next two entries are a different
+                  matter: there the app stores the IP address and the user agent
+                  itself, in its own database, and section 7 says for how long
                 </li>
                 <li>
                   <strong>Signed-in devices:</strong> Each time you sign in,
@@ -483,12 +486,13 @@ export default async function PrivacyPage() {
                   a logbook, changing your username or email, linking a person
                   to an account, registering a passkey, making an API key,
                   inviting somebody,{" "}
-                  {commonsPrimary && "proposing for OpenDiving Commons, "}and
-                  looking up place and species names. Each counter is a number
-                  and expires by itself: after 15 minutes on the sign-in and
-                  account paths, after an hour on the support form, the
-                  invite-request form, exports, logbook imports, and the place-
-                  and species-name lookups
+                  {commonsPrimary && "proposing for OpenDiving Commons, "}
+                  looking up place and species names, and searching the dive
+                  site map. Each counter is a number and expires by itself:
+                  after 5 minutes on dive site map searches, after 15 minutes on
+                  the sign-in and account paths, after an hour on the support
+                  form, the invite-request form, exports, logbook imports, and
+                  the place- and species-name lookups
                   {commonsPrimary &&
                     "; and after a day on proposals for OpenDiving Commons"}
                   . Other counters exist that hold no identifier at all &mdash;
@@ -557,7 +561,7 @@ export default async function PrivacyPage() {
                 2.3 Location Information
               </h3>
               <p className="text-foreground mb-4">
-                Location reaches this server four ways, and all four start with
+                Location reaches this server five ways, and all five start with
                 you:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
@@ -590,14 +594,30 @@ export default async function PrivacyPage() {
                   this server before the photo is stored &mdash; an
                   archive&rsquo;s only if you take it in the import
                 </li>
+                <li>
+                  The centre of the dive site map in the Sites section, sent
+                  with each search of it, and the edges of the part on screen
+                  when you search that area &mdash; each cut to two decimal
+                  places, about a kilometre, whatever moved the map: you
+                  dragging it, a place you picked, the trip or dive it opened
+                  on, or your browser&rsquo;s answer to <em>Use my location</em>
+                </li>
               </ul>
               <p className="text-foreground mb-4">
-                The app never asks your browser where you are. That is not a
-                promise about restraint: the page is served with a header that
-                switches the browser&rsquo;s geolocation feature off outright,
-                so the question cannot be asked even by mistake. What the
-                basemap provider sees when a map is on screen is a different
-                question, and section 4.4 answers it.
+                The app asks your browser where you are in one place, the{" "}
+                <em>Use my location</em> button on the dive site map, and only
+                when you press it &mdash; never as a page opens &mdash; and your
+                browser asks you before it answers. The answer moves the map and
+                nothing is sent when it arrives: what reaches this server is the
+                map&rsquo;s centre with your next search, rounded to about a
+                kilometre like every other search&rsquo;s. The app stores it
+                nowhere. Because the centre travels in the request&rsquo;s
+                address, it is in the server logs section 2.2 describes, for as
+                long as those are kept. The page is served with a header that
+                lets only this app&rsquo;s own pages ask the browser where you
+                are, so nothing embedded in one can. What the basemap provider
+                sees when a map is on screen is a different question, and
+                section 4.4 answers it.
               </p>
             </section>
 
@@ -851,7 +871,7 @@ export default async function PrivacyPage() {
                 4.4 Map Tiles
               </h3>
               <p className="text-foreground mb-4">
-                {commonsPrimary ? "Five" : "Three"} places in the app show a map
+                {commonsPrimary ? "Six" : "Four"} places in the app show a map
                 your browser draws itself, and for those your browser fetches
                 the map&rsquo;s tiles directly from a third-party basemap
                 provider. That provider therefore sees your IP address and which
@@ -861,12 +881,13 @@ export default async function PrivacyPage() {
               </p>
               <p className="text-foreground mb-4">
                 Your browser does this whenever one of those maps is on screen,
-                whether or not you interact with it: the form to add or edit a
-                dive site and the form to add or edit a trip, which load a map
-                as soon as they open — one to place a pin on, one to show you
-                the places you pick — {!commonsPrimary && "and "}the form to add
-                or edit a contact, which loads one only when you ask it to show
-                the map
+                whether or not you interact with it: the Sites section, which
+                loads its map of dive sites as soon as it opens; the form to add
+                or edit a dive site and the form to add or edit a trip, which
+                load a map as soon as they open — one to place a pin on, one to
+                show you the places you pick — {!commonsPrimary && "and "}the
+                form to add or edit a contact, which loads one only when you ask
+                it to show the map
                 {commonsPrimary && (
                   <>
                     , the step that checks a site of yours before it is
@@ -876,7 +897,7 @@ export default async function PrivacyPage() {
                     opened
                   </>
                 )}
-                . Apart from those {commonsPrimary ? "five" : "three"}, no page
+                . Apart from those {commonsPrimary ? "six" : "four"}, no page
                 has your browser contact the provider.
               </p>
               <p className="text-foreground mb-4">
@@ -891,24 +912,23 @@ export default async function PrivacyPage() {
               {mapTiles ? (
                 <>
                   <p className="text-foreground mb-4">
-                    The cards that list your dives, trips and dive sites carry a
-                    map too, and so does the head of the page of a dive, a trip
-                    and a dive site. On this copy this server draws those maps
-                    rather than your browser, in tiles &mdash; squares of the
-                    world map with nothing of yours in them. The first time
-                    anyone on this copy is shown a part of the world, the server
-                    fetches what that tile needs from the same provider, draws
-                    it and keeps it; your browser fetches the tiles from this
-                    server and puts the pins on them itself. So for those maps
-                    the provider sees this server&rsquo;s address rather than
-                    yours, once for each tile rather than for each picture or
-                    each time you look. That is every card in the list of your
-                    dives, Home&rsquo;s recent dives and the dives listed on the
-                    page of a dive site, a trip, a piece of gear, a species, a
-                    course or a person; in the list of your trips and
-                    Home&rsquo;s recent trips; in the list of your dive sites;
-                    and the head of a dive&rsquo;s, a trip&rsquo;s and a dive
-                    site&rsquo;s own page. A dive or a dive site with no
+                    The cards that list your dives and trips carry a map too,
+                    and so does the head of the page of a dive, a trip and a
+                    dive site. On this copy this server draws those maps rather
+                    than your browser, in tiles &mdash; squares of the world map
+                    with nothing of yours in them. The first time anyone on this
+                    copy is shown a part of the world, the server fetches what
+                    that tile needs from the same provider, draws it and keeps
+                    it; your browser fetches the tiles from this server and puts
+                    the pins on them itself. So for those maps the provider sees
+                    this server&rsquo;s address rather than yours, once for each
+                    tile rather than for each picture or each time you look.
+                    That is every card in the list of your dives, Home&rsquo;s
+                    recent dives and the dives listed on the page of a dive
+                    site, a trip, a piece of gear, a species, a course or a
+                    person; in the list of your trips and Home&rsquo;s recent
+                    trips; and the head of a dive&rsquo;s, a trip&rsquo;s and a
+                    dive site&rsquo;s own page. A dive or a dive site with no
                     position shows no map, and a trip&rsquo;s shows the whole
                     world until it has a place on it. A dive has a position from
                     the site it was logged at, from the GPS reading in the
@@ -946,12 +966,11 @@ export default async function PrivacyPage() {
                 </>
               ) : (
                 <p className="text-foreground mb-4">
-                  The cards that list your dives, trips and dive sites show no
-                  map on this copy, and nor does the head of the page of a dive,
-                  a trip or a dive site: drawing those maps is this
-                  server&rsquo;s job, and this copy has not been set up to do
-                  it. So your browser fetches no tiles for them, and neither
-                  does this server.
+                  The cards that list your dives and trips show no map on this
+                  copy, and nor does the head of the page of a dive, a trip or a
+                  dive site: drawing those maps is this server&rsquo;s job, and
+                  this copy has not been set up to do it. So your browser
+                  fetches no tiles for them, and neither does this server.
                 </p>
               )}
               <p className="text-foreground mb-4">
@@ -995,15 +1014,19 @@ export default async function PrivacyPage() {
               </p>
               <p className="text-foreground mb-4">
                 The dive site and trip forms also let you search for a place by
-                name. There, what you type is what is sent &mdash; again by our
-                servers, not your browser &mdash; a short moment after you stop
-                typing, and it may go to a different provider from the one that
-                names a spot. Nothing else about the form goes with it.
+                name, and so does the search on the dive site map in the Sites
+                section, which finds places as well as sites. There, what you
+                type is what is sent &mdash; again by our servers, not your
+                browser &mdash; a short moment after you stop typing, and it may
+                go to a different provider from the one that names a spot.
+                Nothing else about the form or the map goes with it: the
+                map&rsquo;s centre a search carries stays with this server.
               </p>
               <p className="text-foreground mb-4">
-                All of this happens only as you fill a form in, never when you
-                view a site or a trip you have already saved. Type the
-                coordinates in by hand and nothing is sent at all.
+                All of this happens only as you fill a form in or search the
+                dive site map, never when you view a site or a trip you have
+                already saved. Type the coordinates in by hand and nothing is
+                sent at all.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">

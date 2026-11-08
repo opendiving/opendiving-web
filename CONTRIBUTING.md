@@ -109,10 +109,10 @@ fails without the fix.
 
 ## Running the map renderer
 
-The map tiles the API stores, which the dive, trip and dive site cards and the heads of their pages
-are composed from, are drawn by a second program in this repository, `src/map-renderer/`, which the
-API calls. It ships in the same image and is started with `node map-renderer/index.mjs` instead of
-the web server's command. To run it beside the dev server:
+The map tiles the API stores, which the dive and trip cards and the heads of the dive, trip and dive
+site pages are composed from, are drawn by a second program in this repository, `src/map-renderer/`,
+which the API calls. It ships in the same image and is started with `node map-renderer/index.mjs`
+instead of the web server's command. To run it beside the dev server:
 
 ```bash
 npm run map-renderer   # builds it, then listens on :3001

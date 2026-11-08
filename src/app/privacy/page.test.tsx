@@ -842,13 +842,13 @@ describe("the map tiles", () => {
         /your browser fetches the map’s tiles directly from a third-party basemap provider/,
       );
       expect(text).toMatch(
-        /the form to add or edit a dive site and the form to add or edit a trip/,
+        /the Sites section, which loads its map of dive sites as soon as it opens; the form to add or edit a dive site and the form to add or edit a trip/,
       );
       expect(text).toMatch(
         /and the form to add or edit a contact, which loads one only when you ask it to show the map/,
       );
       expect(text).toMatch(
-        /Apart from those three, no page has your browser contact the provider/,
+        /Apart from those four, no page has your browser contact the provider/,
       );
       expect(text).toMatch(
         /The provider learns it all the same: like every browser, yours names the languages it is set to in each request it makes/,
@@ -856,13 +856,13 @@ describe("the map tiles", () => {
     },
   );
 
-  it("counts three browser maps on a copy that does not edit the Commons", async () => {
+  it("counts four browser maps on a copy that does not edit the Commons", async () => {
     await renderPage({ google: false, commonsPrimary: false });
 
     const text = mapSection();
-    expect(text).toMatch(/Three places in the app show a map your browser/);
+    expect(text).toMatch(/Four places in the app show a map your browser/);
     expect(text).toMatch(
-      /which loads one only when you ask it to show the map\. Apart from those three, no page has your browser contact the provider\./,
+      /which loads one only when you ask it to show the map\. Apart from those four, no page has your browser contact the provider\./,
     );
     expect(text).not.toMatch(/proposal|OpenDiving Commons/);
   });
@@ -873,14 +873,14 @@ describe("the map tiles", () => {
     await renderPage({ google: false, commonsPrimary: true });
 
     const text = mapSection();
-    expect(text).toMatch(/Five places in the app show a map your browser/);
+    expect(text).toMatch(/Six places in the app show a map your browser/);
     expect(text).toMatch(
-      /which loads one only when you ask it to show the map, the step that checks a site of yours before it is proposed, which loads one when it opens, and the screen where this copy’s operator reviews what divers propose for OpenDiving Commons, which loads one when a proposal is opened\. Apart from those five, no page has your browser contact the provider\./,
+      /which loads one only when you ask it to show the map, the step that checks a site of yours before it is proposed, which loads one when it opens, and the screen where this copy’s operator reviews what divers propose for OpenDiving Commons, which loads one when a proposal is opened\. Apart from those six, no page has your browser contact the provider\./,
     );
     expect(text).toMatch(
       /draws a map of its own in five places:.*and the step that checks a site of yours before it is proposed\. It draws/,
     );
-    expect(text).not.toMatch(/Three places|those three|Four places/);
+    expect(text).not.toMatch(/Four places|those four|Five places|those five/);
   });
 
   // Its own paragraph, on both copies: the browser's sentences say "the app"
@@ -912,7 +912,7 @@ describe("the map tiles", () => {
     await renderPage({ google: false, mapTiles: false });
 
     expect(mapSection()).toMatch(
-      /The cards that list your dives, trips and dive sites show no map on this copy, and nor does the head of the page of a dive, a trip or a dive site/,
+      /The cards that list your dives and trips show no map on this copy, and nor does the head of the page of a dive, a trip or a dive site/,
     );
     expect(document.body.textContent).not.toMatch(
       /map pictures?|tiles this copy draws/i,
@@ -937,7 +937,10 @@ describe("the map tiles", () => {
     expect(text).toMatch(
       /the provider sees this server’s address rather than yours, once for each tile rather than for each picture or each time you look/,
     );
-    expect(text).toMatch(/in the list of your dive sites/);
+    expect(text).toMatch(
+      /in the list of your trips and Home’s recent trips; and the head/,
+    );
+    expect(text).not.toMatch(/in the list of your dive sites/);
     expect(text).toMatch(
       /the head of a dive’s, a trip’s and a dive site’s own page/,
     );
@@ -1710,5 +1713,68 @@ describe("proposing for OpenDiving Commons", () => {
     expect(text).toMatch(/A proposal for OpenDiving Commons is not swept/);
     expect(text).toMatch(/Your proposals for OpenDiving Commons go with it/);
     expect(text).toMatch(/A record accepted into the Commons is kept/);
+  });
+});
+
+// The site finder asks the browser where the diver is, on a tap, and every one
+// of its searches carries the map's centre: each sentence that said otherwise,
+// and each that says where a search's centre goes.
+describe("the site finder's location and searches", () => {
+  const page = () => (document.body.textContent ?? "").replace(/\s+/g, " ");
+
+  it("says when the browser is asked, what is sent and what is kept", async () => {
+    await renderPage({ google: false });
+
+    const text = page();
+    expect(text).not.toMatch(/never asks your browser where you are/);
+    expect(text).not.toMatch(/geolocation feature off outright/);
+    expect(text).toMatch(
+      /The app asks your browser where you are in one place, the Use my location button on the dive site map, and only when you press it — never as a page opens/,
+    );
+    expect(text).toMatch(
+      /what reaches this server is the map’s centre with your next search, rounded to about a kilometre like every other search’s\. The app stores it nowhere\./,
+    );
+    expect(text).toMatch(
+      /it is in the server logs section 2\.2 describes, for as long as those are kept/,
+    );
+    expect(text).toMatch(
+      /a header that lets only this app’s own pages ask the browser where you are/,
+    );
+  });
+
+  it("counts the map's centre among the ways location arrives", async () => {
+    await renderPage({ google: false });
+
+    const ways = listAfterHeading(/2\.3 Location Information/);
+    expect(ways[ways.length - 1]).toMatch(
+      /The centre of the dive site map in the Sites section, sent with each search of it.*cut to two decimal places, about a kilometre, whatever moved the map/,
+    );
+  });
+
+  it("names a search's map centre in the server logs, and its counter", async () => {
+    await renderPage({ google: false });
+
+    const text = page();
+    expect(text).toMatch(
+      /Your IP address and browser user agent, and the address of each request.*For a search of the dive site map, that address carries the centre of the map/,
+    );
+    expect(text).toMatch(
+      /and searching the dive site map\. Each counter is a number and expires by itself: after 5 minutes on dive site map searches/,
+    );
+  });
+
+  it("names the finder's search among those that send a typed place", async () => {
+    await renderPage({ google: false });
+
+    const text = page();
+    expect(text).toMatch(
+      /The dive site and trip forms also let you search for a place by name, and so does the search on the dive site map in the Sites section/,
+    );
+    expect(text).toMatch(
+      /the map’s centre a search carries stays with this server/,
+    );
+    expect(text).toMatch(
+      /All of this happens only as you fill a form in or search the dive site map/,
+    );
   });
 });

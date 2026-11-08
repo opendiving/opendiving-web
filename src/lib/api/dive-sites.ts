@@ -6,6 +6,9 @@ import type {
 } from "./client";
 import type { EntryType, WaterType } from "./dives";
 import type { GeoPoint } from "@/lib/geo-distance";
+import type { LatLonBounds } from "@/lib/basemap";
+import { roundCamera, roundView } from "@/lib/site-finder-camera";
+import type { GeocodeResult } from "./geocoding";
 import type { Location } from "./location";
 
 /**
@@ -346,6 +349,124 @@ export function changedMembers(
     : changed;
 }
 
+/** How a search row's name or other name matched the text, best first. */
+export type DiveSiteSearchMatch = "exact" | "prefix" | "contains" | "fuzzy";
+
+/**
+ * A site row of `GET /dive-sites/search`: the lookup row, with what a list of
+ * sites shows beside it. `distance_m` is from the camera the search sent, null
+ * without one or a pin; `match` is null with no text and on a row found by its
+ * locality alone; `dives` is null on a Commons record the reader has not saved.
+ */
+export interface DiveSiteSearchItem extends DiveSiteLookupItem {
+  kind: "site";
+  distance_m: number | null;
+  match: DiveSiteSearchMatch | null;
+  depth_from?: number | null;
+  depth_to?: number | null;
+  dives: DiveSiteDiveSummary | null;
+  proposal: DiveSiteProposalState | null;
+}
+
+/**
+ * A place row of `GET /dive-sites/search`: the geocoder's answer, how far its
+ * centre is from the camera, and how many sites the reader can see inside its
+ * box, or within 25 km of it where it has none.
+ */
+export interface PlaceSearchItem extends GeocodeResult {
+  kind: "place";
+  distance_m: number | null;
+  sites_nearby: number;
+}
+
+export type DiveSiteSearchRow = DiveSiteSearchItem | PlaceSearchItem;
+
+/**
+ * One page of the search: its rows in the order to render them, `has_more` of
+ * site rows alone, and `total_count` only under `yours`.
+ */
+export interface DiveSiteSearchPage {
+  rows: DiveSiteSearchRow[];
+  has_more: boolean;
+  total_count: number | null;
+  page: number;
+  items_per_page: number;
+}
+
+/**
+ * What a search asks. `camera` and `view` are rounded here, every one of them,
+ * before they leave: the server keeps none, but its access logs hold the query
+ * string. `tagUuid`, `commonsMatch` and `sort` are sent only with `yours`, which
+ * the API requires of them.
+ */
+export interface DiveSiteSearchQuery {
+  search?: string;
+  camera?: GeoPoint | null;
+  /** The map's own bounds; wrapped and rounded outward on the way out. */
+  view?: LatLonBounds | null;
+  until?: string;
+  yours?: boolean;
+  tagUuid?: string;
+  commonsMatch?: boolean;
+  sort?: DiveSiteListSort;
+}
+
+/** `[longitude, latitude, uuid, name, owner]`: one of the reader's sites with a pin. */
+export type DiveSitePoint = [number, number, string, string, DiveSiteOwner];
+
+/** `[longitude, latitude, uuid, name, source]`: a Commons record with a pin. */
+export type CommonsDiveSitePoint = [number, number, string, string, string];
+
+/**
+ * Every Commons record with a pin. `sources` maps a point's source key to the
+ * credit that source asks for, a wire format like `attribution`.
+ */
+export interface CommonsDiveSitePoints {
+  version: string;
+  sources: Record<string, string>;
+  points: CommonsDiveSitePoint[];
+}
+
+/** The Commons document as last read, and the `ETag` that revalidates it. */
+export interface HeldCommonsPoints {
+  etag: string | null;
+  body: CommonsDiveSitePoints;
+}
+
+/** The search's request params, shared with its tests. */
+export function searchParams(
+  page: number,
+  items_per_page: number,
+  {
+    search,
+    camera,
+    view,
+    until,
+    yours,
+    tagUuid,
+    commonsMatch,
+    sort,
+  }: DiveSiteSearchQuery = {},
+): Record<string, string | number | boolean> {
+  const q = search?.trim();
+  return {
+    page,
+    items_per_page,
+    ...(q ? { q } : {}),
+    ...(camera ? roundCamera(camera) : {}),
+    ...(view ? roundView(view) : {}),
+    ...(until ? { until } : {}),
+    ...(yours
+      ? {
+          yours: true,
+          ...(tagUuid ? { tag_uuid: tagUuid } : {}),
+          ...(commonsMatch ? { commons_match: true } : {}),
+          ...(sort ? { sort } : {}),
+        }
+      : {}),
+  };
+}
+
 const lookupDiveSites = lookupFetcher<DiveSiteLookupItem, UuidLookupQuery>(
   `/dive-sites/lookup`,
 );
@@ -443,6 +564,55 @@ export const diveSitesAPI = {
       },
     );
     return response.data;
+  },
+
+  /**
+   * One page of the finder's list: sites and places in one order, to render as
+   * they come and never re-sort. See `DiveSiteSearchQuery` for what is sent.
+   */
+  async searchDiveSites(
+    page: number,
+    items_per_page: number,
+    query: DiveSiteSearchQuery = {},
+  ): Promise<DiveSiteSearchPage> {
+    const response = await apiClient.get<DiveSiteSearchPage>(
+      `/dive-sites/search`,
+      { params: searchParams(page, items_per_page, query) },
+    );
+    return response.data;
+  },
+
+  /** Every site on the reader's list that has a pin, as compact rows. */
+  async getDiveSitePoints(): Promise<DiveSitePoint[]> {
+    const response = await apiClient.get<{ points: DiveSitePoint[] }>(
+      `/dive-sites/points`,
+    );
+    return response.data.points;
+  },
+
+  /**
+   * Every Commons record with a pin. Given the copy already held, it is
+   * revalidated by its `ETag`, and a 304 hands that copy back. Read through
+   * axios rather than handed to the map by URL, so it carries the bearer token
+   * and the client's refresh.
+   */
+  async getCommonsDiveSitePoints(
+    held?: HeldCommonsPoints | null,
+  ): Promise<HeldCommonsPoints> {
+    const response = await apiClient.get<CommonsDiveSitePoints>(
+      `/commons/dive-sites/points`,
+      {
+        headers: held?.etag ? { "If-None-Match": held.etag } : undefined,
+        validateStatus: (status) =>
+          (status >= 200 && status < 300) || (!!held && status === 304),
+      },
+    );
+    if (response.status === 304 && held) return held;
+    const etag = response.headers?.etag;
+    return {
+      etag: typeof etag === "string" ? etag : null,
+      body: response.data,
+    };
   },
 
   /** One dive site by uuid. */

@@ -9,7 +9,7 @@ import { DiveSiteInfoCard } from "./dive-site-info-card";
 import { DiveSiteSpeciesCard } from "./dive-site-species-card";
 
 // What the site page says about the site itself: its hero, with the line the
-// site's card carries and what the diver's dives there add up to, the rest of
+// finder's row carries and what the diver's dives there add up to, the rest of
 // what it records, and the species seen on them.
 
 const account = vi.hoisted(() => ({

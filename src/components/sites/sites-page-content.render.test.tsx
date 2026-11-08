@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SitesPageContent } from "./sites-page-content";
-import type { DiveSite } from "@/lib/api/dive-sites";
+import type { DiveSite, DiveSiteSearchItem } from "@/lib/api/dive-sites";
 
 const instance = vi.hoisted(() => ({ primary: false }));
 
@@ -23,30 +23,75 @@ vi.mock("@/hooks/useTags", () => ({ useTags: () => ({ tags: [] }) }));
 vi.mock("@/components/layout/quick-create", () => ({
   useQuickCreate: () => vi.fn(),
 }));
-vi.mock("@/components/sites/dive-site-card", () => ({
-  DiveSiteCard: ({ site, onEdit }: { site: DiveSite; onEdit: () => void }) => (
-    <li>
-      {site.name}
-      <button onClick={onEdit}>Edit {site.name}</button>
-    </li>
-  ),
+const finder = vi.hoisted(() => ({
+  props: null as null | import("./finder/site-finder").SiteFinderProps,
+  reload: vi.fn(),
+  removeSite: vi.fn(),
+}));
+vi.mock("@/components/sites/finder/site-finder", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./finder/site-finder")>();
+  const { useImperativeHandle } = await import("react");
+  return {
+    ...actual,
+    SiteFinder: (props: import("./finder/site-finder").SiteFinderProps) => {
+      finder.props = props;
+      useImperativeHandle(props.handleRef, () => ({
+        reload: finder.reload,
+        removeSite: finder.removeSite,
+      }));
+      return (
+        <div>
+          <p>
+            {props.filters.yours ? "Yours" : "Everything"}
+            {props.filters.commonsMatch ? ", matches" : ""}
+          </p>
+          <ul>
+            <li>
+              Own site
+              {props.siteMenu?.(ROW)}
+            </li>
+          </ul>
+          <button
+            onClick={() =>
+              props.onAddSite?.({ latitude: 28.5, longitude: 34.5 })
+            }
+          >
+            Add here
+          </button>
+        </div>
+      );
+    },
+  };
+});
+vi.mock("@/hooks/useSitesFinderOpening", () => ({
+  useSitesFinderOpening: () => null,
 }));
 vi.mock("@/components/sites/dive-site-dialog", () => ({
   DiveSiteDialog: ({
     open,
     diveSite,
+    pin,
     onSaved,
   }: {
     open: boolean;
-    diveSite: DiveSite;
+    diveSite?: DiveSite | null;
+    pin?: { latitude: number; longitude: number } | null;
     onSaved: (site: DiveSite, proposes: boolean) => void;
-  }) =>
-    open ? (
+  }) => {
+    if (!open) return null;
+    const saved = diveSite ?? site("New site");
+    return (
       <>
-        <button onClick={() => onSaved(diveSite, false)}>Save private</button>
-        <button onClick={() => onSaved(diveSite, true)}>Save public</button>
+        {pin && (
+          <p>
+            Pinned at {pin.latitude}, {pin.longitude}
+          </p>
+        )}
+        <button onClick={() => onSaved(saved, false)}>Save private</button>
+        <button onClick={() => onSaved(saved, true)}>Save public</button>
       </>
-    ) : null,
+    );
+  },
 }));
 vi.mock("@/components/sites/site-proposal-flow", () => ({
   SiteProposalFlow: ({
@@ -71,11 +116,29 @@ vi.mock("@/components/dives/delete-with-reassign-dialog", () => ({
 }));
 vi.mock("@/lib/api/dive-sites", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/dive-sites")>()),
-  diveSitesAPI: { getDiveSites: vi.fn(), deleteDiveSite: vi.fn() },
+  diveSitesAPI: {
+    getDiveSites: vi.fn(),
+    getDiveSite: vi.fn(),
+    deleteDiveSite: vi.fn(),
+  },
 }));
 
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const getDiveSites = vi.mocked(diveSitesAPI.getDiveSites);
+const getDiveSite = vi.mocked(diveSitesAPI.getDiveSite);
+
+const ROW: DiveSiteSearchItem = {
+  kind: "site",
+  uuid: "Own site",
+  name: "Own site",
+  owner: "account",
+  saved: true,
+  attribution: null,
+  distance_m: null,
+  match: null,
+  dives: null,
+  proposal: null,
+};
 
 const site = (name: string): DiveSite => ({
   uuid: name,
@@ -103,6 +166,9 @@ const answerWith = (matches: DiveSite[]) =>
 beforeEach(() => {
   instance.primary = false;
   getDiveSites.mockReset();
+  getDiveSite.mockReset();
+  finder.reload.mockReset();
+  finder.removeSite.mockReset();
 });
 
 describe("SitesPageContent", () => {
@@ -110,11 +176,12 @@ describe("SitesPageContent", () => {
     answerWith([]);
     render(<SitesPageContent />);
 
-    expect(await screen.findByText("Own site")).toBeInTheDocument();
+    expect(await screen.findByText("Everything")).toBeInTheDocument();
+    await waitFor(() => expect(getDiveSites).toHaveBeenCalled());
     expect(screen.queryByText(/OpenDiving Commons/)).not.toBeInTheDocument();
   });
 
-  it("says how many of the diver's sites are in the Commons, and lists them", async () => {
+  it("lists the diver's sites that are in the Commons under Your sites, and back", async () => {
     answerWith([site("Copy one"), site("Copy two")]);
     render(<SitesPageContent />);
 
@@ -122,42 +189,73 @@ describe("SitesPageContent", () => {
       await screen.findByText(/2 of your sites are in OpenDiving Commons/),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Show them" }));
-
-    await waitFor(() =>
-      expect(screen.queryByText("Own site")).not.toBeInTheDocument(),
-    );
-    expect(screen.getByText("Copy one")).toBeInTheDocument();
+    expect(screen.getByText("Yours, matches")).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: "Show all sites" }),
     );
-    expect(await screen.findByText("Own site")).toBeInTheDocument();
+    expect(screen.getByText("Yours")).toBeInTheDocument();
   });
 
-  it("opens the flow from a save with Public chosen, and re-reads the rows after a replace", async () => {
+  it("edits a row from the record read by uuid, and opens the flow from a save with Public chosen", async () => {
+    answerWith([]);
+    getDiveSite.mockResolvedValue(site("Own site"));
+    render(<SitesPageContent />);
+
+    const editFromMenu = async () => {
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Actions for Own site" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Edit" }),
+      );
+    };
+
+    await editFromMenu();
+    expect(getDiveSite).toHaveBeenCalledWith("Own site");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save private" }),
+    );
+    expect(finder.reload).toHaveBeenCalled();
+    expect(screen.queryByText("Proposing Own site")).not.toBeInTheDocument();
+
+    await editFromMenu();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save public" }),
+    );
+    expect(await screen.findByText("Proposing Own site")).toBeInTheDocument();
+
+    finder.reload.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Replace" }));
+    expect(finder.reload).toHaveBeenCalled();
+  });
+
+  it("opens the site form on the map's pin, and proposes a site saved as Public", async () => {
     answerWith([]);
     render(<SitesPageContent />);
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Edit Own site" }),
+      await screen.findByRole("button", { name: "Add here" }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Save private" }));
-    expect(screen.queryByText("Proposing Own site")).not.toBeInTheDocument();
+    expect(screen.getByText("Pinned at 28.5, 34.5")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Save public" }));
-    expect(await screen.findByText("Proposing Own site")).toBeInTheDocument();
+    expect(finder.reload).toHaveBeenCalled();
+    expect(await screen.findByText("Proposing New site")).toBeInTheDocument();
+  });
 
-    const reads = getDiveSites.mock.calls.length;
-    await userEvent.click(screen.getByRole("button", { name: "Replace" }));
-    await waitFor(() =>
-      expect(getDiveSites.mock.calls.length).toBeGreaterThan(reads),
-    );
+  it("links each row to its page", async () => {
+    answerWith([]);
+    render(<SitesPageContent />);
+    await screen.findByText("Everything");
+
+    expect(finder.props?.siteHref?.("site-1")).toBe("/sites/site-1");
   });
 
   it("reaches the diver's proposals only where the Commons is edited", async () => {
     answerWith([]);
     const { unmount } = render(<SitesPageContent />);
-    await screen.findByText("Own site");
+    await screen.findByText("Everything");
     expect(
       screen.queryByRole("link", { name: "Your proposals" }),
     ).not.toBeInTheDocument();

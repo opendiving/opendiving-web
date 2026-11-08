@@ -41,6 +41,29 @@ describe("LoadMoreTrigger", () => {
     ).not.toBeInTheDocument();
   });
 
+  // A list ordered by distance has no total, only whether more remain.
+  it("says how many an uncounted list shows, and nothing once it is all there", () => {
+    const { rerender } = setup({ totalCount: null, loadedCount: 20 });
+    expect(screen.getByRole("status")).toHaveTextContent("Showing 20 dives");
+    expect(
+      screen.getByRole("button", { name: "Load more dives" }),
+    ).toBeInTheDocument();
+
+    rerender(
+      <LoadMoreTrigger
+        hasMore={false}
+        isLoading={false}
+        hasFailed={false}
+        loadedCount={40}
+        totalCount={null}
+        itemsPerPage={10}
+        itemLabel="dives"
+        onLoadMore={() => {}}
+      />,
+    );
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
   it("renders nothing for a list that fits on one page", () => {
     const { container } = setup({
       hasMore: false,

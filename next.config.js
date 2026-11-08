@@ -48,13 +48,15 @@ const nextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
-            // Only the three features this app has no use for. Notably absent:
+            // The camera and microphone off, and geolocation to this origin
+            // alone: the site finder's *Use my location* asks on a tap, and no
+            // frame of anyone else's may. Notably absent:
             // `publickey-credentials-get`/`-create`, which stay at their default
             // `self` so passkey ceremonies work (see `hooks/usePasskeySignIn.ts`).
             // Tightening this header later has to name them explicitly, or it
             // kills passkey sign-in with a browser-side error and no clue why.
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(), microphone=(), geolocation=(self)",
           },
         ],
       },

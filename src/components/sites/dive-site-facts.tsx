@@ -6,8 +6,18 @@ import { labelOrFallback } from "@/lib/api/labels";
 import { IconFact } from "@/components/ui/icon-fact";
 import { formatAltitude, formatDepth, type UnitSystem } from "@/lib/units";
 
+type SiteFacts = Pick<
+  DiveSite,
+  | "location"
+  | "water_type"
+  | "depth_from"
+  | "depth_to"
+  | "altitude"
+  | "entry_types"
+>;
+
 // "5 m – 30 m", or the one end the site records.
-function depthRange(site: DiveSite, units: UnitSystem): string | null {
+function depthRange(site: SiteFacts, units: UnitSystem): string | null {
   const from = site.depth_from;
   const to = site.depth_to;
   if (from != null && to != null) {
@@ -19,14 +29,14 @@ function depthRange(site: DiveSite, units: UnitSystem): string | null {
 }
 
 /**
- * The line under a site's name, on its card and its page's hero alike: where it
+ * The line under a site's name, on its finder row and its page's hero alike: where it
  * is, in what water, how deep, how high, and how divers get in - each only where
  * the site records it, the water only where it is not the sea's and the altitude
  * only where it is not sea level, both of which go without saying. The icons are
  * the forms' for the same fields, a depth's the one the app marks every depth
  * with.
  */
-export function diveSiteFacts(site: DiveSite, units: UnitSystem): ReactNode[] {
+export function diveSiteFacts(site: SiteFacts, units: UnitSystem): ReactNode[] {
   const entryTypes = site.entry_types ?? [];
   const depths = depthRange(site, units);
   return [

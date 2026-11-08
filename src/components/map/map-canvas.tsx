@@ -57,6 +57,12 @@ export interface MapCanvasProps {
    * pitch, and no keyboard of MapLibre's own.
    */
   interactive?: boolean;
+  /**
+   * Whether one finger and a bare wheel are left to the page, as they are by
+   * default on an interactive map. A map that is the page's subject rather than
+   * a control inside a form passes `false`, and takes them for itself.
+   */
+  cooperative?: boolean;
   className?: string;
   /**
    * The instance, as it comes and goes - called with the map once it exists and
@@ -93,6 +99,7 @@ export function MapCanvas({
   basemap,
   theme,
   interactive = false,
+  cooperative = interactive,
   className,
   onMap,
   unsupported,
@@ -212,7 +219,7 @@ export function MapCanvas({
         // touches up, which is the half `touch-action` cannot express. Its own
         // overlay is suppressed in `globals.css`; the app draws its own, off the
         // `cooperativegestureprevented` event.
-        cooperativeGestures: interactive,
+        cooperativeGestures: interactive && cooperative,
         // And MapLibre's own wording for it, emptied. Its default mobile string
         // is *exactly* the sentence the app's hint carries, so leaving it would
         // put a second copy of that sentence in the document for anything
@@ -264,7 +271,7 @@ export function MapCanvas({
         notify.current?.(null);
       };
     },
-    [initialStyle, interactive],
+    [initialStyle, interactive, cooperative],
   );
 
   // A theme switch, which is a style swap on the live map rather than a new one:

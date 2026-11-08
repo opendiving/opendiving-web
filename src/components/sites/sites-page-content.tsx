@@ -1,26 +1,40 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Edit } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
-import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { useInstanceConfig } from "@/hooks/useInstanceConfig";
+import { useSitesFinderOpening } from "@/hooks/useSitesFinderOpening";
 import { useTags } from "@/hooks/useTags";
-import { diveSitesAPI, DiveSite, isCommonsSite } from "@/lib/api/dive-sites";
 import {
-  NO_SITE_FILTERS,
-  type DiveSiteListFilters,
-} from "@/components/sites/sites-filters";
+  diveSitesAPI,
+  isCommonsSite,
+  type DiveSite,
+  type DiveSiteSearchItem,
+} from "@/lib/api/dive-sites";
+import { getApiErrorMessage } from "@/lib/api/error";
+import type { LatLon } from "@/lib/basemap";
 import { SitesPageFrame } from "@/components/sites/sites-page-frame";
-import { DiveSiteCard } from "@/components/sites/dive-site-card";
+import {
+  NO_FINDER_FILTERS,
+  SiteFinder,
+  type SiteFinderFilters,
+  type SiteFinderHandle,
+} from "@/components/sites/finder/site-finder";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { CommonsSiteDialog } from "@/components/sites/commons-site-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { SiteProposalFlow } from "@/components/sites/site-proposal-flow";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+  DeleteMenuItem,
+  ItemActionsMenu,
+} from "@/components/ui/item-actions-menu";
 import { PageSpinner } from "@/components/ui/page-spinner";
+import { useToast } from "@/components/ui/use-toast";
 
 // The plain-delete toast, and the first half of the one a move gets - "moved to
 // Blue Hole" is an addition to what happened, not a replacement for it.
@@ -76,15 +90,11 @@ function CommonsMatchNotice({
 export function SitesPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const openCreate = useQuickCreate();
-  const [editingSite, setEditingSite] = useState<DiveSite | null>(null);
-  const [proposing, setProposing] = useState<DiveSite | null>(null);
+  const { toast } = useToast();
+  const finder = useRef<SiteFinderHandle>(null);
+  const opening = useSitesFinderOpening(!!user);
 
-  const {
-    input: searchInput,
-    setInput: setSearchInput,
-    term: search,
-  } = useDebouncedSearch();
-  const [filters, setFilters] = useState<DiveSiteListFilters>(NO_SITE_FILTERS);
+  const [filters, setFilters] = useState<SiteFinderFilters>(NO_FINDER_FILTERS);
   // The tags are read the first time the filter panel opens, not on arrival.
   const [wantsTags, setWantsTags] = useState(false);
   const { tags } = useTags(!!user && wantsTags);
@@ -92,67 +102,28 @@ export function SitesPageContent() {
   const { config } = useInstanceConfig();
   const [deletions, setDeletions] = useState(0);
   const matchCount = useCommonsMatchCount(!!user, deletions);
-  const [wantsMatches, setWantsMatches] = useState(false);
-  const listingMatches = wantsMatches && matchCount > 0;
+  const listingMatches =
+    filters.yours && filters.commonsMatch && matchCount > 0;
 
-  // One term against the name, the other names and the location, which is the
-  // same query the dive form's site picker runs, narrowed by the tag and put in
-  // the panel's order.
-  const fetchDiveSites = useCallback(
-    (page: number, perPage: number) =>
-      diveSitesAPI.getDiveSites(page, perPage, {
-        search: search || undefined,
-        tagUuid: filters.tagUuid || undefined,
-        sort: filters.sort,
-        commonsMatch: listingMatches,
-      }),
-    [search, filters, listingMatches],
-  );
+  const [editingSite, setEditingSite] = useState<DiveSite | null>(null);
+  const [proposing, setProposing] = useState<DiveSite | null>(null);
+  // The pin a new site opens with, from the map; `undefined` while no form is open.
+  const [adding, setAdding] = useState<LatLon | null | undefined>();
+  // The row whose delete waits on the dialog, for which of the two deletes it is.
+  const [deleting, setDeleting] = useState<DiveSiteSearchItem | null>(null);
 
-  // Changing the search term, the tag or the order changes this callback's
-  // identity, which is what makes `useInfiniteResource` throw away every page it
-  // has loaded and read the new query from the first - rows of one query are not
-  // rows of another, however many of them are already on screen.
-  const {
-    items: diveSites,
-    isLoading: isLoadingDiveSites,
-    isLoadingMore,
-    totalCount,
-    isCountNarrowed,
-    itemsPerPage,
-    hasMore,
-    loadFailed,
-    loadMore,
-    reload,
-    removeItem,
-    applySaved,
-  } = useInfiniteResource<DiveSite>(fetchDiveSites, {
-    keyOf: (site) => site.uuid,
-    enabled: !!user,
-    isNarrowed: search.length > 0 || Boolean(filters.tagUuid) || listingMatches,
-    errorMessage: "Failed to load dive sites. Please try again.",
-  });
-
-  const {
-    deletingId,
-    pendingId,
-    requestDelete: requestDeleteDiveSite,
-    cancelDelete: cancelDeleteDiveSite,
-    confirmDelete: confirmDeleteDiveSite,
-  } = useDeleteResource(diveSitesAPI.deleteDiveSite, {
-    successMessage: DELETED_MESSAGE,
-    errorMessage: "Failed to delete dive site. Please try again.",
-    // The card goes locally rather than by re-reading the pages around it: a
-    // diver who has scrolled several pages in should not have the list
-    // collapse back to the first one under them. Unless its dives moved to
-    // another site, whose card then counts them - that is a delete that
-    // changes another card, and only a re-read shows it.
-    onDeleted: (id, movedDivesTo) => {
-      setDeletions((count) => count + 1);
-      if (movedDivesTo) reload();
-      else removeItem(id);
-    },
-  });
+  const { deletingId, pendingId, requestDelete, cancelDelete, confirmDelete } =
+    useDeleteResource(diveSitesAPI.deleteDiveSite, {
+      successMessage: DELETED_MESSAGE,
+      errorMessage: "Failed to delete dive site. Please try again.",
+      // The row goes where it is, unless its dives moved to another site, whose
+      // row then counts them - a delete that changes another row.
+      onDeleted: (id, movedDivesTo) => {
+        setDeletions((count) => count + 1);
+        if (movedDivesTo) finder.current?.reload();
+        else finder.current?.removeSite(id);
+      },
+    });
 
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
@@ -162,31 +133,36 @@ export function SitesPageContent() {
     return null; // Will redirect to signin
   }
 
+  // A row is what a list shows; the dialogs edit the whole record, read here.
+  const edit = async (uuid: string) => {
+    try {
+      setEditingSite(await diveSitesAPI.getDiveSite(uuid));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: getApiErrorMessage(
+          error,
+          "Failed to open that dive site. Please try again.",
+        ),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const saved = (site: DiveSite, proposes: boolean) => {
+    finder.current?.reload();
+    if (proposes) setProposing(site);
+  };
+
   const editingCommons = !!editingSite && isCommonsSite(editingSite);
-  const pendingSite = diveSites.find((site) => site.uuid === pendingId);
-  const removingCommons = !!pendingSite && isCommonsSite(pendingSite);
+  const removingCommons = !!deleting && isCommonsSite(deleting);
   const removedMessage = removingCommons ? REMOVED_MESSAGE : DELETED_MESSAGE;
   const closeEditing = (open: boolean) => !open && setEditingSite(null);
 
   return (
     <>
       <SitesPageFrame
-        isLoading={isLoadingDiveSites}
-        totalCount={totalCount}
-        isCountNarrowed={isCountNarrowed}
-        itemsPerPage={itemsPerPage}
-        isLoadingMore={isLoadingMore}
-        loadFailed={loadFailed}
-        hasMore={hasMore}
-        onLoadMore={loadMore}
-        search={searchInput}
-        onSearchChange={setSearchInput}
-        isSearching={search.length > 0}
         onNew={() => openCreate("site")}
-        filters={filters}
-        onFiltersChange={setFilters}
-        onFiltersOpened={() => setWantsTags(true)}
-        tags={tags ?? undefined}
         actions={
           config?.commons_primary === true && (
             <ButtonLink variant="ghost" size="sm" href="/sites/proposals">
@@ -199,44 +175,77 @@ export function SitesPageContent() {
             <CommonsMatchNotice
               count={matchCount}
               isListing={listingMatches}
-              onToggle={() => setWantsMatches(!listingMatches)}
+              onToggle={() =>
+                setFilters(
+                  listingMatches
+                    ? { ...filters, commonsMatch: false }
+                    : { ...filters, yours: true, commonsMatch: true },
+                )
+              }
             />
           )
         }
-        cards={diveSites.map((diveSite) => (
-          <DiveSiteCard
-            key={diveSite.uuid}
-            site={diveSite}
-            onEdit={() => setEditingSite(diveSite)}
-            onDelete={() => requestDeleteDiveSite(diveSite.uuid)}
-            isDeleting={deletingId === diveSite.uuid}
-          />
-        ))}
+      >
+        <SiteFinder
+          handleRef={finder}
+          enabled={!!user}
+          opening={opening}
+          filters={filters}
+          onFiltersChange={setFilters}
+          tags={tags ?? undefined}
+          onFiltersOpened={() => setWantsTags(true)}
+          siteHref={(uuid) => `/sites/${uuid}`}
+          onAddSite={setAdding}
+          siteMenu={(site) => (
+            <ItemActionsMenu
+              label={`Actions for ${site.name}`}
+              variant="ghost"
+              className="h-8 w-8"
+            >
+              <DropdownMenuItem onClick={() => void edit(site.uuid)}>
+                <Edit className="h-4 w-4 mr-2" />
+                {isCommonsSite(site) ? "Edit notes and tags" : "Edit"}
+              </DropdownMenuItem>
+              <DeleteMenuItem
+                onSelect={() => {
+                  setDeleting(site);
+                  requestDelete(site.uuid);
+                }}
+                disabled={deletingId === site.uuid}
+                label={
+                  isCommonsSite(site) ? "Remove from your sites" : undefined
+                }
+              />
+            </ItemActionsMenu>
+          )}
+        />
+      </SitesPageFrame>
+
+      <DiveSiteDialog
+        open={adding !== undefined}
+        onOpenChange={(open) => !open && setAdding(undefined)}
+        pin={adding}
+        onSaved={saved}
       />
 
       <DiveSiteDialog
         open={editingSite !== null && !editingCommons}
         onOpenChange={closeEditing}
         diveSite={editingSite}
-        onSaved={(saved, proposes) => {
-          applySaved(saved);
-          if (proposes) setProposing(saved);
-        }}
+        onSaved={saved}
       />
 
       <SiteProposalFlow
         site={proposing}
         onClose={() => setProposing(null)}
-        onSaved={(saved) => {
-          applySaved(saved);
-          setProposing(saved);
+        onSaved={(site) => {
+          finder.current?.reload();
+          setProposing(site);
         }}
-        onProposed={(proposal) => {
-          if (proposing) applySaved({ ...proposing, proposal });
-        }}
+        onProposed={() => finder.current?.reload()}
         onReplaced={() => {
           setDeletions((count) => count + 1);
-          reload();
+          finder.current?.reload();
         }}
       />
 
@@ -244,16 +253,16 @@ export function SitesPageContent() {
         open={editingCommons}
         onOpenChange={closeEditing}
         site={editingSite}
-        onSaved={applySaved}
+        onSaved={() => finder.current?.reload()}
       />
 
       <DeleteWithReassignDialog
         kind={removingCommons ? "saved-commons-site" : "dive-site"}
         targetId={pendingId}
         isDeleting={deletingId === pendingId}
-        onCancel={cancelDeleteDiveSite}
+        onCancel={cancelDelete}
         onConfirm={(moveDivesTo, name) =>
-          confirmDeleteDiveSite(
+          confirmDelete(
             moveDivesTo,
             name
               ? `${removedMessage} Its dives moved to ${name}.`

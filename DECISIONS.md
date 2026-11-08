@@ -2948,10 +2948,10 @@ Placeholder heights come from `getBoundingClientRect()` on the real page with th
 patched `XMLHttpRequest.prototype.send`, comparing loading and loaded geometry of the same element;
 a screenshot does not show a `h-5` bar against a 24px line box or a legend nobody accounted for.
 
-`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive,
-trip and site cards load into `BackdropCardSkeleton`, one box at the card's measured 238px,
-`RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the Home page and a page of them on
-`/dives`, `/trips` and `/sites`.
+`ListRowsSkeleton`'s bars are `h-5`/`h-4` against the real row's `text-base` over `text-sm`. Dive
+and trip cards load into `BackdropCardSkeleton`, one box at the card's measured 238px,
+`RECENT_DIVES_COUNT` or `RECENT_TRIPS_COUNT` of them on the Home page and a page of them on `/dives`
+and `/trips`.
 
 ## The project instructions live in AGENTS.md, and CLAUDE.md is an import
 
@@ -3849,10 +3849,10 @@ conditional one (v13 allows one at a time); re-arming after the modal settles is
 `AuthForm` draws the single "Or" divider above the optional methods, gated on
 `googleClientId || passkey.supported`, because neither `GoogleAuthButton` nor the passkey button can
 know whether the other exists; the block disappears when an instance has neither. `next.config.js`'s
-`Permissions-Policy` names camera, microphone and geolocation and must not name
-`publickey-credentials-get`/`-create`, which stay at their default `self`: naming features there is
-opt-in, so a directive that omits these two kills passkey sign-in with a browser error pointing
-nowhere near the header.
+`Permissions-Policy` names camera, microphone and geolocation (`self`, for the site finder's _Use my
+location_) and must not name `publickey-credentials-get`/`-create`, which stay at their default
+`self`: naming features there is opt-in, so a directive that omits these two kills passkey sign-in
+with a browser error pointing nowhere near the header.
 
 ## Signing is enforced locally, because GitHub cannot do it yet
 

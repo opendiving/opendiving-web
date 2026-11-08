@@ -13,7 +13,8 @@ interface LoadMoreTriggerProps {
   hasFailed: boolean;
   /** How many rows are on screen now. */
   loadedCount: number;
-  totalCount: number;
+  /** Null for a list that is not counted, which then says how many it shows. */
+  totalCount: number | null;
   /** Page size, used only to stay silent about a list that fits on one page. */
   itemsPerPage: number;
   /** Plural label for the items being listed, e.g. "dives", "trips". */
@@ -75,13 +76,16 @@ export function LoadMoreTrigger({
 
   if (totalCount === 0) return null;
   if (!hasMore && loadedCount <= itemsPerPage) return null;
+  if (totalCount === null && !hasMore) return null;
 
   return (
     <div className="flex flex-col items-center gap-3 mt-6">
       <p className="text-sm text-muted-foreground" role="status">
-        {hasMore
-          ? `Showing ${loadedCount} of ${totalCount} ${itemLabel}`
-          : `All ${totalCount} ${itemLabel} loaded`}
+        {totalCount === null
+          ? `Showing ${loadedCount} ${itemLabel}`
+          : hasMore
+            ? `Showing ${loadedCount} of ${totalCount} ${itemLabel}`
+            : `All ${totalCount} ${itemLabel} loaded`}
       </p>
       {hasMore && (
         <div ref={sentinelRef}>

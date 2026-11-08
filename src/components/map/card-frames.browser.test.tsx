@@ -12,10 +12,8 @@ import type { DiveSite } from "@/lib/api/dive-sites";
 import type { Trip } from "@/lib/api/trips";
 import { DiveCard } from "@/components/dives/dive-card";
 import { TripCard } from "@/components/trips/trip-card";
-import { DiveSiteCard } from "@/components/sites/dive-site-card";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import { TripsPageFrame } from "@/components/trips/trips-page-frame";
-import { SitesPageFrame } from "@/components/sites/sites-page-frame";
 import { HomePageFrame } from "@/components/home/home-page-frame";
 import { DiveSiteDetailPageContent } from "@/components/sites/dive-site-detail-page-content";
 
@@ -150,7 +148,7 @@ const SITE: DiveSite = {
   saved: true,
   attribution: null,
   created_at: "2026-04-01T00:00:00Z",
-  // The most a site card's line and figures carry, which is its least room.
+  // The most a site's line and figures carry, which is its head's least room.
   depth_from: 5,
   depth_to: 40,
   altitude: 0,
@@ -293,24 +291,6 @@ const trips = (record: Trip) =>
       ]}
     />,
   );
-const sites = (record: DiveSite) =>
-  withConfig(
-    <SitesPageFrame
-      isLoading={false}
-      totalCount={1}
-      itemsPerPage={10}
-      cards={[
-        <DiveSiteCard
-          key={record.uuid}
-          site={record}
-          onEdit={() => {}}
-          onDelete={() => {}}
-          isDeleting={false}
-        />,
-      ]}
-    />,
-  );
-
 const contains = (box: DOMRect, x: number, y: number) =>
   x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
 
@@ -405,11 +385,6 @@ describe("a card's map", () => {
         await expectComposed(1, { placed: record.parts.length > 0 });
       },
     );
-
-    it("keeps a site card's pin in its band, over tiles", async () => {
-      render(sites(SITE));
-      await expectComposed(1);
-    });
   });
 
   it("holds on Home's recent dive and trip, the smallest cards", async () => {

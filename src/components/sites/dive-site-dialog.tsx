@@ -12,10 +12,12 @@ import {
   diveSiteMembersFromForm,
 } from "@/lib/validations/dive-site";
 import {
+  formatCoordinateForForm,
   parseCoordinatePair,
   parseFormCoordinate,
   parseFormPosition,
 } from "@/lib/validations/coordinates";
+import type { LatLon } from "@/lib/basemap";
 import { diveSitesAPI, DiveSite, isCommonsSite } from "@/lib/api/dive-sites";
 import {
   MAX_LOCATION_NAME_LENGTH,
@@ -65,6 +67,8 @@ interface DiveSiteDialogProps {
   onOpenChange: (open: boolean) => void;
   // Pass an existing dive site to edit it; omit to create a new one.
   diveSite?: DiveSite | null;
+  // A new site's pin, placed before the form opened - the finder's map centre.
+  pin?: LatLon | null;
   // Called with the created/updated dive site so the caller can refresh
   // whatever list it's showing - and, in the dive form, select it straight away.
   // `proposes` is the diver having chosen Public, which the caller answers by
@@ -103,6 +107,7 @@ export function DiveSiteDialog({
   open,
   onOpenChange,
   diveSite,
+  pin,
   onSaved,
   offersChoice = true,
   finalFocus,
@@ -129,10 +134,10 @@ export function DiveSiteDialog({
   const { reset, setValue, setError, setFocus } = form;
   useEffectOnChange(() => {
     if (!open) return;
-    reset(diveSiteFormValues(diveSite));
+    reset(diveSiteFormValues(diveSite ?? (pin && { name: "", ...pin })));
     setSearchOpen(false);
     setChoosesPublic(false);
-  }, [open, diveSite, reset]);
+  }, [open, diveSite, pin, reset]);
 
   // `useWatch` rather than `form.watch()`, which is what `mixture-fields.tsx`
   // does and for the same reason: a subscription scoped to the fields that are
@@ -159,6 +164,17 @@ export function DiveSiteDialog({
     onUseLocation: (value) =>
       setValue("location", value, { shouldValidate: true, shouldDirty: true }),
   });
+
+  // A pin placed before the form opened is a placement like any other, and the
+  // geocoder is asked what is there - after the hook's own reset on opening,
+  // which would otherwise drop the answer as one about the previous form.
+  useEffectOnChange(() => {
+    if (!open || diveSite || !pin) return;
+    geocoded.lookup({
+      latitude: formatCoordinateForForm(pin.latitude),
+      longitude: formatCoordinateForForm(pin.longitude),
+    });
+  }, [open, diveSite, pin]);
 
   // What the diver types is a place's name and nothing more, so it replaces
   // whatever was there rather than renaming it: a centre and a box picked for

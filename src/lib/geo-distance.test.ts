@@ -59,6 +59,9 @@ describe("formatDistance in metric", () => {
     expect(formatDistance(1000, "metric")).toBe("1.0 km");
     expect(formatDistance(1249, "metric")).toBe("1.2 km");
     expect(formatDistance(12345, "metric")).toBe("12.3 km");
+    expect(formatDistance(99_949, "metric")).toBe("99.9 km");
+    expect(formatDistance(99_960, "metric")).toBe("100 km");
+    expect(formatDistance(2_345_000, "metric")).toBe("2345 km");
   });
 });
 
@@ -75,5 +78,6 @@ describe("formatDistance in imperial", () => {
     expect(formatDistance(1609.344, "imperial")).toBe("1.0 mi");
     expect(formatDistance(2000, "imperial")).toBe("1.2 mi");
     expect(formatDistance(12345, "imperial")).toBe("7.7 mi");
+    expect(formatDistance(1_000_000, "imperial")).toBe("621 mi");
   });
 });

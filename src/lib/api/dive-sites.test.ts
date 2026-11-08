@@ -179,3 +179,95 @@ describe("changedMembers", () => {
     });
   });
 });
+
+describe("diveSitesAPI.searchDiveSites", () => {
+  const params = () => get.mock.calls[0][1]?.params as Record<string, unknown>;
+
+  it("rounds the camera and the view, the view outward and wrapped", async () => {
+    await diveSitesAPI.searchDiveSites(1, 10, {
+      search: " canyon ",
+      camera: { latitude: 28.49372, longitude: 34.51687 },
+      view: { south: -19.2041, north: -16.1, west: 176.5555, east: 182.3 },
+    });
+
+    expect(get.mock.calls[0][0]).toBe("/dive-sites/search");
+    expect(params()).toEqual({
+      page: 1,
+      items_per_page: 10,
+      q: "canyon",
+      latitude: 28.49,
+      longitude: 34.52,
+      south: -19.21,
+      north: -16.1,
+      west: 176.55,
+      east: -177.7,
+    });
+  });
+
+  it("sends no camera, no box and no text where it has none", async () => {
+    await diveSitesAPI.searchDiveSites(2, 10, {
+      search: "  ",
+      until: "2026-01-02",
+    });
+
+    expect(params()).toEqual({
+      page: 2,
+      items_per_page: 10,
+      until: "2026-01-02",
+    });
+  });
+
+  // Each of them is a 422 without `yours`.
+  it("sends the tag, the match filter and the sort only with yours", async () => {
+    await diveSitesAPI.searchDiveSites(1, 10, {
+      tagUuid: "tag-1",
+      commonsMatch: true,
+      sort: "name",
+    });
+    expect(params()).toEqual({ page: 1, items_per_page: 10 });
+
+    get.mockClear();
+    await diveSitesAPI.searchDiveSites(1, 10, {
+      yours: true,
+      tagUuid: "tag-1",
+      commonsMatch: true,
+      sort: "name",
+    });
+    expect(params()).toMatchObject({
+      yours: true,
+      tag_uuid: "tag-1",
+      commons_match: true,
+      sort: "name",
+    });
+  });
+});
+
+describe("diveSitesAPI.getCommonsDiveSitePoints", () => {
+  const body = { version: "v1", sources: {}, points: [] };
+
+  it("keeps the ETag it was answered with", async () => {
+    get.mockResolvedValue({
+      status: 200,
+      data: body,
+      headers: { etag: '"b.v1"' },
+    });
+
+    await expect(diveSitesAPI.getCommonsDiveSitePoints()).resolves.toEqual({
+      etag: '"b.v1"',
+      body,
+    });
+    expect(get.mock.calls[0][1]?.headers).toBeUndefined();
+  });
+
+  it("revalidates the copy it holds, and keeps it on a 304", async () => {
+    const held = { etag: '"b.v1"', body };
+    get.mockResolvedValue({ status: 304, data: "", headers: {} });
+
+    await expect(diveSitesAPI.getCommonsDiveSitePoints(held)).resolves.toBe(
+      held,
+    );
+    const config = get.mock.calls[0][1]!;
+    expect(config.headers).toEqual({ "If-None-Match": '"b.v1"' });
+    expect(config.validateStatus?.(304)).toBe(true);
+  });
+});

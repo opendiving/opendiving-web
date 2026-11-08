@@ -47,18 +47,19 @@ export function haversineMeters(a: GeoPoint, b: GeoPoint): number {
  * No decimals on the small unit, deliberately - a consumer GPS fix is good to
  * something like five metres, and "212.4 m" claims a precision the reading
  * never had. Past the big unit's threshold the tenth is back, because "1 km" and
- * "1.9 km" are a real difference to anyone reading where their drift took them.
+ * "1.9 km" are a real difference to anyone reading where their drift took them,
+ * and from a hundred of the big unit it goes again: a site "2345.0 km away" is
+ * the finder claiming a precision about a distance nobody swims.
  *
  * Lives here rather than in `lib/units.ts` with the other formatters: the
- * kilometre threshold and the tests behind it are this module's, and a drift is
- * the only distance the app renders.
+ * kilometre threshold and the tests behind it are this module's.
  */
 export function formatDistance(meters: number, units: UnitSystem): string {
   if (units === "imperial") {
     const feet = meters / METERS_PER_FOOT;
     const wholeFeet = Math.round(feet);
     if (wholeFeet < FEET_PER_MILE) return `${wholeFeet} ft`;
-    return `${(feet / FEET_PER_MILE).toFixed(1)} mi`;
+    return bigUnit(feet / FEET_PER_MILE, "mi");
   }
 
   // Rounded before the comparison, not after: 999.6 m is a thousand metres once
@@ -66,5 +67,14 @@ export function formatDistance(meters: number, units: UnitSystem): string {
   // on would look like two different units for the same distance.
   const wholeMeters = Math.round(meters);
   if (wholeMeters < 1000) return `${wholeMeters} m`;
-  return `${(meters / 1000).toFixed(1)} km`;
+  return bigUnit(meters / 1000, "km");
+}
+
+const WHOLE_FROM = 100;
+
+function bigUnit(value: number, unit: string): string {
+  const tenths = value.toFixed(1);
+  return Number(tenths) < WHOLE_FROM
+    ? `${tenths} ${unit}`
+    : `${Math.round(value)} ${unit}`;
 }

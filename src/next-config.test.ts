@@ -30,3 +30,17 @@ describe("Referrer-Policy", () => {
     },
   );
 });
+
+describe("Permissions-Policy", () => {
+  // The site finder's *Use my location* is the one feature named that the app
+  // uses, and only from its own pages.
+  it("lets this origin alone ask where the diver is, and no one the camera", async () => {
+    const response = await unstable_getResponseFromNextConfig({
+      url: "https://dives.example.com/sites",
+      nextConfig,
+    });
+    expect(response.headers.get("Permissions-Policy")).toBe(
+      "camera=(), microphone=(), geolocation=(self)",
+    );
+  });
+});
