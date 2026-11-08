@@ -1776,14 +1776,14 @@ describe("DiveProfileChart deco readouts", () => {
     const { container } = render(<DiveProfileChart profile={everyChannel()} />);
 
     // The top tick of a row carries the unit; the bottom one is a bare number,
-    // because two units on one 46-unit scale is noise. Minutes carry none - see
-    // `axisUnitSuffix`.
+    // because two units on one 46-unit scale is noise. Minutes and bar carry
+    // none - see `axisUnitSuffix`.
     const topTick = (axis: string) =>
       container.querySelector(`[data-panel="${axis}"] text`)?.textContent ?? "";
 
     expect(topTick("no_deco")).toMatch(/^\d+$/);
     expect(topTick("time_to_surface")).toMatch(/^\d+$/);
-    expect(topTick("ppo2")).toMatch(/ bar$/);
+    expect(topTick("ppo2")).toMatch(/^\d+(\.\d+)?$/);
     expect(topTick("percent")).toMatch(/%$/);
   });
 
@@ -1907,7 +1907,7 @@ describe("DiveProfileChart panel scales", () => {
     // off `domain` directly is what keeps the solution in one place.
     const { container } = render(<DiveProfileChart profile={lopsided} />);
 
-    expect(topTick(container, "ppo2")).toMatch(/^\d+(\.\d{1,2})? bar$/);
+    expect(topTick(container, "ppo2")).toMatch(/^\d+(\.\d{1,2})?$/);
   });
 });
 
