@@ -125,7 +125,7 @@ function Finder({ opening }: { opening: FinderTarget | null | undefined }) {
       onFiltersChange={setFilters}
       siteHref={(uuid) => `/sites/${uuid}`}
       siteMenu={(row) => <button type="button">Actions for {row.name}</button>}
-      onAddSite={() => {}}
+      onAddSite={addSite}
     />
   );
 }
@@ -137,11 +137,13 @@ const moveMap = (
 ) => act(() => map.props!.onViewChange({ center, bounds }, byDiver));
 
 let getCurrentPosition: ReturnType<typeof vi.fn>;
+const addSite = vi.fn();
 
 beforeEach(() => {
   search.mockReset();
   answer([site("The Canyon"), site("Lighthouse")]);
   toast.mockReset();
+  addSite.mockReset();
   getCurrentPosition = vi.fn();
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
@@ -431,5 +433,32 @@ describe("SiteFinder", () => {
     expect(
       screen.getByRole("link", { name: "© OpenStreetMap" }),
     ).toBeInTheDocument();
+  });
+
+  it("adds a site with no pin while the map rests on the world, and at its centre once moved", async () => {
+    render(<Finder opening={null} />);
+    await screen.findByRole("link", { name: "The Canyon" });
+    moveMap(
+      { latitude: 20, longitude: 0 },
+      { south: -60, north: 80, west: -180, east: 180 },
+      false,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add a (dive )?site/ }),
+    );
+    expect(addSite).toHaveBeenLastCalledWith(null);
+
+    moveMap(
+      { latitude: 28.4937123, longitude: 34.5168789 },
+      { south: 28, north: 29, west: 34, east: 35 },
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add a (dive )?site/ }),
+    );
+    expect(addSite).toHaveBeenLastCalledWith({
+      latitude: 28.49371,
+      longitude: 34.51688,
+    });
   });
 });

@@ -382,8 +382,14 @@ export function SiteFinder({
                 variant="secondary"
                 size="sm"
                 className="shadow"
+                // No pin while the map rests, unmoved, on the world it opened
+                // on: its centre there is nowhere the diver pointed.
                 onClick={() =>
-                  onAddSite(view.current && pinOf(view.current.center))
+                  onAddSite(
+                    state?.camera && view.current
+                      ? pinOf(view.current.center)
+                      : null,
+                  )
                 }
               >
                 <Plus className="mr-1 h-4 w-4" />

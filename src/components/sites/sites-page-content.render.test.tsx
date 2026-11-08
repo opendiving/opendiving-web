@@ -112,7 +112,16 @@ vi.mock("@/components/sites/commons-site-dialog", () => ({
   CommonsSiteDialog: () => null,
 }));
 vi.mock("@/components/dives/delete-with-reassign-dialog", () => ({
-  DeleteWithReassignDialog: () => null,
+  DeleteWithReassignDialog: ({
+    targetId,
+    onConfirm,
+  }: {
+    targetId: string | null;
+    onConfirm: (moveDivesTo?: string, name?: string) => void;
+  }) =>
+    targetId ? (
+      <button onClick={() => onConfirm()}>Confirm delete</button>
+    ) : null,
 }));
 vi.mock("@/lib/api/dive-sites", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/dive-sites")>()),
@@ -195,6 +204,32 @@ describe("SitesPageContent", () => {
       screen.getByRole("button", { name: "Show all sites" }),
     );
     expect(screen.getByText("Yours")).toBeInTheDocument();
+  });
+
+  it("drops the match filter with the last match, as the notice goes", async () => {
+    answerWith([site("Copy one")]);
+    render(<SitesPageContent />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show it" }),
+    );
+    expect(screen.getByText("Yours, matches")).toBeInTheDocument();
+
+    answerWith([]);
+    vi.mocked(diveSitesAPI.deleteDiveSite).mockResolvedValue({ message: "ok" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for Own site" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Confirm delete" }),
+    );
+
+    await waitFor(() => expect(screen.getByText("Yours")).toBeInTheDocument());
+    expect(
+      screen.queryByText(/of your sites (is|are) in OpenDiving Commons/),
+    ).toBeNull();
   });
 
   it("edits a row from the record read by uuid, and opens the flow from a save with Public chosen", async () => {

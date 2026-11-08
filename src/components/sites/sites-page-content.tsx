@@ -190,7 +190,9 @@ export function SitesPageContent() {
           handleRef={finder}
           enabled={!!user}
           opening={opening}
-          filters={filters}
+          // The match filter lapses with the last match, and the notice that
+          // would clear it goes with it.
+          filters={{ ...filters, commonsMatch: listingMatches }}
           onFiltersChange={setFilters}
           tags={tags ?? undefined}
           onFiltersOpened={() => setWantsTags(true)}
