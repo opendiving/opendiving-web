@@ -232,12 +232,21 @@ export function SiteFinderMap({
     onMap?.(instance);
   };
 
+  // Where the camera last settled. A route the diver left stays mounted and
+  // gets a new map on the way back, which opens where the old one was rather
+  // than on the world the finder no longer rests on.
+  const camera = useRef<{ center: [number, number]; zoom: number } | null>(
+    null,
+  );
+
   useEffect(() => {
     if (!map) return;
-    map.jumpTo({
-      center: [WORLD_CENTER.longitude, WORLD_CENTER.latitude],
-      zoom: MIN_ZOOM,
-    });
+    map.jumpTo(
+      camera.current ?? {
+        center: [WORLD_CENTER.longitude, WORLD_CENTER.latitude],
+        zoom: MIN_ZOOM,
+      },
+    );
 
     const install = () => {
       const { commonsData, yoursData, yoursOnly, highlight } = latest.current;
@@ -269,6 +278,8 @@ export function SiteFinderMap({
       const byDiver =
         !applying.current && (!!event.originalEvent || forDiver.current);
       forDiver.current = false;
+      const { lng, lat } = map.getCenter();
+      camera.current = { center: [lng, lat], zoom: map.getZoom() };
       callbacks.current.onViewChange(viewOf(map), byDiver);
     };
     const zoomed = () => setZoom(map.getZoom());

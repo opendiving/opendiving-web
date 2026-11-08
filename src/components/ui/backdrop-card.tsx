@@ -152,7 +152,7 @@ type BackdropCardProps = BackdropCardActions & {
   children: ReactNode;
 };
 
-// One record as a card, as /trips, /dives, /sites and the lists of recent ones
+// One record as a card, as /trips, /dives and the lists of recent ones
 // draw them: a backdrop - a map, or whatever stands in for one - its details over
 // the foot of it, and its actions in the corner. A list item, so a caller
 // renders it in a list.

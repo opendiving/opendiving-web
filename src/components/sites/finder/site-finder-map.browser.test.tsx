@@ -1,3 +1,4 @@
+import { Activity } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import type { Map as MapLibreMap } from "maplibre-gl";
@@ -165,5 +166,51 @@ describe("SiteFinderMap", () => {
       expect(Math.abs(map().getCenter().wrap().lng)).toBeGreaterThan(178),
     );
     expect(onViewChange).not.toHaveBeenCalledWith(expect.anything(), true);
+  });
+
+  // A route left stays mounted under a hidden Activity, and comes back with a
+  // new map: it opens where the old one was, not on the world.
+  it("comes back where it was after its route is hidden and shown", async () => {
+    let instance: MapLibreMap | null = null;
+    const host = (hidden: boolean) => (
+      <Activity mode={hidden ? "hidden" : "visible"}>
+        <ConfigProvider
+          config={{
+            basemap: resolveBasemap({
+              styleUrl: EMPTY_STYLE,
+              attribution: "Test",
+            }),
+          }}
+        >
+          <div className="relative h-96 w-[640px]">
+            <SiteFinderMap
+              commons={COMMONS}
+              yours={[]}
+              yoursOnly={false}
+              target={{
+                id: 1,
+                target: { kind: "point", latitude: 28.5, longitude: 34.5 },
+              }}
+              highlight={null}
+              onViewChange={() => {}}
+              onPointPick={() => {}}
+              onMap={(map) => (instance = map)}
+            />
+          </div>
+        </ConfigProvider>
+      </Activity>
+    );
+    const { rerender } = render(host(false));
+    await waitFor(() => expect(instance?.getCenter().lat).toBeCloseTo(28.5));
+
+    rerender(host(true));
+    rerender(host(false));
+
+    await waitFor(() => expect(instance).not.toBeNull());
+    await waitFor(() => {
+      expect(instance!.getCenter().lat).toBeCloseTo(28.5);
+      expect(instance!.getCenter().lng).toBeCloseTo(34.5);
+      expect(instance!.getZoom()).toBeCloseTo(10);
+    });
   });
 });
