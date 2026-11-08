@@ -7119,3 +7119,15 @@ hosted instance within minutes, untested as merged. `semantic-title` and `depend
 pull request to read on a merge group and skip; a skipped job reports success. The release
 coordinator in opendiving/opendiving merges bump pull requests with `gh pr merge`, which a required
 queue enqueues instead of merging, so the queue goes on only once that flow can merge past it.
+
+## The site finder's camera is the one anchor, and a pan asks nothing
+
+`/sites` is `SiteFinder`: a map beside one list from `GET /dive-sites/search`, rendered in the order
+it comes. Every request carries the map's centre, rounded to two decimals in `searchParams`, and,
+after _Search this area_, the view rounded outward; nothing is rounded anywhere else, so no caller
+can send a finer position. The server never learns what moved the camera. A pan records the centre
+and offers _Search this area_; a typed term or a picked place asks. The camera waits on the world
+until its opening rule's reads have settled, and a finder still resting there sends no camera.
+
+_Rejected:_ re-running the list as the map moves, a request per pan that the geocoder shares; and
+the cards' map backdrops on the rows, a second map of what the map beside them already shows.

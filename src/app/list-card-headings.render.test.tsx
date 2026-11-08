@@ -8,7 +8,6 @@ import { ContactsPageFrame } from "@/components/contacts/contacts-page-frame";
 import { CoursesPageFrame } from "@/components/courses/courses-page-frame";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import { PeoplePageFrame } from "@/components/people/people-page-frame";
-import { SitesPageFrame } from "@/components/sites/sites-page-frame";
 import { SpeciesPageFrame } from "@/components/species/species-page-frame";
 import { TripsPageFrame } from "@/components/trips/trips-page-frame";
 
@@ -22,7 +21,6 @@ import { TripsPageFrame } from "@/components/trips/trips-page-frame";
 const FRAMES = {
   "dives-page-frame": DivesPageFrame,
   "trips-page-frame": TripsPageFrame,
-  "sites-page-frame": SitesPageFrame,
   "species-page-frame": SpeciesPageFrame,
   "courses-page-frame": CoursesPageFrame,
   "certifications-page-frame": CertificationsPageFrame,

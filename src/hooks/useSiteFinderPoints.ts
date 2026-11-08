@@ -13,11 +13,6 @@ import {
 // a 304 costs the diver nothing but the round trip.
 let heldCommons: HeldCommonsPoints | null = null;
 
-/** Forgets the held Commons document. For tests. */
-export function forgetCommonsPoints(): void {
-  heldCommons = null;
-}
-
 export interface SiteFinderPoints {
   /** Every Commons record with a pin; null until read, and if it cannot be. */
   commons: CommonsDiveSitePoints | null;

@@ -396,7 +396,10 @@ export function SiteFinder({
         <MapCredit className="absolute bottom-0 right-0 z-10" />
       </div>
 
-      <section aria-label="Dive sites and places" className="min-w-0 space-y-3">
+      <section aria-labelledby="site-finder-list" className="min-w-0 space-y-3">
+        <h2 id="site-finder-list" className="sr-only">
+          Dive sites and places
+        </h2>
         <Card>
           <CardContent className="space-y-3 pt-4 max-sm:p-3">
             <SearchInput
