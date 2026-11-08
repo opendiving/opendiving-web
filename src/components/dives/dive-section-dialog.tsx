@@ -219,6 +219,14 @@ function DiveSectionForm({
             visibility={visibility}
             mixtureFieldArray={mixtureFieldArray}
             knownDiveSites={dive.dive_sites}
+            diveFix={
+              dive.entry_latitude != null && dive.entry_longitude != null
+                ? {
+                    latitude: dive.entry_latitude,
+                    longitude: dive.entry_longitude,
+                  }
+                : null
+            }
             knownGearItems={dive.gear_items}
             knownSpecies={dive.sightings}
             onSpeciesPendingChange={setIsResolvingSpecies}

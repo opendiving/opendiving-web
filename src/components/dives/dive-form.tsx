@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/section-index";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveSiteSummary, Recording } from "@/lib/api/dives";
+import type { EntryFix } from "@/lib/dive-recordings";
 import type { DiveFileListProps } from "@/components/dives/use-pending-dive-files";
 import { GearItemSummary } from "@/lib/api/gear";
 import { SpeciesSummary } from "@/lib/api/species";
@@ -56,6 +57,8 @@ export interface DiveFormProps<TFieldValues extends DiveFormValues> {
   diveUuid?: string;
   // The dive's existing sites, when editing - see `DiveFormFields`.
   knownDiveSites?: DiveSiteSummary[];
+  // The entry fix the save would leave, which the site finder opens on.
+  diveFix?: EntryFix | null;
   knownGearItems?: GearItemSummary[];
   knownSpecies?: SpeciesSummary[];
   // Note shown under the dive number - see `DiveFormFields`.
@@ -84,6 +87,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
   recordings,
   diveUuid,
   knownDiveSites,
+  diveFix,
   knownGearItems,
   knownSpecies,
   diveNumberNotice,
@@ -224,6 +228,7 @@ export function DiveForm<TFieldValues extends DiveFormValues>({
                 visibility={visibility}
                 mixtureFieldArray={mixtureFieldArray}
                 knownDiveSites={knownDiveSites}
+                diveFix={diveFix}
                 knownGearItems={knownGearItems}
                 knownSpecies={knownSpecies}
                 onSpeciesPendingChange={setIsResolvingSpecies}

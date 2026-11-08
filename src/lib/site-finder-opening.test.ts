@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { partHolds, sitesOpening } from "./site-finder-opening";
+import {
+  diveFormOpening,
+  partHolds,
+  sitesOpening,
+  sitesTarget,
+} from "./site-finder-opening";
 
 const DAHAB = {
   name: "Dahab, South Sinai, Egypt",
@@ -92,5 +97,52 @@ describe("sitesOpening", () => {
       }),
     ).toBeNull();
     expect(sitesOpening({ tripParts: [], newestDive: null, today })).toBeNull();
+  });
+});
+
+describe("sitesTarget", () => {
+  it("fits pins across the antimeridian the short way round", () => {
+    const target = sitesTarget([
+      { latitude: -17.7, longitude: 178.1 },
+      { latitude: -13.8, longitude: -171.8 },
+      { latitude: null, longitude: null },
+    ]);
+    expect(target).toMatchObject({
+      kind: "bounds",
+      south: -17.7,
+      north: -13.8,
+    });
+    if (target?.kind !== "bounds") throw new Error("not a box");
+    expect(target.east - target.west).toBeCloseTo(10.1, 6);
+  });
+
+  it("answers nothing for sites with no pin", () => {
+    expect(sitesTarget([{}, { latitude: null, longitude: null }])).toBeNull();
+  });
+});
+
+describe("diveFormOpening", () => {
+  const part = {
+    start_date: "2026-03-01",
+    end_date: "2026-03-08",
+    location: DAHAB,
+  };
+  const fix = { latitude: 28.41, longitude: 34.47 };
+
+  it("takes the sites, then the fix, then the trip part, then the world", () => {
+    const pinned = [{ latitude: 28.57, longitude: 34.54 }];
+    const day = "2026-03-04";
+    expect(
+      diveFormOpening({ sites: pinned, fix, tripParts: [part], day }),
+    ).toEqual({ kind: "point", ...pinned[0] });
+    expect(
+      diveFormOpening({ sites: [{}], fix, tripParts: [part], day }),
+    ).toEqual({ kind: "point", ...fix });
+    expect(
+      diveFormOpening({ sites: [], fix: null, tripParts: [part], day }),
+    ).toEqual({ kind: "point", latitude: 28.5, longitude: 34.5 });
+    expect(
+      diveFormOpening({ sites: [], fix: null, tripParts: [part], day: null }),
+    ).toBeNull();
   });
 });

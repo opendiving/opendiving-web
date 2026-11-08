@@ -228,7 +228,7 @@ export interface SpeciesMultiSelectProps extends FormControlA11yProps {
  * sites first, then the rest they have logged, then a global catalog that is
  * backed live by WoRMS and Wikidata.
  *
- * Wraps the generic `CreatableCombobox` the way `DiveSiteMultiSelect` does (see
+ * Wraps the generic `CreatableCombobox` the way `GearItemMultiSelect` does (see
  * DECISIONS.md) - the combobox is the "add a species" input, with a
  * drag-sortable list of what's already added above it, each row carrying how
  * many were seen and a note.

@@ -1,32 +1,26 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { AlertTriangle, GripVertical, X } from "lucide-react";
-import {
-  ComboboxSearchResult,
-  CreatableCombobox,
-} from "@/components/ui/creatable-combobox";
+import { AlertTriangle, GripVertical, MapPinned, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { FormControlA11yProps } from "@/components/ui/form";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { DiveSiteSummary } from "@/lib/api/dives";
-import { diveSiteSearchResult } from "@/components/sites/commons-site";
-import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
+import type { LatLon } from "@/lib/basemap";
+import { SiteFinderDialog } from "@/components/sites/finder/site-finder-dialog";
 import { SiteProposalFlow } from "@/components/sites/site-proposal-flow";
+import { useDiveFormFinderOpening } from "@/hooks/useDiveFormFinderOpening";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import { useLookupLabels } from "@/hooks/useLookupLabels";
 import { useUnits } from "@/hooks/useUnits";
 import { diveSiteMismatches } from "@/lib/dive-site-mismatches";
 import { cn } from "@/lib/utils";
 
-// How many sites the dropdown asks for at a time. Enough to scroll through
-// before typing, far short of the API's 100 cap.
-const SITES_PER_SEARCH = 25;
-
 const lookupDiveSites = (uuids: string[]) =>
   diveSitesAPI.lookupDiveSitesByUuid(uuids);
 
-export interface DiveSiteMultiSelectProps extends FormControlA11yProps {
+export interface DiveSitesFieldProps extends FormControlA11yProps {
   // Ordered list of selected dive site uuids - the first entry is the primary
   // site (e.g. shown as "Site Name +2" wherever only one site fits).
   value: string[];
@@ -38,38 +32,43 @@ export interface DiveSiteMultiSelectProps extends FormControlA11yProps {
   onChange: (diveSiteUuids: string[]) => void;
   // The dive's start time, as the form holds it - see `TripCombobox.until`.
   until?: string;
+  // The dive's GPS fix - an attached file's, or the one a saved dive carries -
+  // and its trip: where the finder opens when no chosen site has a pin.
+  diveFix?: LatLon | null;
+  tripUuid?: string | null;
   disabled?: boolean;
 }
 
-// Lets the user pick one or more dive sites for a dive (e.g. a drift dive that
-// crosses several named sites), in the order they were visited - which matters
-// here beyond presentation: the first entry is the dive's primary site. Wraps
-// the generic `CreatableCombobox` for the "add a site" input, plus a
-// drag-sortable list of the sites already added.
-//
-// The dropdown searches server-side (`CreatableCombobox`'s `onSearch`) rather
-// than fetching the user's whole catalogue up front - see DECISIONS.md - and a
-// search lists Commons records after the diver's own, which a dive names as they
-// stand: the API saves one for the diver when the dive is saved. The names of
-// *selected* sites are therefore tracked separately, in `labels`,
-// since a picked site drops out of the results as soon as the query changes.
-export function DiveSiteMultiSelect({
+// The dive's sites, in the order they were visited - which matters beyond
+// presentation: the first entry is the dive's primary site. A drag-sortable list
+// of the sites added, and a button that opens the site finder to add another,
+// whose search is the field's only typing path. A pick names a Commons record as
+// it stands: the API saves one for the diver when the dive is saved. The names of
+// the *selected* sites are tracked here, in `records`, since the finder's rows
+// are gone once it closes.
+export function DiveSitesField({
   value,
   knownSites,
   onChange,
   until,
+  diveFix,
+  tripUuid,
   disabled,
-  // Forwarded to the "add a site" combobox - the field's one focusable control.
-  // The selected-sites list above it is a `<ul>` of remove buttons, which the
-  // label has nothing to say about.
+  // Forwarded to the button that opens the finder - the field's one control the
+  // label names. The selected-sites list above it is a `<ul>` of remove buttons,
+  // which the label has nothing to say about.
   ...slotProps
-}: DiveSiteMultiSelectProps) {
+}: DiveSitesFieldProps) {
   // Lookup rows, which label the selection and carry the water type and altitude
   // a dive's embedded summary does not. A site `knownSites` already names is read
   // only once there is a second site to compare the first with; any other -
   // pre-selected by uuid alone (`/dives/new?dive_site_uuid=...`) - is read so a
   // selection never renders nameless. One lookup narrowed to those uuids.
-  const { records, remember: rememberRecord } = useLookupLabels(
+  const {
+    records,
+    remember: rememberRecord,
+    unresolved,
+  } = useLookupLabels(
     lookupDiveSites,
     value.filter(
       (uuid) =>
@@ -77,15 +76,21 @@ export function DiveSiteMultiSelect({
     ),
   );
   const units = useUnits();
-  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [isFinding, setFinding] = useState(false);
   const [proposing, setProposing] = useState<DiveSite | null>(null);
-  // Set by a save in the new-site dialog, so its close doesn't hand focus back
-  // to the input - which would reopen the menu `blurOnSelect` just shut.
-  const savedFromDialogRef = useRef(false);
   // Read through the `knownSites` prop rather than copied into `records`: the copy
   // wouldn't have landed yet on the render that first sees a selection.
   const labelFor = (uuid: string): DiveSiteSummary | undefined =>
     records[uuid] ?? knownSites?.find((site) => site.uuid === uuid);
+
+  // A site whose read came back empty is one with no pin to open on.
+  const opening = useDiveFormFinderOpening({
+    active: isFinding,
+    sites: value.map((uuid) => (unresolved.has(uuid) ? {} : labelFor(uuid))),
+    fix: diveFix,
+    tripUuid,
+    startTime: until,
+  });
 
   // Nothing until every site is read: the first site recording a water type may
   // be one still on its way.
@@ -95,22 +100,8 @@ export function DiveSiteMultiSelect({
       ? diveSiteMismatches(siteRecords, units)
       : [];
 
-  const searchDiveSites = useCallback(
-    async (query: string): Promise<ComboboxSearchResult> => {
-      const response = await diveSitesAPI.lookupDiveSites(1, SITES_PER_SEARCH, {
-        search: query,
-        until,
-      });
-      // Every site the dropdown shows is remembered, so picking one never needs
-      // the record fetched straight back just to label its row.
-      rememberRecord(...response.data);
-      return diveSiteSearchResult(response);
-    },
-    [rememberRecord, until],
-  );
-
-  const addSite = (id: string | undefined) => {
-    if (id === undefined || value.includes(id)) return;
+  const addSite = (id: string) => {
+    if (value.includes(id)) return;
     onChange([...value, id]);
   };
 
@@ -128,7 +119,6 @@ export function DiveSiteMultiSelect({
   });
 
   const handleCreated = (newDiveSite: DiveSite, proposes: boolean) => {
-    savedFromDialogRef.current = true;
     rememberRecord(newDiveSite);
     addSite(newDiveSite.uuid);
     if (proposes) setProposing(newDiveSite);
@@ -235,39 +225,30 @@ export function DiveSiteMultiSelect({
         </ul>
       )}
 
-      <CreatableCombobox
+      <Button
         {...slotProps}
-        onSearch={searchDiveSites}
-        // Already-selected sites are hidden from the "add a site" dropdown so
-        // the same site can't be added twice. Excluded here rather than in the
-        // query, which would silently shrink the page and change what
-        // `has_more` means.
-        excludeIds={value}
-        value={undefined}
-        onChange={addSite}
+        type="button"
+        variant="outline"
         disabled={disabled}
-        placeholder={
-          value.length ? "Add another dive site..." : "Select a dive site..."
-        }
-        noItemsLabel="No dive sites yet."
-        noMatchesLabel="No dive sites match."
-        addNewLabel="Add dive site..."
-        keepOpenOnSelect
-        // Most dives have a single site, so an added one closes the field
-        // rather than inviting a second.
-        blurOnSelect
-        onAddNew={() => setShowNewDialog(true)}
-      />
+        className="w-full justify-start font-normal text-muted-foreground"
+        onClick={() => setFinding(true)}
+      >
+        <MapPinned className="mr-2 h-4 w-4" />
+        {value.length ? "Add another dive site..." : "Select a dive site..."}
+      </Button>
 
-      <DiveSiteDialog
-        open={showNewDialog}
-        onOpenChange={setShowNewDialog}
-        onSaved={handleCreated}
-        finalFocus={() => {
-          const restore = !savedFromDialogRef.current;
-          savedFromDialogRef.current = false;
-          return restore;
+      {/* Its rows wait on `isFinding`: shut, it asks nothing and reads no trip. */}
+      <SiteFinderDialog
+        open={isFinding}
+        onOpenChange={setFinding}
+        opening={opening}
+        until={until}
+        chosen={value}
+        onPick={(uuid, row) => {
+          if (row) rememberRecord(row);
+          addSite(uuid);
         }}
+        onCreated={handleCreated}
       />
 
       <SiteProposalFlow
@@ -280,8 +261,6 @@ export function DiveSiteMultiSelect({
         onReplaced={(record) => {
           if (proposing) swapSite(proposing.uuid, record);
         }}
-        // Focus handed back to the input would reopen its menu, as above.
-        finalFocus={false}
       />
     </div>
   );

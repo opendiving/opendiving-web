@@ -11,9 +11,9 @@ import type {
   SpeciesSummary,
 } from "@/lib/api/species";
 
-// The first six cases mirror `dive-site-multi-select.render.test.tsx` - both
-// fields wrap the same `CreatableCombobox`, and the rules about what counts as
-// choosing an item were tightened for every append-only field at once. The rest
+// The first six cases pin the rules about what counts as choosing an item in an
+// append-only field wrapping `CreatableCombobox`: only a click or Enter chooses,
+// never a name typed or a blur. The rest
 // cover the thing only this picker does: a pick that has to go to the API before
 // it has a value at all.
 

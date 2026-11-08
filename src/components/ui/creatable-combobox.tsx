@@ -292,7 +292,7 @@ export interface CreatableComboboxProps extends FormControlA11yProps {
   // `items` locally. Under `keepOpenOnSelect` it is also called once more after
   // each pick that leaves the menu open, so a server that leaves out what the
   // field already holds can fill the slot the pick vacated. Use this wherever the
-  // full list is too big to ship to the browser - see `DiveSiteMultiSelect`.
+  // full list is too big to ship to the browser - see `TripCombobox`.
   onSearch?: (query: string) => Promise<ComboboxSearchResult>;
   // How long to wait after the last keystroke before calling `onSearch`.
   // Defaults to the 250 ms that suits our own lookup endpoints; raise it for a
@@ -369,11 +369,6 @@ export interface CreatableComboboxProps extends FormControlA11yProps {
   //
   // It implies `commitOnEnterOnly`.
   keepOpenOnSelect?: boolean;
-  // For an append-only field where one item is the usual answer: a pick still
-  // clears the filter, but closes the menu and leaves the field rather than
-  // readying it for the next, so the dropdown isn't left over the rest of the
-  // form. Only read alongside `keepOpenOnSelect`.
-  blurOnSelect?: boolean;
   // Typed text becomes a value only from a deliberate Enter, never from focus
   // leaving and never from a keystroke that happens to spell an option exactly.
   // Picking a row from the menu still works, and abandoning a half-typed query
@@ -399,8 +394,8 @@ export interface CreatableComboboxProps extends FormControlA11yProps {
 
 // A generic combobox that lets the user pick an existing item by typing to
 // filter, or create a new one on the fly by typing a name that doesn't match
-// anything and committing it (blur / Enter). Used for both the trip and dive
-// site pickers in the dive form.
+// anything and committing it (blur / Enter). Used by most of the dive form's
+// pickers.
 export function CreatableCombobox({
   items = NO_ITEMS,
   onSearch,
@@ -425,7 +420,6 @@ export function CreatableCombobox({
   queryTooLongLabel,
   searchErrorLabel = "Search is unavailable right now.",
   keepOpenOnSelect = false,
-  blurOnSelect = false,
   commitOnEnterOnly = false,
   initialQuery,
   // Forwarded to the text input rather than the wrapper, so `FormLabel`'s
@@ -713,11 +707,6 @@ export function CreatableCombobox({
       // clicking the already-focused input did nothing, forcing a click-away
       // and click-back to add a second item.
       setInputValue("");
-      if (blurOnSelect) {
-        closeMenu();
-        inputRef.current?.blur();
-        return;
-      }
       setIsOpen(true);
       setSearchRun((run) => run + 1);
       inputRef.current?.focus();
@@ -802,9 +791,7 @@ export function CreatableCombobox({
       setInputValue(keepOpenOnSelect ? "" : action.item.name);
       setTyped(false);
       onChange(action.item.id);
-      // The Enter that got here has already blurred the field and closed the
-      // menu, which is where `blurOnSelect` wants them left.
-      if (!blurOnSelect) readyForNext();
+      readyForNext();
       return;
     }
 
@@ -828,7 +815,7 @@ export function CreatableCombobox({
       setInputValue(keepOpenOnSelect ? "" : created.name);
       setTyped(false);
       onChange(created.id);
-      if (!blurOnSelect) readyForNext();
+      readyForNext();
     } catch (error) {
       console.error("Failed to create item:", error);
       onChange(undefined);

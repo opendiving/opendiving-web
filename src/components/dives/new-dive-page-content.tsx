@@ -206,11 +206,12 @@ function NewDiveForm({ onDraftParam }: NewDiveFormProps) {
   useDivePickPrefill({ form, visibility, lastDivePeople });
   // After the last dive's prefill too, for the same reason as the site's. At the
   // entry fix the picked files give the saved dive.
+  const entryFix = entryFixAfterSave({ pending: files.fileList.pending });
   const conditions = useDiveConditionsFill({
     form,
     visibility,
     enabled: prefillSettled,
-    position: entryFixAfterSave({ pending: files.fileList.pending }),
+    position: entryFix,
   });
 
   // The moment a value arrives from outside the diver's typing at mount: a trip,
@@ -711,6 +712,7 @@ function NewDiveForm({ onDraftParam }: NewDiveFormProps) {
           submittingLabel="Logging dive..."
           submitLabel="Log dive"
           fileList={files.fileList}
+          diveFix={entryFix}
           diveNumberNotice={diveNumberNotice}
           fetched={conditions.marks}
           draft={{

@@ -41,7 +41,7 @@ import { ContactCombobox } from "@/components/contacts/contact-combobox";
 import type { ContactRole } from "@/lib/api/contacts";
 import { PeopleMultiSelect } from "@/components/people/people-multi-select";
 import type { PersonReference } from "@/lib/api/people";
-import { DiveSiteMultiSelect } from "@/components/sites/dive-site-multi-select";
+import { DiveSitesField } from "@/components/sites/dive-sites-field";
 import { useDiveRoster } from "@/hooks/useDiveRoster";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
 import {
@@ -78,6 +78,7 @@ import {
   type WaterType,
 } from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
+import type { EntryFix } from "@/lib/dive-recordings";
 import { SpeciesSummary } from "@/lib/api/species";
 import type {
   DiveFormFieldGroup,
@@ -190,6 +191,9 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // user's whole catalogue, so it can't look a selected uuid's name up
   // locally - passing the ones already on the record saves it a request each.
   knownDiveSites?: DiveSiteSummary[];
+  // The dive's GPS fix as the save would leave it - the site finder opens on it
+  // when no chosen site has a pin.
+  diveFix?: EntryFix | null;
   // Same idea for gear: `Dive.gear_items` already carries what a picked row
   // renders, so the picker needn't fetch each item back by uuid.
   knownGearItems?: GearItemSummary[];
@@ -227,6 +231,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   visibility,
   mixtureFieldArray,
   knownDiveSites,
+  diveFix,
   knownGearItems,
   knownSpecies,
   onSpeciesPendingChange,
@@ -372,11 +377,13 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     <FormLabel>Dive site(s)</FormLabel>
                     <FormControl
                       render={
-                        <DiveSiteMultiSelect
+                        <DiveSitesField
                           value={field.value ?? []}
                           knownSites={knownDiveSites}
                           onChange={field.onChange}
                           until={until}
+                          diveFix={diveFix}
+                          tripUuid={tripUuid}
                         />
                       }
                     />

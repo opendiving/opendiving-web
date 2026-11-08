@@ -26,6 +26,7 @@ import type { Tag } from "@/lib/api/tags";
 import type { LatLon } from "@/lib/basemap";
 import { locationTarget } from "@/lib/site-finder-opening";
 import type { FinderTarget } from "@/lib/site-finder-camera";
+import { cn } from "@/lib/utils";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useSiteFinderPoints } from "@/hooks/useSiteFinderPoints";
 import { MapCredit } from "@/components/map/map-credit";
@@ -103,6 +104,8 @@ export interface SiteFinderProps {
   /** Opens the site form with its pin at the map's centre, or none without a map. */
   onAddSite?: (pin: LatLon | null) => void;
   handleRef?: Ref<SiteFinderHandle>;
+  /** Classes merged over the map's own, for a host that is not a page. */
+  mapClassName?: string;
 }
 
 const ROWS_PER_PAGE = 20;
@@ -152,6 +155,7 @@ export function SiteFinder({
   siteMenu,
   onAddSite,
   handleRef,
+  mapClassName,
 }: SiteFinderProps) {
   const { toast } = useToast();
   const [state, dispatch] = useReducer(finderReducer, null);
@@ -322,7 +326,10 @@ export function SiteFinder({
     <div className="grid gap-4 max-sm:gap-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start">
       <div
         data-finder-map
-        className="relative h-72 overflow-hidden rounded-lg border bg-muted sm:h-96 lg:sticky lg:top-20 lg:h-[calc(100dvh-7rem)] lg:max-h-[52rem]"
+        className={cn(
+          "relative h-72 overflow-hidden rounded-lg border bg-muted sm:h-96 lg:sticky lg:top-20 lg:h-[calc(100dvh-7rem)] lg:max-h-[52rem]",
+          mapClassName,
+        )}
       >
         <div
           role="region"

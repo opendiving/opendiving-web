@@ -216,6 +216,7 @@ export function EditDivePageContent() {
           // The dive already carries its sites' names, so the picker doesn't have
           // to look them up again just to label the rows it starts out with.
           knownDiveSites={dive.dive_sites}
+          diveFix={savedPosition}
           knownGearItems={dive.gear_items}
           knownSpecies={dive.sightings}
           fetched={conditions.marks}

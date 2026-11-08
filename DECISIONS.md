@@ -159,21 +159,25 @@ never read `error.response?.data?.detail` directly.
 ## The generic `CreatableCombobox` pattern
 
 `components/ui/creatable-combobox.tsx` is a generic "pick existing or create on the fly" combobox.
-`TripCombobox` is a single-select wrapper supplying the fetch/create calls. `DiveSiteMultiSelect`
-wraps it for several dive sites per dive (a drift dive can cross named sites): `CreatableCombobox`
-is the "add a site" input, always rendered with `value={undefined}` so it clears after each pick,
-above a reorderable list of added sites. `GearItemMultiSelect` and `SpeciesMultiSelect` follow the
-same shape. Wrap `CreatableCombobox` this way for any further "pick or create" entity rather than
-copying the interaction logic (filtering, commit-on-blur/Enter, mouse-down-prevents-blur for option
-clicks). Read "The species picker resolves a pick into a catalog row before form state sees it"
-before writing the next wrapper: it is the only one whose pick needs a round trip before it has a
-value, and what follows from that is not visible here.
+`TripCombobox` is a single-select wrapper supplying the fetch/create calls. `GearItemMultiSelect`
+wraps it for several items per dive: `CreatableCombobox` is the "add an item" input, always rendered
+with `value={undefined}` so it clears after each pick, above a reorderable list of added items.
+`SpeciesMultiSelect` follows the same shape. Wrap `CreatableCombobox` this way for any further "pick
+or create" entity rather than copying the interaction logic (filtering, commit-on-blur/Enter,
+mouse-down-prevents-blur for option clicks). Read "The species picker resolves a pick into a catalog
+row before form state sees it" before writing the next wrapper: it is the only one whose pick needs
+a round trip before it has a value, and what follows from that is not visible here.
 
 ## Every picker of the diver's records searches its lookup
 
-Pickers of trips, sites, contacts, people, courses and gear search `/<plural>/lookup` through
+Pickers of trips, contacts, people, courses and gear search `/<plural>/lookup` through
 `CreatableCombobox`'s `onSearch`: thin rows ranked by last use on a dive at or before `until`, the
 edited record's date as its form holds it, or none. Remote rows are never re-filtered or re-sorted.
+
+The dive form's site field opens the site finder, which searches `GET /dive-sites/search`: the sites
+nearest the camera or, with none, the diver's by last use at or before `until`, as the lookup orders
+them. Its one client-side drop is a site the dive already names. The delete dialog's reassign picker
+and the review screen's matches still search `/dive-sites/lookup`.
 
 A label comes from a `known*` prop, a lookup row, or a per-uuid read fired once with no `cancelled`
 flag (`useLookupLabels`): under StrictMode the request in flight is the discarded mount's. A host
@@ -716,15 +720,12 @@ keeps focus (a pick, Escape, a dialog restoring focus). A click always brings th
 `keepOpenOnSelect` keeps the menu up after a pick and clears the typed filter so several items can
 be added in a row. The append-only pickers set it, their picked items moving into the list above;
 `TripCombobox` leaves it off because it fills a single field, where closing and showing the chosen
-name is right. `DiveSiteMultiSelect` adds `blurOnSelect`, which closes the menu and leaves the field
-after a pick: most dives have one site, and an open menu would cover the fields below. Its new-site
-dialog skips the focus return after a save for the same reason.
+name is right.
 
 A pick that keeps the menu open runs the search once more for the current query, the empty one after
 an untyped pick: neither the query nor the open state changed, and a feed that leaves out what the
 field holds would otherwise lose a row per pick instead of refilling. The gear and people pickers
-make one extra request per pick; the sites picker closes and the tags picker filters locally, so
-neither re-asks.
+make one extra request per pick; the tags picker filters locally, so it does not re-ask.
 
 ## Dropdowns are navigable with Up/Down and Enter
 
@@ -1522,9 +1523,9 @@ external sync — are genuinely different patterns, not copies of one.
 child renders. That works for a leaf `<Input>` and silently fails in two cases.
 
 A custom component that never spreads rest props. `DiveStartTimeField`, `TripCombobox`,
-`DiveSiteMultiSelect`, `DiveGearField` and `VolumeCombobox` extend `FormControlSlotProps` from
-`form.tsx` and spread it onto their own focusable control; otherwise `FormLabel`'s
-`htmlFor={formItemId}` points at an id that exists nowhere.
+`DiveSitesField`, `DiveGearField` and `VolumeCombobox` extend `FormControlSlotProps` from `form.tsx`
+and spread it onto their own focusable control; otherwise `FormLabel`'s `htmlFor={formItemId}`
+points at an id that exists nowhere.
 
 A wrapper `<div>`. Fields with an icon or unit adornment keep `FormControl` inside the
 `<div className="relative">`, around the `<Input>`: `<label for>` only associates with labelable
@@ -2641,7 +2642,7 @@ follows the basemap configuration (`lib/basemap.ts`) to a self-hosted server.
 
 ## A trip part's place is self-describing, so nothing has to be resolved
 
-`TripPartsField` is built on the same `CreatableCombobox` as `DiveSiteMultiSelect` but holds
+`TripPartsField` is built on the same `CreatableCombobox` as `GearItemMultiSelect` but holds
 `{name, latitude, longitude, bbox_*}` objects, the snapshot the API stores, rather than uuids, so a
 row renders from its own content with nothing to fetch and no loading state. See "A geocoder row's
 hint is its region, composed once" for what a menu row shows.
@@ -3126,10 +3127,10 @@ across every caller, is wider than the symptom justifies.
 It excludes the resource being deleted — the API answers that choice with a 422, so listing it
 offers an error.
 
-It is a bare `CreatableCombobox`, not `TripCombobox`/`DiveSiteMultiSelect`: those carry name-lookup
-for a uuid handed in by a form, and this field only holds what the diver picked from its own menu.
-No "Add new..." either — a brand-new empty trip is not what "move these somewhere" means, and the
-create dialogs are one page away.
+It is a bare `CreatableCombobox`, not `TripCombobox`: that carries name-lookup for a uuid handed in
+by a form, and this field only holds what the diver picked from its own menu. No "Add new..." either
+— a brand-new empty trip is not what "move these somewhere" means, and the create dialogs are one
+page away.
 
 `ConfirmDialog`'s `children` slot keeps this one dialog rather than a second layered on top. Its
 `confirmDisabled` is separate from `isLoading` because an unfinished choice must still be
@@ -4565,7 +4566,7 @@ rows per list, since a constant name satisfies a one-row test.
 
 ## Row-action names: The same rule holds for chips in a form field
 
-`DiveSiteMultiSelect`, `SpeciesMultiSelect` and `GearItemMultiSelect` name each row's remove button
+`DiveSitesField`, `SpeciesMultiSelect` and `GearItemMultiSelect` name each row's remove button
 `Remove <label>`, as `TripPartsField` does. The field's own label reaches neither the flat page-wide
 controls list nor the focus announcement, so bare `Remove` buttons collide like bare `Edit` rows;
 the drag handles beside them (`Reorder Blue Hole, position 1 of 2 (primary site). ...`) already

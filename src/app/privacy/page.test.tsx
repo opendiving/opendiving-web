@@ -842,13 +842,13 @@ describe("the map tiles", () => {
         /your browser fetches the map’s tiles directly from a third-party basemap provider/,
       );
       expect(text).toMatch(
-        /the Sites section, which loads its map of dive sites as soon as it opens; the form to add or edit a dive site and the form to add or edit a trip/,
+        /the Sites section, which loads its map of dive sites as soon as it opens; the form to add or edit a dive, whose site field opens that same map in Find a dive site when you ask for it; the form to add or edit a dive site and the form to add or edit a trip/,
       );
       expect(text).toMatch(
         /and the form to add or edit a contact, which loads one only when you ask it to show the map/,
       );
       expect(text).toMatch(
-        /Apart from those four, no page has your browser contact the provider/,
+        /Apart from those five, no page has your browser contact the provider/,
       );
       expect(text).toMatch(
         /The provider learns it all the same: like every browser, yours names the languages it is set to in each request it makes/,
@@ -856,14 +856,15 @@ describe("the map tiles", () => {
     },
   );
 
-  it("counts four browser maps on a copy that does not edit the Commons", async () => {
+  it("counts five browser maps on a copy that does not edit the Commons", async () => {
     await renderPage({ google: false, commonsPrimary: false });
 
     const text = mapSection();
-    expect(text).toMatch(/Four places in the app show a map your browser/);
+    expect(text).toMatch(/Five places in the app show a map your browser/);
     expect(text).toMatch(
-      /which loads one only when you ask it to show the map\. Apart from those four, no page has your browser contact the provider\./,
+      /which loads one only when you ask it to show the map\. Apart from those five, no page has your browser contact the provider\./,
     );
+    expect(text).toMatch(/draws a map of its own in six places:/);
     expect(text).not.toMatch(/proposal|OpenDiving Commons/);
   });
 
@@ -873,14 +874,14 @@ describe("the map tiles", () => {
     await renderPage({ google: false, commonsPrimary: true });
 
     const text = mapSection();
-    expect(text).toMatch(/Six places in the app show a map your browser/);
+    expect(text).toMatch(/Seven places in the app show a map your browser/);
     expect(text).toMatch(
-      /which loads one only when you ask it to show the map, the step that checks a site of yours before it is proposed, which loads one when it opens, and the screen where this copy’s operator reviews what divers propose for OpenDiving Commons, which loads one when a proposal is opened\. Apart from those six, no page has your browser contact the provider\./,
+      /which loads one only when you ask it to show the map, the step that checks a site of yours before it is proposed, which loads one when it opens, and the screen where this copy’s operator reviews what divers propose for OpenDiving Commons, which loads one when a proposal is opened\. Apart from those seven, no page has your browser contact the provider\./,
     );
     expect(text).toMatch(
-      /draws a map of its own in five places:.*and the step that checks a site of yours before it is proposed\. It draws/,
+      /draws a map of its own in seven places:.*and the step that checks a site of yours before it is proposed\. It draws/,
     );
-    expect(text).not.toMatch(/Four places|those four|Five places|those five/);
+    expect(text).not.toMatch(/Five places|those five|six places|those six/i);
   });
 
   // Its own paragraph, on both copies: the browser's sentences say "the app"
@@ -896,10 +897,10 @@ describe("the map tiles", () => {
       expect(paragraph.tagName).toBe("P");
       const text = (paragraph.textContent ?? "").replace(/\s+/g, " ");
       expect(text).toMatch(
-        /the form to add a dive site and the search for a site’s location, the form to add a trip, and the form to add a contact, which loads one only when you ask it to show the map/,
+        /the Sites tab and the dive form’s Find a Dive Site, which load the map of dive sites as they open, the form to add a dive site and the search for a site’s location, the form to add a trip, and the form to add a contact, which loads one only when you ask it to show the map/,
       );
       expect(text).toMatch(
-        /only where this server draws tiles, so on a copy that draws none those forms show no map/,
+        /only where this server draws tiles, so on a copy that draws none those screens show no map/,
       );
       expect(text).toMatch(
         /the OpenDiving app names the phone’s language to this server when it asks for the map’s style, and fetches the map directly from the same basemap provider, which sees the phone’s IP address, the part of the world on screen, the OpenDiving app’s name and version and the iOS version that its requests’ User-Agent header names, and the language settings that their Accept-Language header names, and nothing of your account/,
@@ -1747,7 +1748,25 @@ describe("the site finder's location and searches", () => {
 
     const ways = listAfterHeading(/2\.3 Location Information/);
     expect(ways[ways.length - 1]).toMatch(
-      /The centre of the dive site map in the Sites section, sent with each search of it.*cut to two decimal places, about a kilometre, whatever moved the map/,
+      /The centre of the dive site map in the Sites section and in the dive form’s Find a dive site, sent with each search of it.*cut to two decimal places, about a kilometre, whatever moved the map.*from your browser or your phone$/,
+    );
+  });
+
+  it("says when the phone is asked, what it sends and what is kept", async () => {
+    await renderPage({ google: false });
+
+    const paragraph = screen.getByText(
+      /The OpenDiving app on a phone has the same dive site map/,
+    );
+    const text = (paragraph.textContent ?? "").replace(/\s+/g, " ");
+    expect(text).toMatch(
+      /asks the phone where you are the first time that map opens, through the phone’s own prompt\. Whatever you answer, it does not ask again\./,
+    );
+    expect(text).toMatch(
+      /the Sites tab opens on where the phone is, and so does the dive form’s map when the dive has no site with a pin and no GPS position to open on/,
+    );
+    expect(text).toMatch(
+      /sent as the map opens and with every search after, rounded to about a kilometre like every other search’s, and in the server logs for as long as those are kept\. The app stores it nowhere\./,
     );
   });
 

@@ -68,7 +68,8 @@ one.
   to a record, for a reviewer to accept. A site's page sums up your dives there — how many, the last
   and the deepest, the species you saw and your average rating — beside every dive you've logged at
   it, and a dive logged there starts from its water, altitude and entry. Under _Your sites_, sort
-  the list by name, by dives or by the last dive, and filter it by a tag.
+  the list by name, by dives or by the last dive, and filter it by a tag. The dive form picks a site
+  from the same map, opened on the dive's sites, its GPS position or its trip.
 - **Gear tracking** — your equipment with per-item dive counts and dive time, groupable into gear
   sets you can attach to a dive in one click; a cylinder records its volume, working pressure and
   material once, and a dive's tank links it. Plus **service schedules** (annual service, visual

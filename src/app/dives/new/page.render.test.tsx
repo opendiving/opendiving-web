@@ -260,6 +260,23 @@ vi.mock("@/lib/api/tags", async (importOriginal) => {
   return { ...actual, fetchAllTags: vi.fn() };
 });
 
+// The site finder is its own tests' business; here it is the sites it was
+// handed, each a button that picks it as a point on the map would.
+const finderSites = vi.hoisted(() => ({ names: [] as [string, string][] }));
+vi.mock("@/components/sites/finder/site-finder", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/components/sites/finder/site-finder")
+  >()),
+  SiteFinder: ({
+    onPickSite,
+  }: import("@/components/sites/finder/site-finder").SiteFinderProps) =>
+    finderSites.names.map(([uuid, name]) => (
+      <button key={uuid} type="button" onClick={() => onPickSite?.(uuid, null)}>
+        {name}
+      </button>
+    )),
+}));
+
 const { authAPI } = await import("@/lib/api/auth");
 const tags = await import("@/lib/api/tags");
 const { coursesAPI } = await import("@/lib/api/courses");
@@ -3292,11 +3309,9 @@ describe("the primary site's water, altitude and entry", () => {
   const boatName = () => screen.queryByLabelText(/^boat name$/i);
 
   const pickSite = async (name: string) => {
+    await userEvent.click(screen.getByRole("button", { name: /^dive site/i }));
     await userEvent.click(
-      screen.getByRole("combobox", { name: /^dive site/i }),
-    );
-    await userEvent.click(
-      await screen.findByRole("option", { name: new RegExp(name) }),
+      await screen.findByRole("button", { name: new RegExp(name) }),
     );
   };
   const removeSite = (name: string) =>
@@ -3314,11 +3329,7 @@ describe("the primary site's water, altitude and entry", () => {
   };
 
   beforeEach(() => {
-    vi.mocked(diveSitesAPI.lookupDiveSites).mockResolvedValue({
-      ...emptyPage<DiveSite>(),
-      data: SITES,
-      total_count: SITES.length,
-    });
+    finderSites.names = SITES.map(({ uuid, name }) => [uuid, name]);
     vi.mocked(diveSitesAPI.lookupDiveSitesByUuid).mockImplementation(
       async (uuids) =>
         SITES.filter((candidate) => uuids.includes(candidate.uuid)),

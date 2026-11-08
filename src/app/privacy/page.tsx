@@ -595,12 +595,14 @@ export default async function PrivacyPage() {
                   archive&rsquo;s only if you take it in the import
                 </li>
                 <li>
-                  The centre of the dive site map in the Sites section, sent
-                  with each search of it, and the edges of the part on screen
-                  when you search that area &mdash; each cut to two decimal
-                  places, about a kilometre, whatever moved the map: you
-                  dragging it, a place you picked, the trip or dive it opened
-                  on, or your browser&rsquo;s answer to <em>Use my location</em>
+                  The centre of the dive site map in the Sites section and in
+                  the dive form&rsquo;s <em>Find a dive site</em>, sent with
+                  each search of it, and the edges of the part on screen when
+                  you search that area &mdash; each cut to two decimal places,
+                  about a kilometre, whatever moved the map: you dragging it, a
+                  place you picked, the dive, its sites or the trip it opened
+                  on, or the answer to <em>Use my location</em> from your
+                  browser or your phone
                 </li>
               </ul>
               <p className="text-foreground mb-4">
@@ -618,6 +620,26 @@ export default async function PrivacyPage() {
                 are, so nothing embedded in one can. What the basemap provider
                 sees when a map is on screen is a different question, and
                 section 4.4 answers it.
+              </p>
+              <p className="text-foreground mb-4">
+                The OpenDiving app on a phone has the same dive site map, in its
+                Sites tab and in the dive form, and asks the phone where you are
+                the first time that map opens, through the phone&rsquo;s own
+                prompt. Whatever you answer, it does not ask again. If you allow
+                it, the Sites tab opens on where the phone is, and so does the
+                dive form&rsquo;s map when the dive has no site with a pin and
+                no GPS position to open on; <em>Use my location</em> moves the
+                map there too. The position stays on the phone: what reaches
+                this server is the point the list is measured from &mdash; the
+                map&rsquo;s centre, where the phone shows a map &mdash; sent as
+                the map opens and with every search after, rounded to about a
+                kilometre like every other search&rsquo;s, and in the server
+                logs for as long as those are kept. The app stores it nowhere.
+                If you refuse, <em>Use my location</em> says where in the
+                phone&rsquo;s settings to allow it. The app also uses the
+                phone&rsquo;s location when you ask it to place a dive site or a
+                trip where you are, which puts a pin there as one you placed
+                yourself.
               </p>
             </section>
 
@@ -871,7 +893,7 @@ export default async function PrivacyPage() {
                 4.4 Map Tiles
               </h3>
               <p className="text-foreground mb-4">
-                {commonsPrimary ? "Six" : "Four"} places in the app show a map
+                {commonsPrimary ? "Seven" : "Five"} places in the app show a map
                 your browser draws itself, and for those your browser fetches
                 the map&rsquo;s tiles directly from a third-party basemap
                 provider. That provider therefore sees your IP address and which
@@ -883,6 +905,8 @@ export default async function PrivacyPage() {
                 Your browser does this whenever one of those maps is on screen,
                 whether or not you interact with it: the Sites section, which
                 loads its map of dive sites as soon as it opens; the form to add
+                or edit a dive, whose site field opens that same map in{" "}
+                <em>Find a dive site</em> when you ask for it; the form to add
                 or edit a dive site and the form to add or edit a trip, which
                 load a map as soon as they open — one to place a pin on, one to
                 show you the places you pick — {!commonsPrimary && "and "}the
@@ -897,7 +921,7 @@ export default async function PrivacyPage() {
                     opened
                   </>
                 )}
-                . Apart from those {commonsPrimary ? "six" : "four"}, no page
+                . Apart from those {commonsPrimary ? "seven" : "five"}, no page
                 has your browser contact the provider.
               </p>
               <p className="text-foreground mb-4">
@@ -976,17 +1000,19 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 The paragraphs above describe a browser. The OpenDiving app on a
                 phone draws a map of its own in{" "}
-                {commonsPrimary ? "five" : "four"} places: the form to add a
-                dive site and the search for a site&rsquo;s location, the form
-                to add a trip, {!commonsPrimary && "and "}the form to add a
-                contact, which loads one only when you ask it to show the map
+                {commonsPrimary ? "seven" : "six"} places: the Sites tab and the
+                dive form&rsquo;s <em>Find a Dive Site</em>, which load the map
+                of dive sites as they open, the form to add a dive site and the
+                search for a site&rsquo;s location, the form to add a trip,{" "}
+                {!commonsPrimary && "and "}the form to add a contact, which
+                loads one only when you ask it to show the map
                 {commonsPrimary &&
                   ", and the step that checks a site of yours before it is proposed"}
                 . It draws these maps only where this server draws tiles, so on
-                a copy that draws none those forms show no map. To draw one, the
-                OpenDiving app names the phone&rsquo;s language to this server
-                when it asks for the map&rsquo;s style, and fetches the map
-                directly from the same basemap provider, which sees the
+                a copy that draws none those screens show no map. To draw one,
+                the OpenDiving app names the phone&rsquo;s language to this
+                server when it asks for the map&rsquo;s style, and fetches the
+                map directly from the same basemap provider, which sees the
                 phone&rsquo;s IP address, the part of the world on screen, the
                 OpenDiving app&rsquo;s name and version and the iOS version that
                 its requests&rsquo; User-Agent header names, and the language
@@ -1015,12 +1041,13 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 The dive site and trip forms also let you search for a place by
                 name, and so does the search on the dive site map in the Sites
-                section, which finds places as well as sites. There, what you
-                type is what is sent &mdash; again by our servers, not your
-                browser &mdash; a short moment after you stop typing, and it may
-                go to a different provider from the one that names a spot.
-                Nothing else about the form or the map goes with it: the
-                map&rsquo;s centre a search carries stays with this server.
+                section and in the dive form&rsquo;s <em>Find a dive site</em>,
+                which finds places as well as sites. There, what you type is
+                what is sent &mdash; again by our servers, not your browser
+                &mdash; a short moment after you stop typing, and it may go to a
+                different provider from the one that names a spot. Nothing else
+                about the form or the map goes with it: the map&rsquo;s centre a
+                search carries stays with this server.
               </p>
               <p className="text-foreground mb-4">
                 All of this happens only as you fill a form in or search the

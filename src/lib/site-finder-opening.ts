@@ -1,3 +1,4 @@
+import { unionBounds, type LatLon } from "@/lib/basemap";
 import type { Dive } from "@/lib/api/dives";
 import type { Location } from "@/lib/api/location";
 import type { TripLookupPart } from "@/lib/api/trips";
@@ -94,4 +95,54 @@ export function sitesOpening({
   today: string;
 }): FinderTarget | null {
   return partTarget(tripParts, today) ?? (newestDive && diveTarget(newestDive));
+}
+
+/**
+ * The sites a dive names as one target: a lone pin as a point, several fitted
+ * the short way round. Sites with no pin play no part; none pinned is nothing.
+ */
+export function sitesTarget(
+  sites: readonly { latitude?: number | null; longitude?: number | null }[],
+): FinderTarget | null {
+  const pins = sites.flatMap((site) =>
+    site.latitude != null && site.longitude != null
+      ? [{ latitude: site.latitude, longitude: site.longitude }]
+      : [],
+  );
+  if (pins.length === 1) return { kind: "point", ...pins[0] };
+  const box = unionBounds(
+    pins.map(({ latitude, longitude }) => ({
+      south: latitude,
+      north: latitude,
+      west: longitude,
+      east: longitude,
+    })),
+  );
+  return box && { kind: "bounds", ...box };
+}
+
+/**
+ * Where the dive form's finder opens: the dive's pinned sites, fitted, else its
+ * GPS fix, else the first part of its trip whose dates hold `day` - the dive's
+ * own start date - else the world (`null`). The web has no location step: the
+ * browser is asked on a tap alone.
+ */
+export function diveFormOpening({
+  sites,
+  fix,
+  tripParts,
+  day,
+}: {
+  sites: Parameters<typeof sitesTarget>[0];
+  fix: LatLon | null | undefined;
+  tripParts: readonly TripLookupPart[];
+  day: string | null | undefined;
+}): FinderTarget | null {
+  return (
+    sitesTarget(sites) ??
+    (fix
+      ? { kind: "point", latitude: fix.latitude, longitude: fix.longitude }
+      : null) ??
+    (day ? partTarget(tripParts, day) : null)
+  );
 }

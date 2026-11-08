@@ -18,8 +18,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export function useLookupLabels<T extends { uuid: string }>(
   lookupByUuid: (uuids: string[]) => Promise<T[]>,
   wanted: readonly (string | null | undefined)[],
-): { records: Record<string, T>; remember: (...rows: T[]) => void } {
+): {
+  records: Record<string, T>;
+  remember: (...rows: T[]) => void;
+  /** The uuids a read answered without a record, or failed for. */
+  unresolved: ReadonlySet<string>;
+} {
   const [records, setRecords] = useState<Record<string, T>>({});
+  const [unresolved, setUnresolved] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const requestedRef = useRef<Set<string>>(new Set());
 
   const remember = useCallback((...rows: T[]) => {
@@ -45,12 +53,22 @@ export function useLookupLabels<T extends { uuid: string }>(
     if (missing.length === 0) return;
     for (const uuid of missing) requestedRef.current.add(uuid);
 
+    const miss = (uuids: string[]) =>
+      uuids.length > 0 &&
+      setUnresolved((previous) => new Set([...previous, ...uuids]));
     lookupByUuid(missing)
-      .then((rows) => remember(...rows))
-      .catch((error) => console.error("Failed to look up records:", error));
+      .then((rows) => {
+        remember(...rows);
+        const found = new Set(rows.map((row) => row.uuid));
+        miss(missing.filter((uuid) => !found.has(uuid)));
+      })
+      .catch((error) => {
+        console.error("Failed to look up records:", error);
+        miss(missing);
+      });
   }, [wantedKey, records, lookupByUuid, remember]);
 
-  return { records, remember };
+  return { records, remember, unresolved };
 }
 
 /**
