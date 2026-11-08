@@ -469,14 +469,14 @@ export function temperatureDomain(
 }
 
 // What follows the number on a panel row's top tick - the separator and the unit
-// both, so "1.6 bar" and "100%" each get the spacing that quantity is written
-// with. Read off the channels themselves rather than written out again, so a row
-// cannot come to disagree with the curves in it.
+// both, so "100%" is written the way that quantity is. Read off the channels
+// themselves rather than written out again, so a row cannot come to disagree with
+// the curves in it.
 //
-// Minutes and beats per minute get none. The legend already names a no-deco
-// limit, a time to surface and a heart rate, and the widest label in the left
-// gutter sets where the whole plot starts, so " min" or " bpm" would cost every
-// row its width.
+// Minutes, beats per minute and bar get none. The legend already names a no-deco
+// limit, a time to surface, a heart rate and a ppO2, and the widest label in the
+// left gutter sets where the whole plot starts, so " min", " bpm" or " bar" would
+// cost every row its width.
 export function axisUnitSuffix(
   axis: ProfileAxisKey,
   units: UnitSystem,
@@ -487,7 +487,7 @@ export function axisUnitSuffix(
   if (!key) return "";
 
   const { unit } = displayChannel(PROFILE_CHANNELS[key], units);
-  return unit === "min" || unit === "bpm"
+  return unit === "min" || unit === "bpm" || unit === "bar"
     ? ""
     : `${channelSeparator(key)}${unit}`;
 }

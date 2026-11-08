@@ -1399,13 +1399,16 @@ describe("channelsOnAxis", () => {
 
 describe("axisUnitSuffix", () => {
   it("carries the separator as well as the unit", () => {
-    expect(axisUnitSuffix("ppo2", "metric")).toBe(" bar");
+    // Depth is no panel row; it stands in for a unit written after a space.
+    expect(axisUnitSuffix("depth", "metric")).toBe(" m");
     expect(axisUnitSuffix("percent", "metric")).toBe("%");
   });
 
-  it("leaves minutes bare", () => {
+  it("leaves minutes, beats per minute and bar bare", () => {
     expect(axisUnitSuffix("no_deco", "metric")).toBe("");
     expect(axisUnitSuffix("time_to_surface", "imperial")).toBe("");
+    expect(axisUnitSuffix("ppo2", "metric")).toBe("");
+    expect(axisUnitSuffix("ppo2", "imperial")).toBe("");
   });
 
   it("follows the diver's system where the axis has one", () => {
