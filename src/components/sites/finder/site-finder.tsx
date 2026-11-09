@@ -206,7 +206,7 @@ export function SiteFinder({
         // The diver's whole list ignores the view; the server would too.
         view: yours ? null : sent?.view,
         until,
-        yours,
+        my: yours,
         tagUuid,
         commonsMatch,
         sort,

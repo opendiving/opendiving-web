@@ -116,7 +116,7 @@ describe("SiteFinderDialog", () => {
     });
 
     await userEvent.click(within(dialog).getByRole("switch"));
-    await waitFor(() => expect(lastQuery()).toMatchObject({ yours: true }));
+    await waitFor(() => expect(lastQuery()).toMatchObject({ my: true }));
     await within(dialog).findByRole("button", { name: "Canyon" });
 
     expect(

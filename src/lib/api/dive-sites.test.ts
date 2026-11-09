@@ -217,8 +217,8 @@ describe("diveSitesAPI.searchDiveSites", () => {
     });
   });
 
-  // Each of them is a 422 without `yours`.
-  it("sends the tag, the match filter and the sort only with yours", async () => {
+  // Each of them is a 422 without `my`.
+  it("sends the tag, the match filter and the sort only with my", async () => {
     await diveSitesAPI.searchDiveSites(1, 10, {
       tagUuid: "tag-1",
       commonsMatch: true,
@@ -228,13 +228,13 @@ describe("diveSitesAPI.searchDiveSites", () => {
 
     get.mockClear();
     await diveSitesAPI.searchDiveSites(1, 10, {
-      yours: true,
+      my: true,
       tagUuid: "tag-1",
       commonsMatch: true,
       sort: "name",
     });
     expect(params()).toMatchObject({
-      yours: true,
+      my: true,
       tag_uuid: "tag-1",
       commons_match: true,
       sort: "name",

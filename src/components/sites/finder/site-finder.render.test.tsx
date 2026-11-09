@@ -331,7 +331,7 @@ describe("SiteFinder", () => {
 
     await userEvent.click(screen.getByRole("switch", { name: "Your sites" }));
 
-    await waitFor(() => expect(lastQuery()?.yours).toBe(true));
+    await waitFor(() => expect(lastQuery()?.my).toBe(true));
     expect(lastQuery()?.view).toBeNull();
     expect(lastQuery()?.sort).toBe("last_dived_on");
     expect(await screen.findByText("1 total dive site")).toBeInTheDocument();

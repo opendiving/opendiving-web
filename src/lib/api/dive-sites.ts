@@ -383,7 +383,7 @@ export type DiveSiteSearchRow = DiveSiteSearchItem | PlaceSearchItem;
 
 /**
  * One page of the search: its rows in the order to render them, `has_more` of
- * site rows alone, and `total_count` only under `yours`.
+ * site rows alone, and `total_count` only under `my`.
  */
 export interface DiveSiteSearchPage {
   rows: DiveSiteSearchRow[];
@@ -396,7 +396,7 @@ export interface DiveSiteSearchPage {
 /**
  * What a search asks. `camera` and `view` are rounded here, every one of them,
  * before they leave: the server keeps none, but its access logs hold the query
- * string. `tagUuid`, `commonsMatch` and `sort` are sent only with `yours`, which
+ * string. `tagUuid`, `commonsMatch` and `sort` are sent only with `my`, which
  * the API requires of them.
  */
 export interface DiveSiteSearchQuery {
@@ -405,7 +405,7 @@ export interface DiveSiteSearchQuery {
   /** The map's own bounds; wrapped and rounded outward on the way out. */
   view?: LatLonBounds | null;
   until?: string;
-  yours?: boolean;
+  my?: boolean;
   tagUuid?: string;
   commonsMatch?: boolean;
   sort?: DiveSiteListSort;
@@ -442,7 +442,7 @@ export function searchParams(
     camera,
     view,
     until,
-    yours,
+    my,
     tagUuid,
     commonsMatch,
     sort,
@@ -456,9 +456,9 @@ export function searchParams(
     ...(camera ? roundCamera(camera) : {}),
     ...(view ? roundView(view) : {}),
     ...(until ? { until } : {}),
-    ...(yours
+    ...(my
       ? {
-          yours: true,
+          my: true,
           ...(tagUuid ? { tag_uuid: tagUuid } : {}),
           ...(commonsMatch ? { commons_match: true } : {}),
           ...(sort ? { sort } : {}),
