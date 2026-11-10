@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ENTRY_DIMENSIONS,
   FEET_PER_MILE,
-  KM_PER_MILE,
+  METERS_PER_NAUTICAL_MILE,
   formatWindSpeed,
   KG_PER_POUND,
   LITERS_PER_CUBIC_FOOT,
@@ -43,7 +43,7 @@ describe("the constants", () => {
     // A cubic foot is 0.3048³ m³, to the last digit.
     expect(LITERS_PER_CUBIC_FOOT).toBeCloseTo(0.3048 ** 3 * 1000, 9);
     expect(FEET_PER_MILE).toBe(5280);
-    expect(KM_PER_MILE).toBeCloseTo(1.609344, 12);
+    expect(METERS_PER_NAUTICAL_MILE).toBe(1852);
     expect(PSI_PER_BAR).toBeCloseTo(14.503773773020923, 12);
   });
 
@@ -417,9 +417,8 @@ describe("cylinderCubicFeet", () => {
 
 describe("formatWindSpeed", () => {
   // The API stores m/s; nobody reads a wind in it.
-  it("shows metres per second as whole km/h or mph", () => {
-    expect(formatWindSpeed(5.9, "metric")).toBe("21 km/h");
-    expect(formatWindSpeed(5.9, "imperial")).toBe("13 mph");
-    expect(formatWindSpeed(0, "metric")).toBe("0 km/h");
+  it("shows metres per second as whole knots", () => {
+    expect(formatWindSpeed(5.9)).toBe("11 kn");
+    expect(formatWindSpeed(0)).toBe("0 kn");
   });
 });

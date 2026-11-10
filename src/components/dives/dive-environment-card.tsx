@@ -120,7 +120,7 @@ export function DiveEnvironmentCard({
         weather.wind_direction != null
           ? `Wind from ${compassPoint(weather.wind_direction)}`
           : "Wind",
-      value: formatWindSpeed(weather.wind_speed, units),
+      value: formatWindSpeed(weather.wind_speed),
     });
   }
   if (sea?.sea_surface_temperature != null) {

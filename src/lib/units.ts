@@ -88,14 +88,8 @@ export const barToPsi = (bar: number): number => bar * PSI_PER_BAR;
 /** Psi to bar. */
 export const psiToBar = (psi: number): number => psi / PSI_PER_BAR;
 
-/** Kilometres in one international mile, exactly: 5280 ft at 0.3048 m. */
-export const KM_PER_MILE = (FEET_PER_MILE * METERS_PER_FOOT) / 1000;
-
-/** Kilometres per hour to miles per hour. */
-export const kmhToMph = (kmh: number): number => kmh / KM_PER_MILE;
-
-/** Miles per hour to kilometres per hour. */
-export const mphToKmh = (mph: number): number => mph * KM_PER_MILE;
+/** Metres in one international nautical mile, exactly. */
+export const METERS_PER_NAUTICAL_MILE = 1852;
 
 /** Litres to cubic feet. */
 export const litersToCubicFeet = (liters: number): number =>
@@ -137,8 +131,8 @@ export function cylinderCubicFeet(
  * computer shows them), tank volume (litres is water capacity and cubic feet is gas
  * at a rated pressure - a dive's cylinder records no such pressure, so the dive side
  * stays in litres, and only a gear item, which records its working pressure, can be
- * named in cubic feet: `cylinderCubicFeet`), O₂/He percentages, CNS/OTU, coordinates
- * and duration.
+ * named in cubic feet: `cylinderCubicFeet`), O₂/He percentages, CNS/OTU, coordinates,
+ * duration, and wind speed (knots in both, as boats and marine forecasts give it).
  */
 export type Dimension =
   | "depth"
@@ -149,8 +143,7 @@ export type Dimension =
   | "altitude"
   | "sac"
   | "rmv"
-  | "gasVolume"
-  | "speed";
+  | "gasVolume";
 
 /**
  * The dimensions a diver types into, which is what `UnitNumberInput` accepts.
@@ -302,18 +295,6 @@ const DIMENSIONS: Record<Dimension, DimensionSpec> = {
     toMetric: cubicFeetToLiters,
     metricDecimals: null,
     imperialDecimals: 1,
-    metricIsInteger: false,
-  },
-  // Kilometres per hour as the metric value, not the m/s the API stores, because
-  // metric renders unconverted: `formatWindSpeed` takes the m/s and converts.
-  speed: {
-    label: { metric: "km/h", imperial: "mph" },
-    word: { metric: "kilometers per hour", imperial: "miles per hour" },
-    separator: " ",
-    toImperial: kmhToMph,
-    toMetric: mphToKmh,
-    metricDecimals: 0,
-    imperialDecimals: 0,
     metricIsInteger: false,
   },
 };
@@ -620,12 +601,10 @@ export function formatGasVolume(
   return formatValue(liters, "gasVolume", units, options);
 }
 
-/** A wind speed in metres per second, whole in both systems: `"21 km/h"` or `"13 mph"`. */
-export function formatWindSpeed(
-  metersPerSecond: number,
-  units: UnitSystem,
-): string {
-  return formatValue(metersPerSecond * 3.6, "speed", units);
+/** A wind speed in metres per second as whole knots in either system: `"11 kn"`. */
+export function formatWindSpeed(metersPerSecond: number): string {
+  const knots = (metersPerSecond * 3600) / METERS_PER_NAUTICAL_MILE;
+  return `${Math.round(knots)} kn`;
 }
 
 /**

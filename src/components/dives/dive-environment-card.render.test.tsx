@@ -44,7 +44,7 @@ describe("DiveEnvironmentCard, with fetched conditions", () => {
     expect(screen.getByText("Clear")).toBeInTheDocument();
     expect(screen.getByText("Slight")).toBeInTheDocument();
     expect(screen.getByText("Wind from NNE")).toBeInTheDocument();
-    expect(screen.getByText("21 km/h")).toBeInTheDocument();
+    expect(screen.getByText("11 kn")).toBeInTheDocument();
     expect(figure("Sea temperature")).toHaveTextContent("27.7°C");
     expect(figure("Wave height")).toHaveTextContent("0.6 m");
     expect(tideDiagram()).toBeInTheDocument();
@@ -106,11 +106,11 @@ describe("DiveEnvironmentCard, with fetched conditions", () => {
     expect(screen.queryByRole("img", { name: /^Tide:/ })).toBeNull();
   });
 
-  it("shows the wind in mph and the waves in feet on an imperial account", () => {
+  it("shows the wind in knots and the waves in feet on an imperial account", () => {
     auth.units = "imperial";
     render(<DiveEnvironmentCard dive={filledDive()} />);
 
-    expect(screen.getByText("13 mph")).toBeInTheDocument();
+    expect(screen.getByText("11 kn")).toBeInTheDocument();
     expect(figure("Wave height")).toHaveTextContent("2 ft");
   });
 
@@ -170,7 +170,7 @@ describe("DiveEnvironmentCard, with fetched conditions", () => {
     );
 
     expect(screen.getByText("Environment")).toBeInTheDocument();
-    expect(screen.getByText("21 km/h")).toBeInTheDocument();
+    expect(screen.getByText("11 kn")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Weather data by Open-Meteo.com" }),
     ).toBeInTheDocument();
