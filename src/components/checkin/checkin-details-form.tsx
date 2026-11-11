@@ -210,7 +210,7 @@ export interface CheckinDetailsFormProps {
    * button, a dialog's Cancel/Save row - inside the `<form>` and its provider.
    */
   children: ReactNode;
-  /** Ran once the save has landed, which is what closes a dialog. */
+  /** Ran once the save has landed, picture included, which is what closes a dialog. */
   onSaved?: () => void;
   savedMessage?: string;
 }
@@ -312,16 +312,26 @@ function LoadedForm({
       // The name first, as `UserFieldsForm` sends its fields before a picture: a
       // name the account refuses stops the save before anything else is written.
       if (nameChanged) await authAPI.updateProfile({ name });
-      await save(checkinDetailsPatch(members, values));
+      // Beside a pending picture, skipped when it would write what is stored, as in
+      // `UserFieldsForm`, so the Save after a failed picture sends the picture alone.
+      const patch = checkinDetailsPatch(members, values);
+      if (
+        !sending ||
+        JSON.stringify(patch) !==
+          JSON.stringify(checkinDetailsPatch(members, stored))
+      ) {
+        await save(patch);
+      }
       let pictureError: unknown = null;
       if (sending) {
+        // Cleared only once it lands, as in `UserFieldsForm`: a failed picture stays
+        // picked for the next Save to retry.
         try {
           await applyPictureEdit(sending.picture, sending.pictureEdit);
+          setPictureEdit(null);
         } catch (caught) {
           console.error(`Failed to save the ${sending.picture}:`, caught);
           pictureError = caught ?? new Error("picture failed");
-        } finally {
-          setPictureEdit(null);
         }
       }
       // Only for what the user record carries, before the toast so the page has
@@ -333,14 +343,15 @@ function LoadedForm({
           title: `Saved, but your ${PICTURE_LABEL[picture]} did not`,
           description: getApiErrorMessage(
             pictureError,
-            "Try picking the photo again.",
+            "Save again to retry it.",
           ),
           variant: "destructive",
         });
       } else {
         toast({ title: "Saved", description: savedMessage });
+        // Not after a failed picture: closing a dialog would drop the pending pick.
+        onSaved?.();
       }
-      onSaved?.();
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to save. Please try again."));
     }

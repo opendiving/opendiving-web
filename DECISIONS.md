@@ -955,7 +955,10 @@ beside forms that wait for Save.
 
 A failed image does not fail the save: the fields are written, and refilling the form to retry one
 picture costs more than the picture. One toast names the side or the picture. A certification is
-re-read whenever anything was sent, since only the API knows which sides landed.
+re-read whenever anything was sent, since only the API knows which sides landed. A picture that
+failed stays pending, and the dialog holding it stays open: the failure is usually transient, and
+the next Save sends it alone, since fields beside a pending picture are skipped when they would
+write what is stored. Without a picture, a Save always writes the fields.
 
 ## Every c-card is drawn in one shape, and cropped to it on the way in
 

@@ -103,8 +103,8 @@ export interface UserFieldsFormProps {
  *
  * A `picture` rides on the same Save, the way a certification's card images ride on
  * its form: the fields go first, then the one request the picture's pending edit
- * needs, and a picture that fails leaves the saved fields saved and says which
- * picture it was.
+ * needs, and a picture that fails leaves the saved fields saved, says which
+ * picture it was, and stays pending for the next Save.
  */
 export function UserFieldsForm({
   groups,
@@ -149,19 +149,19 @@ export function UserFieldsForm({
     if (user) reset(userFieldsFromUser(user));
   }, [storedHere, saves, reset]);
 
-  // The picture, once the fields are stored. Cleared whether it landed or not: the
-  // form repaints from the re-read account, which knows nothing of an edit, and a
-  // picture that failed is picked again rather than retried from state.
+  // The picture, once the fields are stored. Cleared only once it lands: a failure is
+  // usually transient, and keeping the edit lets the next Save retry it without the
+  // diver picking and cropping the photo again. The repaint below resets the fields
+  // alone, so the pending pick stays drawn over the stored picture.
   const savePicture = async (kind: PictureKind) => {
     if (!pictureEdit) return null;
     try {
       await applyPictureEdit(kind, pictureEdit);
+      setPictureEdit(null);
       return null;
     } catch (error) {
       console.error(`Failed to save the ${kind}:`, error);
       return { picture: kind, error };
-    } finally {
-      setPictureEdit(null);
     }
   };
 
@@ -172,7 +172,16 @@ export function UserFieldsForm({
       // schema covers only the fields on screen, so its parse result is the same
       // subset by a longer route, and this way the payload and the rendering are
       // built from one list.
-      await authAPI.updateProfile(userFieldsUpdate(fields, form.getValues()));
+      // Beside a pending picture, skipped when it would write what is stored, so the
+      // Save after a failed picture sends the picture alone. Without one, a Save
+      // always writes what the boxes hold.
+      const update = userFieldsUpdate(fields, form.getValues());
+      const unchanged =
+        !!pictureEdit &&
+        !!user &&
+        JSON.stringify(update) ===
+          JSON.stringify(userFieldsUpdate(fields, userFieldsFromUser(user)));
+      if (!unchanged) await authAPI.updateProfile(update);
       const pictureFailure =
         picture && pictureEdit ? await savePicture(picture) : null;
       // Before the toast, so the header's avatar has changed by the time it says so.
@@ -183,7 +192,7 @@ export function UserFieldsForm({
           title: `Saved, but your ${PICTURE_LABEL[pictureFailure.picture]} did not`,
           description: getApiErrorMessage(
             pictureFailure.error,
-            "Try picking the photo again.",
+            "Save again to retry it.",
           ),
           variant: "destructive",
         });

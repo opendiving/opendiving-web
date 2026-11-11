@@ -7,9 +7,9 @@ import { UserFieldsForm, UserFieldsSubmitButton } from "./user-fields-form";
 
 // A picture rides on its form's Save, so what a render reaches is the order of the
 // requests and what is *not* sent: nothing on a pick, an adjustment, a remove or a
-// copy; the fields first on Save, then exactly one picture request; nothing at all
-// on a cancelled crop. The picker's refusals are here too, because a picture the API
-// refuses after Save is a picture refused after the fields beside it have saved.
+// copy; the changed fields first on Save, then exactly one picture request; nothing
+// at all on a cancelled crop. The picker's refusals are here too, because a picture
+// the API refuses after Save is a picture refused after the fields beside it saved.
 
 // Hoisted and returned by identity, `user` included, as the real `AuthContext` keeps
 // one identity across renders. See "The new-dive render test's mocks are
@@ -121,6 +121,7 @@ beforeEach(() => {
   sent = [];
   urls = 0;
   Object.assign(auth.user, {
+    name: "Jane Doe",
     avatar_sha256: null,
     avatar_original_sha256: null,
     avatar_crop: null,
@@ -192,6 +193,8 @@ const picker = (picture: PictureKind) =>
   );
 const save = () =>
   userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+// A changed field, so the Save has fields to send before the picture.
+const editName = () => userEvent.type(screen.getByLabelText("Full name"), "s");
 const useCrop = () =>
   userEvent.click(screen.getByRole("button", { name: "Use this crop" }));
 
@@ -207,6 +210,7 @@ describe("a picture rides on its form's Save", () => {
     expect(screen.getByText("Added when you save.")).toBeInTheDocument();
     expect(sent).toEqual([]);
 
+    await editName();
     await save();
 
     await waitFor(() => expect(sent).toEqual(["patch /user", "put"]));
@@ -224,8 +228,8 @@ describe("a picture rides on its form's Save", () => {
     );
   });
 
-  it("still saves when the picture is the only thing that changed", async () => {
-    // The fields go every time; a Save is never skipped for want of a dirty field.
+  it("sends the picture alone when it is the only thing that changed", async () => {
+    // Beside a pending picture, fields that would write what is stored are not sent.
     auth.user.portrait_sha256 = "p1";
     renderForm("portrait");
 
@@ -237,7 +241,7 @@ describe("a picture rides on its form's Save", () => {
 
     await save();
 
-    await waitFor(() => expect(sent).toEqual(["patch /user", "delete"]));
+    await waitFor(() => expect(sent).toEqual(["delete"]));
     expect(authAPI.removePicture).toHaveBeenCalledWith("portrait");
   });
 
@@ -272,11 +276,12 @@ describe("a picture rides on its form's Save", () => {
 
     await userEvent.upload(picker("avatar"), photo());
     await useCrop();
+    await editName();
     await save();
     await waitFor(() => expect(sent).toEqual(["patch /user", "put"]));
 
-    // The form repaints from the account, which knows nothing of the edit - and the
-    // preview it drew from is given back.
+    // A picture that landed is the stored one now - and the preview it was drawn
+    // from is given back. The next Save sends the fields alone.
     expect(screen.queryByText("Added when you save.")).toBeNull();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:2");
 
@@ -292,6 +297,7 @@ describe("a picture rides on its form's Save", () => {
 
     await userEvent.upload(picker("portrait"), photo());
     await useCrop();
+    await editName();
     await save();
 
     await waitFor(() =>
@@ -311,12 +317,56 @@ describe("a picture rides on its form's Save", () => {
     );
   });
 
+  it("keeps a failed picture picked, and the next Save sends only it", async () => {
+    vi.mocked(authAPI.uploadPicture)
+      .mockRejectedValueOnce(new Error("nope"))
+      .mockImplementation(record("put", { sha256: "new" }));
+    // The re-read returns what the first Save wrote, as the real one does.
+    auth.refreshUser.mockImplementation(async () => {
+      auth.user.name = "Jane Does";
+    });
+    renderForm("avatar");
+    const file = photo();
+
+    await userEvent.upload(picker("avatar"), file);
+    await useCrop();
+    await editName();
+    await save();
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Saved, but your profile picture did not",
+        }),
+      ),
+    );
+    expect(sent).toEqual(["patch /user"]);
+    // Still drawn from the pick, and its preview not given back.
+    expect(screen.getByText("Added when you save.")).toBeInTheDocument();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalledWith("blob:2");
+
+    await save();
+
+    await waitFor(() => expect(sent).toEqual(["patch /user", "put"]));
+    expect(authAPI.uploadPicture).toHaveBeenLastCalledWith(
+      "avatar",
+      file,
+      "me.jpg",
+      AVATAR_CROP,
+    );
+    expect(screen.queryByText("Added when you save.")).toBeNull();
+    expect(toast).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "Saved" }),
+    );
+  });
+
   it("sends no picture when the fields fail", async () => {
     vi.mocked(authAPI.updateProfile).mockRejectedValue(new Error("nope"));
     renderForm("avatar");
 
     await userEvent.upload(picker("avatar"), photo());
     await useCrop();
+    await editName();
     await save();
 
     await waitFor(() =>
@@ -351,7 +401,7 @@ describe("Adjust", () => {
     ).toBeInTheDocument();
 
     await save();
-    await waitFor(() => expect(sent).toEqual(["patch /user", "put"]));
+    await waitFor(() => expect(sent).toEqual(["put"]));
     expect(authAPI.uploadPicture).toHaveBeenCalledWith(
       "avatar",
       png,
@@ -384,7 +434,7 @@ describe("Adjust", () => {
     expect(sent).toEqual([]);
 
     await save();
-    await waitFor(() => expect(sent).toEqual(["patch /user", "patch picture"]));
+    await waitFor(() => expect(sent).toEqual(["patch picture"]));
     expect(authAPI.adjustPicture).toHaveBeenCalledWith("avatar", AVATAR_CROP);
     expect(authAPI.uploadPicture).not.toHaveBeenCalled();
   });
@@ -470,7 +520,7 @@ describe("Use profile picture", () => {
     expect(sent).toEqual([]);
 
     await save();
-    await waitFor(() => expect(sent).toEqual(["patch /user", "copy"]));
+    await waitFor(() => expect(sent).toEqual(["copy"]));
     expect(authAPI.copyAvatarToPortrait).toHaveBeenCalledWith(PORTRAIT_CROP);
   });
 });
