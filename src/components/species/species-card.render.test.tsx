@@ -164,13 +164,69 @@ describe("SpeciesBackdrop", () => {
     expect(blurred).toHaveClass("blur-[28px]", "object-cover");
   });
 
-  it("draws a hero's photo once, across it, rather than framed as a card's", () => {
+  // A phone's hero: the top row's bottom 46px down, 150px of details, and a
+  // desktop's, whose details sit lower on a taller hero.
+  const HEROES = [
+    { height: 288, top: 46, details: 150 },
+    { height: 352, top: 46, details: 180 },
+  ];
+
+  it("draws a hero's photo once, with nothing blurred under it", () => {
     const { container } = render(
       <SpeciesBackdrop hero photo={PHOTO} coveredBottom={110} />,
     );
 
     const images = container.querySelectorAll("img");
     expect(images).toHaveLength(1);
-    expect(images[0]).toHaveClass("size-full", "object-cover");
+    expect(images[0].className).not.toContain("blur");
   });
+
+  it.each(HEROES)(
+    "centres a $height px hero's photo 8px below the middle of the band between its top row and details",
+    ({ height, top, details }) => {
+      const { container } = render(
+        <SpeciesBackdrop
+          hero
+          photo={PHOTO}
+          coveredTop={top}
+          coveredBottom={details}
+        />,
+      );
+      const photo = container.querySelector("img")!;
+
+      expect(photo).toHaveClass("-translate-y-1/2", "w-full");
+      expect(px(photo.style.top, height)).toBe(
+        (top + height - details) / 2 + 8,
+      );
+    },
+  );
+
+  it.each(HEROES)(
+    "draws a $height px hero's photo tall enough to meet its top and to fade under its details",
+    ({ height, top, details }) => {
+      const { container } = render(
+        <SpeciesBackdrop
+          hero
+          photo={PHOTO}
+          coveredTop={top}
+          coveredBottom={details}
+        />,
+      );
+      const photo = container.querySelector("img")!;
+      const centre = px(photo.style.top, height);
+      const shortest = px(photo.style.minHeight, height);
+
+      // Cropped at the sides rather than drawn shorter.
+      expect(photo).toHaveClass("object-cover");
+      const pastTop = shortest / 2 - centre;
+      const pastDetailsTop = centre + shortest / 2 - 48 - (height - details);
+
+      // No gap at the hero's top...
+      expect(pastTop).toBeGreaterThanOrEqual(0);
+      // ...the foot's fade starts no higher than the details' top...
+      expect(pastDetailsTop).toBeGreaterThanOrEqual(0);
+      // ...and it is only as tall as one of the two needs: no crop for nothing.
+      expect(Math.min(pastTop, pastDetailsTop)).toBe(0);
+    },
+  );
 });
