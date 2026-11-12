@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/backdrop-card";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { HERO_CANVAS_WIDTH, SIDE_FADE_WIDTH } from "@/lib/map-frame";
-import { cn } from "@/lib/utils";
 
 // Species cards in whatever column holds them - the life list's, a dive's, a
 // site's side column - as many to a row as fit at a width that keeps a card
@@ -25,15 +24,31 @@ import { cn } from "@/lib/utils";
 export const SPECIES_CARD_GRID =
   "grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-3 max-sm:gap-2.5";
 
+// How far below the centre of the band above a card's details its photo's
+// centre sits, and how far the photo's foot fades into the blur under it.
+const PHOTO_BELOW_BAND_CENTRE = 8;
+const PHOTO_FOOT_FADE = 48;
+
 // A species' photo behind its names, on its card and across its page's hero -
 // the map's water and a fish where it has none, as a dive with no place is
-// drawn. Faded on a hero as a map is, into the colour the names glow in, so
-// they read over a photo as over a map. On a hero it is as wide as a hero's map
-// at most and narrows with the window rather than cropping, its sides
-// dissolving into the page by as much as a map's do at that width - a quarter
-// of its width at its widest, and nothing once a map's fades would lie past the
-// window's edges.
-// Decorative: the name over it says what it is.
+// drawn. Decorative: the name over it says what it is.
+//
+// On a card the photo is centred on the band the details leave uncovered, a
+// little below its middle, since centred on the whole card half the animal
+// sits behind the glass. It is as wide as the card and as tall as its shape
+// makes it, cropped where it overruns; what it leaves of the card's foot is a
+// blurred copy of itself. A photo too wide to reach under the details with its
+// fade is drawn taller, cropping its sides, so the fade never shows above the
+// glass: centred where it is, a photo `2 * (fade - offset)` taller than the
+// band ends its fade at the band's foot. That height also keeps its top above
+// the card's.
+//
+// On a hero it is faded as a map is, into the colour the names glow in, so
+// they read over a photo as over a map. It is as wide as a hero's map at most
+// and narrows with the window rather than cropping, its sides dissolving into
+// the page by as much as a map's do at that width - a quarter of its width at
+// its widest, and nothing once a map's fades would lie past the window's
+// edges.
 export function SpeciesBackdrop({
   photo,
   coveredBottom,
@@ -55,6 +70,35 @@ export function SpeciesBackdrop({
       />
     );
   }
+  if (!hero) {
+    const band = `(100% - ${coveredBottom}px)`;
+    return (
+      <div
+        aria-hidden
+        className="absolute inset-0 overflow-hidden rounded-[inherit]"
+      >
+        {/* Overrunning the card by three times its blur's radius, so the
+            blur's own soft edges fall outside the card. */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- see SpeciesThumbnail */}
+        <img
+          src={photo}
+          alt=""
+          className="absolute -inset-21 size-[calc(100%+168px)] max-w-none object-cover blur-[28px]"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element -- see SpeciesThumbnail */}
+        <img
+          src={photo}
+          alt=""
+          className="absolute inset-x-0 w-full -translate-y-1/2 object-cover"
+          style={{
+            top: `calc(${band} / 2 + ${PHOTO_BELOW_BAND_CENTRE}px)`,
+            minHeight: `calc(${band} + ${2 * (PHOTO_FOOT_FADE - PHOTO_BELOW_BAND_CENTRE)}px)`,
+            maskImage: `linear-gradient(to bottom, #000 calc(100% - ${PHOTO_FOOT_FADE}px), transparent)`,
+          }}
+        />
+      </div>
+    );
+  }
   const fade = (direction: string, stops: string) => (
     <div
       className="absolute inset-0"
@@ -69,23 +113,17 @@ export function SpeciesBackdrop({
       className="absolute inset-0 overflow-hidden rounded-[inherit]"
     >
       <div
-        className={cn(
-          "absolute inset-y-0",
-          hero ? "left-1/2 -translate-x-1/2" : "inset-x-0",
-        )}
-        style={
-          hero ? { width: `min(${HERO_CANVAS_WIDTH}px, 100%)` } : undefined
-        }
+        className="absolute inset-y-0 left-1/2 -translate-x-1/2"
+        style={{ width: `min(${HERO_CANVAS_WIDTH}px, 100%)` }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- see SpeciesThumbnail */}
         <img src={photo} alt="" className="size-full object-cover" />
-        {hero &&
-          fade(
-            "to right",
-            `var(--backdrop-fade), transparent max(0px, 50% - ${HERO_CANVAS_WIDTH / 2 - SIDE_FADE_WIDTH}px), transparent min(100%, 50% + ${HERO_CANVAS_WIDTH / 2 - SIDE_FADE_WIDTH}px), var(--backdrop-fade)`,
-          )}
+        {fade(
+          "to right",
+          `var(--backdrop-fade), transparent max(0px, 50% - ${HERO_CANVAS_WIDTH / 2 - SIDE_FADE_WIDTH}px), transparent min(100%, 50% + ${HERO_CANVAS_WIDTH / 2 - SIDE_FADE_WIDTH}px), var(--backdrop-fade)`,
+        )}
       </div>
-      {hero && fade("to bottom", "transparent, var(--backdrop-fade)")}
+      {fade("to bottom", "transparent, var(--backdrop-fade)")}
     </div>
   );
 }

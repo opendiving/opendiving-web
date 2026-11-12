@@ -3,7 +3,7 @@ import { act, render, screen } from "@testing-library/react";
 
 import type { SpeciesSummary } from "@/lib/api/species";
 import { reveal } from "@/test/intersection";
-import { SpeciesCard } from "./species-card";
+import { SpeciesBackdrop, SpeciesCard } from "./species-card";
 
 const DIGEST =
   "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
@@ -76,13 +76,16 @@ describe("SpeciesCard", () => {
     });
     act(() => reveal());
 
+    // The sharp photo and the blurred copy of it under the card's foot.
     const images = [...container.querySelectorAll("img")];
-    expect(images).toHaveLength(1);
-    expect(images[0].getAttribute("src")).toContain(
-      "/species/species-1/photo?v=",
-    );
-    // Decorative: the link beside it carries the name.
-    expect(images[0]).toHaveAttribute("alt", "");
+    expect(images).toHaveLength(2);
+    for (const image of images) {
+      expect(image.getAttribute("src")).toContain(
+        "/species/species-1/photo?v=",
+      );
+      // Decorative: the link beside it carries the name.
+      expect(image).toHaveAttribute("alt", "");
+    }
   });
 
   it("draws the water, not a broken image, for a species with no photo", () => {
@@ -104,5 +107,70 @@ describe("SpeciesCard", () => {
       screen.getByText("Dives", { selector: "dt" }).nextElementSibling,
     ).toHaveTextContent("4");
     expect(screen.getByText("Apr 8, 2025")).toBeInTheDocument();
+  });
+});
+
+describe("SpeciesBackdrop", () => {
+  const PHOTO = "/species/species-1/photo?v=9f86d081";
+  const backdrop = (props: Parameters<typeof SpeciesBackdrop>[0]) => {
+    const { container } = render(<SpeciesBackdrop {...props} />);
+    const [blurred, sharp] = [...container.querySelectorAll("img")];
+    return { blurred, sharp };
+  };
+
+  // A `calc()` the sharp photo is placed by, worked out on a card this tall.
+  const px = (expression: string, cardHeight: number) =>
+    Number(
+      new Function(
+        `return ${expression
+          .replace(/^calc/, "")
+          .replaceAll("100%", String(cardHeight))
+          .replaceAll("px", "")}`,
+      )(),
+    );
+
+  // A card with no note: a 132px band over 110px of details.
+  const CARD = 242;
+  const COVERED = 110;
+  const BAND = CARD - COVERED;
+
+  it("centres a card's photo 8px below the middle of the band above the details", () => {
+    const { sharp } = backdrop({ photo: PHOTO, coveredBottom: COVERED });
+
+    expect(sharp).toHaveClass("-translate-y-1/2", "w-full");
+    expect(px(sharp.style.top, CARD)).toBe(BAND / 2 + 8);
+  });
+
+  it("draws a card's photo tall enough that its faded foot lies under the details", () => {
+    const { sharp } = backdrop({ photo: PHOTO, coveredBottom: COVERED });
+    const centre = px(sharp.style.top, CARD);
+    const shortest = px(sharp.style.minHeight, CARD);
+
+    // Cropped at the sides rather than drawn shorter, for a wide photo.
+    expect(sharp).toHaveClass("object-cover");
+    // The fade starts no higher than the details' top...
+    expect(centre + shortest / 2 - 48).toBeGreaterThanOrEqual(BAND);
+    // ...and the photo's top is never below the card's.
+    expect(centre - shortest / 2).toBeLessThanOrEqual(0);
+  });
+
+  it("fills the rest of a card with a blurred copy of the same photo", () => {
+    const { blurred, sharp } = backdrop({
+      photo: PHOTO,
+      coveredBottom: COVERED,
+    });
+
+    expect(blurred.getAttribute("src")).toBe(sharp.getAttribute("src"));
+    expect(blurred).toHaveClass("blur-[28px]", "object-cover");
+  });
+
+  it("draws a hero's photo once, across it, rather than framed as a card's", () => {
+    const { container } = render(
+      <SpeciesBackdrop hero photo={PHOTO} coveredBottom={110} />,
+    );
+
+    const images = container.querySelectorAll("img");
+    expect(images).toHaveLength(1);
+    expect(images[0]).toHaveClass("size-full", "object-cover");
   });
 });
