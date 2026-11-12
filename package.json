@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
-    "@hookform/resolvers": "^5.7.1",
+    "@hookform/resolvers": "^7.0.0",
     "@maplibre/maplibre-gl-native": "^6.4.1",
     "@scalar/api-reference-react": "0.9.86",
     "@simplewebauthn/browser": "^14.0.0",
