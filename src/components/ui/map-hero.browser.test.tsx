@@ -87,8 +87,7 @@ describe("a map hero's details", () => {
   it("tell the backdrop where their text ends across the band, and how wide it is", async () => {
     await page.viewport(1440, 640);
     const covered = renderMapHero("Thalassoma rueppellii");
-    const title = document.createRange();
-    title.selectNodeContents(screen.getByRole("heading"));
+    const title = screen.getByRole("heading").firstElementChild!;
     const lastFigure = screen.getByText("Nov 1, 2026").parentElement!;
 
     await expect.poll(() => covered().width).toBe(1440);
@@ -107,8 +106,7 @@ describe("a map hero's details", () => {
     const covered = renderMapHero(
       "A species with a name long enough to outrun every figure",
     );
-    const title = document.createRange();
-    title.selectNodeContents(screen.getByRole("heading"));
+    const title = screen.getByRole("heading").firstElementChild!;
 
     await expect
       .poll(() => covered().right)

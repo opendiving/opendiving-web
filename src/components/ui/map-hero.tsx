@@ -223,20 +223,14 @@ export function MapHero({
   const detailsRef = useCallback((element: HTMLElement | null) => {
     if (!element) return;
     const measure = () => {
-      const title = document.createRange();
-      const heading = element.querySelector("h1");
-      if (heading) title.selectNodeContents(heading);
-      const ends = [
-        heading ? title.getBoundingClientRect().right : 0,
-        ...[...element.querySelectorAll("dl > *")].map(
-          (figure) => figure.getBoundingClientRect().right,
-        ),
-      ];
+      const ends = [...element.querySelectorAll("h1 > span, dl > *")].map(
+        (text) => text.getBoundingClientRect().right,
+      );
       setDetails({
         height: element.offsetHeight,
         right: Math.max(
           0,
-          Math.max(...ends) - element.getBoundingClientRect().left,
+          Math.max(0, ...ends) - element.getBoundingClientRect().left,
         ),
         width: element.offsetWidth,
       });
@@ -353,7 +347,8 @@ function HeroDetails({
       tabIndex={headingRef ? -1 : undefined}
       className={TITLE}
     >
-      {title}
+      {/* Inline, so its box is the text's: a map hero measures where it ends. */}
+      <span>{title}</span>
     </h1>
   );
   return (
