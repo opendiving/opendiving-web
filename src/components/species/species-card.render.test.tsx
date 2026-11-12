@@ -124,8 +124,8 @@ describe("SpeciesBackdrop", () => {
       new Function(
         `return ${expression
           .replace(/^calc/, "")
-          .replaceAll("100%", String(cardHeight))
-          .replaceAll("px", "")}`,
+          .replace(/100%/g, String(cardHeight))
+          .replace(/px/g, "")}`,
       )(),
     );
 
