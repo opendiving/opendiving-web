@@ -138,6 +138,8 @@ export function SpeciesDetailPageContent() {
             photo={photoSrc}
             coveredBottom={covered.bottom}
             coveredTop={covered.top}
+            detailsRight={covered.right}
+            width={covered.width}
           />
         )}
         title={displayName}

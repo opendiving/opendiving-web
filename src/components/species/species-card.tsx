@@ -29,20 +29,23 @@ export const SPECIES_CARD_GRID =
 const PHOTO_BELOW_BAND_CENTRE = 8;
 const PHOTO_FOOT_FADE = 48;
 
-// The sharp photo's place on a card or a hero `coveredTop` and `coveredBottom`
-// leave a band of: centred a little below the band's middle, and at least as
-// tall as reaches both the backdrop's top and, with its fade, under the
-// details - the larger of `2 * (coveredTop + offset)` and `2 * (fade -
-// offset)` more than the band. A card's top is never the one that binds.
-function photoPlacement(coveredTop: number, coveredBottom: number) {
-  const band = `(100% - ${coveredTop + coveredBottom}px)`;
+// How far above the backdrop's middle the centre of the band `coveredTop` and
+// `coveredBottom` leave sits, less the photo's offset below it.
+const bandRaise = (coveredTop: number, coveredBottom: number) =>
+  (coveredBottom - coveredTop) / 2 - PHOTO_BELOW_BAND_CENTRE;
+
+// The sharp photo's place, centred `raise` pixels above the backdrop's middle
+// and at least as tall as reaches both the backdrop's top and, with its fade,
+// under the details: the larger of `-2 * raise` and `2 * (fade - coveredBottom
+// + raise)` more than the backdrop.
+function photoPlacement(raise: number, coveredBottom: number) {
   const reach = Math.max(
-    2 * (coveredTop + PHOTO_BELOW_BAND_CENTRE),
-    2 * (PHOTO_FOOT_FADE - PHOTO_BELOW_BAND_CENTRE),
+    -2 * raise,
+    2 * (PHOTO_FOOT_FADE - coveredBottom + raise),
   );
   return {
-    top: `calc(${band} / 2 + ${coveredTop + PHOTO_BELOW_BAND_CENTRE}px)`,
-    minHeight: `calc(${band} + ${reach}px)`,
+    top: `calc(50% - ${raise}px)`,
+    minHeight: `calc(100% + ${reach}px)`,
     maskImage: `linear-gradient(to bottom, #000 calc(100% - ${PHOTO_FOOT_FADE}px), transparent)`,
   };
 }
@@ -69,8 +72,11 @@ const PLACED_PHOTO =
 // and narrows with the window rather than cropping, its sides dissolving into
 // the page by as much as a map's do at that width - a quarter of its width at
 // its widest, and nothing once a map's fades would lie past the window's
-// edges. It sits as on a card, on the band between the top row and the
-// details, drawn taller only to reach the hero's top and to end its fade under
+// edges. It is raised towards the band between the top row and the details as
+// far as the details' text runs across it: where the text spans the photo, as
+// on a phone, it sits as on a card, and where the text leaves most of the
+// photo's foot open, as on a wide window, it stays nearer the hero's middle.
+// It is drawn taller only to reach the hero's top and to end its fade under
 // the details. Its top is never faded and nothing is drawn under it: the hero
 // has no glass to show through, and its own wash takes the photo's foot into
 // the page.
@@ -78,11 +84,17 @@ export function SpeciesBackdrop({
   photo,
   coveredBottom,
   coveredTop = 0,
+  detailsRight = 0,
+  width = 0,
   hero = false,
 }: {
   photo: string | null;
   coveredBottom: number;
   coveredTop?: number;
+  // On a hero: how far from its left edge the details' text reaches, and its
+  // width.
+  detailsRight?: number;
+  width?: number;
   hero?: boolean;
 }) {
   if (!photo) {
@@ -114,11 +126,18 @@ export function SpeciesBackdrop({
           src={photo}
           alt=""
           className={PLACED_PHOTO}
-          style={photoPlacement(0, coveredBottom)}
+          style={photoPlacement(bandRaise(0, coveredBottom), coveredBottom)}
         />
       </div>
     );
   }
+  // The share of the photo's width the details' text runs across.
+  const canvasWidth = Math.min(HERO_CANVAS_WIDTH, width);
+  const covered = canvasWidth
+    ? (detailsRight - (width - canvasWidth) / 2) / canvasWidth
+    : 0;
+  const heroRaise =
+    bandRaise(coveredTop, coveredBottom) * Math.min(1, Math.max(0, covered));
   const fade = (direction: string, stops: string) => (
     <div
       className="absolute inset-0"
@@ -141,7 +160,7 @@ export function SpeciesBackdrop({
           src={photo}
           alt=""
           className={PLACED_PHOTO}
-          style={photoPlacement(coveredTop, coveredBottom)}
+          style={photoPlacement(heroRaise, coveredBottom)}
         />
         {fade(
           "to right",

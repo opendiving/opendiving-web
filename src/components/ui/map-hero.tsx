@@ -164,10 +164,12 @@ interface MapHeroProps
   extends Pick<Known, "icon">, Partial<Pick<Known, "backHref" | "backLabel">> {
   // What fills the band behind the details: a `MapBackdrop` spreading `map`,
   // with water told how many pixels of its top the top row covers and of its
-  // foot the details do.
+  // foot the details do - and, for a backdrop that cares how much of the foot
+  // they leave open, how far across the band their text reaches and how wide
+  // the band is.
   backdrop: (frame: {
     map: HeroMap;
-    covered: { top: number; bottom: number };
+    covered: { top: number; bottom: number; right: number; width: number };
   }) => ReactNode;
   // Edit and the menu, in the band's top-right corner as a card's menu is,
   // opposite the way back.
@@ -214,15 +216,36 @@ export function MapHero({
   const credited = !!credit || (mapCredit && tiles === true);
   // How much of the map lies under the details, so its places centre between
   // the top row and the name - read as the ref attaches and followed after
-  // that, as a card does it.
-  const [detailsHeight, setDetailsHeight] = useState(0);
+  // that, as a card does it. And how far across the band their text runs - the
+  // title's line or the figures, whichever is longer - with the band's width,
+  // which the details span.
+  const [details, setDetails] = useState({ height: 0, right: 0, width: 0 });
   const detailsRef = useCallback((element: HTMLElement | null) => {
     if (!element) return;
-    setDetailsHeight(element.offsetHeight);
-    const observer = new ResizeObserver(() =>
-      setDetailsHeight(element.offsetHeight),
-    );
+    const measure = () => {
+      const title = document.createRange();
+      const heading = element.querySelector("h1");
+      if (heading) title.selectNodeContents(heading);
+      const ends = [
+        heading ? title.getBoundingClientRect().right : 0,
+        ...[...element.querySelectorAll("dl > *")].map(
+          (figure) => figure.getBoundingClientRect().right,
+        ),
+      ];
+      setDetails({
+        height: element.offsetHeight,
+        right: Math.max(
+          0,
+          Math.max(...ends) - element.getBoundingClientRect().left,
+        ),
+        width: element.offsetWidth,
+      });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(element);
+    // The title's width moves when its font arrives, and its box does not.
+    document.fonts?.ready.then(measure);
     return () => observer.disconnect();
   }, []);
 
@@ -253,9 +276,14 @@ export function MapHero({
           map: {
             hero: true,
             coveredTop: topRowBottom,
-            coveredBottom: detailsHeight,
+            coveredBottom: details.height,
           },
-          covered: { top: topRowBottom, bottom: detailsHeight },
+          covered: {
+            top: topRowBottom,
+            bottom: details.height,
+            right: details.right,
+            width: details.width,
+          },
         })}
       </div>
       <div ref={topRowRef} className={TOP_ROW}>
