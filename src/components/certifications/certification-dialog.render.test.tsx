@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CertificationDialog } from "./certification-dialog";
 import type { Certification } from "@/lib/api/certifications";
-import type { Course } from "@/lib/api/courses";
+import type { Course, CourseLookupItem } from "@/lib/api/courses";
 import type { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
 
@@ -261,19 +261,33 @@ beforeEach(() => {
   });
 });
 
-// The menu lists lookup rows, a held uuid resolves through the lookup, and a pick
-// reads the whole course - so all three answer from the one list a test sets up.
+// The menu lists lookup rows and a held uuid resolves through the lookup, both
+// from the one list a test sets up, holding only what the lookup carries.
 function listCourses(courses: Course[]) {
-  lookupCourses.mockImplementation(async () => page(courses));
+  const rows = courses.map(lookupRow);
+  lookupCourses.mockImplementation(async () => page(rows));
   vi.mocked(coursesAPI.lookupCoursesByUuid).mockImplementation(async (uuids) =>
-    courses.filter((one) => uuids.includes(one.uuid)),
+    rows.filter((one) => uuids.includes(one.uuid)),
   );
-  getCourse.mockImplementation(async (uuid: string) => {
-    const found = courses.find((one) => one.uuid === uuid);
-    if (!found) throw new Error("not found");
-    return found;
-  });
 }
+
+const lookupRow = ({
+  uuid,
+  name,
+  agency,
+  agency_other,
+  instructor_number,
+  contact_uuid,
+  people,
+}: Course): CourseLookupItem => ({
+  uuid,
+  name,
+  agency,
+  agency_other,
+  instructor_number,
+  contact_uuid,
+  people,
+});
 
 function open({
   certification,
@@ -343,10 +357,11 @@ describe("the card's two dates are a range", () => {
 });
 
 describe("picking a course fills the card's own fields in", () => {
-  it("copies the level, dive center, instructor and agency across", async () => {
+  it("copies the level, dive center, instructor and agency across from the lookup row", async () => {
     open();
 
     await pickCourse(COURSE.name);
+    expect(getCourse).not.toHaveBeenCalled();
 
     await waitFor(() => expect(diveCenter()).toHaveValue(BLUE_OCEAN.name));
     expect(certificationName()).toHaveValue("Advanced Nitrox + Deco");

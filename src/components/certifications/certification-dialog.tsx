@@ -22,7 +22,7 @@ import {
   applyCertificationCardEdits,
   type CertificationCardEdits,
 } from "@/lib/certification-card-edits";
-import type { Course } from "@/lib/api/courses";
+import type { Course, CourseLookupItem } from "@/lib/api/courses";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -82,7 +82,7 @@ type CourseFieldValues = Omit<CertificationFieldValues, "agency"> & {
 };
 
 // What a course puts in those fields.
-function courseFieldValues(course: Course): CourseFieldValues {
+function courseFieldValues(course: CourseLookupItem): CourseFieldValues {
   return {
     name: course.name,
     agency: course.agency ?? null,
@@ -227,7 +227,7 @@ export function CertificationDialog({
   // untouched and hand the whole card over to whichever course was picked.
   // Relinking on edit corrects the link, not the card.
   const prefillFromCourse = useCallback(
-    (course: Course) => {
+    (course: CourseLookupItem) => {
       if (isEdit) return;
       const autofilled = autofilledRef.current;
       const next = courseFieldValues(course);

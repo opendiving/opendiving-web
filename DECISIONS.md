@@ -180,8 +180,9 @@ them. Its one client-side drop is a site the dive already names. The delete dial
 and the review screen's matches still search `/dive-sites/lookup`.
 
 A label comes from a `known*` prop, a lookup row, or a per-uuid read fired once with no `cancelled`
-flag (`useLookupLabels`): under StrictMode the request in flight is the discarded mount's. A host
-needing the whole record reads it on pick.
+flag (`useLookupLabels`): under StrictMode the request in flight is the discarded mount's. What a
+host fills from a pick rides on the lookup row; a field it lacks is an API change, not a read of the
+whole record on pick.
 
 The dive form lists its trip's and course's people, and the course's contact, first and unlabelled:
 a heading would teach the combobox unselectable rows. A pin the lookup matched by username or city

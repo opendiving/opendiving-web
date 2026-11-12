@@ -99,12 +99,15 @@ export interface CourseCreate {
 export type CourseUpdate = Partial<CourseCreate>;
 
 /**
- * One row of `GET /courses/lookup`: the name, and the contact and people a dive
- * form fills in from the pick.
+ * One row of `GET /courses/lookup`: the name, and what a dive or certification
+ * form fills in from the pick, as `Course` carries them.
  */
 export interface CourseLookupItem {
   uuid: string;
   name: string;
+  agency?: CertificationAgency | null;
+  agency_other?: string | null;
+  instructor_number?: string | null;
   contact_uuid?: string | null;
   people?: PersonReference[];
 }

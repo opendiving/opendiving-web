@@ -3,10 +3,10 @@ import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CourseCombobox } from "./course-combobox";
-import type { Course } from "@/lib/api/courses";
+import type { CourseLookupItem } from "@/lib/api/courses";
 
-// The menu lists thin rows; a host that wants the whole course gets it from a
-// read on pick, once per pick, and never for a pick something later replaced.
+// What a host fills from a pick rides on the lookup row the menu already holds:
+// no read of the whole course, once per pick.
 
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/courses")>()),
@@ -17,38 +17,39 @@ const { coursesAPI } = await import("@/lib/api/courses");
 const lookupCourses = vi.mocked(coursesAPI.lookupCourses);
 const getCourse = vi.mocked(coursesAPI.getCourse);
 
-const course = (uuid: string, name: string, contact_uuid: string): Course => ({
-  uuid,
-  name,
-  status: "completed",
-  contact_uuid,
-  user_uuid: "user-1",
-  created_at: "2026-01-01T00:00:00Z",
-});
-
-const OPEN_WATER = course("course-1", "Open Water", "contact-a");
-const RESCUE = course("course-2", "Rescue Diver", "contact-b");
+const OPEN_WATER: CourseLookupItem = {
+  uuid: "course-1",
+  name: "Open Water",
+  agency: "padi",
+  agency_other: null,
+  instructor_number: "12345",
+  contact_uuid: "contact-a",
+  people: [],
+};
+const RESCUE: CourseLookupItem = {
+  ...OPEN_WATER,
+  uuid: "course-2",
+  name: "Rescue Diver",
+  contact_uuid: "contact-b",
+};
 const COURSES = [OPEN_WATER, RESCUE];
 
 beforeEach(() => {
   vi.clearAllMocks();
   lookupCourses.mockResolvedValue({
-    data: COURSES.map(({ uuid, name }) => ({ uuid, name })),
+    data: COURSES,
     total_count: COURSES.length,
     has_more: false,
     page: 1,
     items_per_page: 25,
   });
-  getCourse.mockImplementation(async (uuid) =>
-    COURSES.find((one) => one.uuid === uuid)!,
-  );
 });
 
 function Field({
   onCourseSelected,
   until,
 }: {
-  onCourseSelected: (course: Course) => void;
+  onCourseSelected: (course: CourseLookupItem) => void;
   until?: string;
 }) {
   const [value, setValue] = useState<string | null>(null);
@@ -82,33 +83,26 @@ describe("CourseCombobox", () => {
     );
   });
 
-  it("hands the host the whole course a pick read, once", async () => {
+  it("hands the host the picked course's lookup row, once, without reading the course", async () => {
     const onCourseSelected = vi.fn();
     render(<Field onCourseSelected={onCourseSelected} />);
 
     await pick("Rescue Diver");
 
-    await waitFor(() => expect(onCourseSelected).toHaveBeenCalledWith(RESCUE));
+    expect(onCourseSelected).toHaveBeenCalledWith(RESCUE);
     expect(onCourseSelected).toHaveBeenCalledTimes(1);
-    expect(getCourse).toHaveBeenCalledWith(RESCUE.uuid);
+    expect(getCourse).not.toHaveBeenCalled();
   });
 
-  it("never fires for a pick a later one replaced before its read landed", async () => {
-    let landFirst: (course: Course) => void = () => {};
-    getCourse.mockImplementationOnce(
-      () => new Promise<Course>((resolve) => (landFirst = resolve)),
-    );
+  it("fires nothing for a cleared selection", async () => {
     const onCourseSelected = vi.fn();
     render(<Field onCourseSelected={onCourseSelected} />);
 
     await pick("Open Water");
+    onCourseSelected.mockClear();
     await userEvent.clear(screen.getByRole("combobox"));
-    await pick("Rescue Diver");
-    await waitFor(() => expect(onCourseSelected).toHaveBeenCalledWith(RESCUE));
-    landFirst(OPEN_WATER);
+    await userEvent.tab();
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(onCourseSelected).toHaveBeenCalledTimes(1);
-    expect(onCourseSelected).not.toHaveBeenCalledWith(OPEN_WATER);
+    expect(onCourseSelected).not.toHaveBeenCalled();
   });
 });

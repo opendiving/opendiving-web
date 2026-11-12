@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
 import type { FormControlA11yProps } from "@/components/ui/form";
-import { coursesAPI, Course } from "@/lib/api/courses";
+import { coursesAPI, Course, CourseLookupItem } from "@/lib/api/courses";
 import { CourseDialog } from "@/components/courses/course-dialog";
 import { useLookupLabels } from "@/hooks/useLookupLabels";
 
@@ -27,16 +27,15 @@ export interface CourseComboboxProps extends FormControlA11yProps {
   // normalized here rather than changing that shared component for its other
   // consumers - the same shape as `TripCombobox`.
   onChange: (courseId: string | null) => void;
-  // Fired with the whole course whenever the diver picks one - from the menu,
-  // from a committed exact-match, or straight out of the inline "Add course..."
-  // dialog. A menu row is only a name, so a pick reads the course first and
-  // fires once that read lands - unless another pick or a clear came first, or
-  // picking A then B would hand B's host A's contact.
+  // Fired with the course's lookup row whenever the diver picks one - from the
+  // menu, from a committed exact-match, or straight out of the inline "Add
+  // course..." dialog. What a host fills from a pick rides on that row; a field
+  // it lacks is an API change, not a read of the whole course.
   //
   // Not fired for a cleared selection: clearing says "no logged course", not
   // "those facts are wrong". Nor for the lookup of an incoming `value`, which is
   // the form seeding itself rather than the diver choosing.
-  onCourseSelected?: (course: Course) => void;
+  onCourseSelected?: (course: CourseLookupItem) => void;
   // The date of the record being edited - see `TripCombobox.until`.
   until?: string;
   disabled?: boolean;
@@ -58,11 +57,6 @@ export function CourseCombobox({
   const { records: courses, remember } = useLookupLabels(lookupCourses, [
     value,
   ]);
-  // Counts picks and clears, so a read landing after a later one fires nothing -
-  // a counter rather than the uuid, since re-picking the same course must not
-  // let the superseded read fire as well.
-  const pickRef = useRef(0);
-
   const searchCourses = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
       const response = await coursesAPI.lookupCourses(1, COURSES_PER_SEARCH, {
@@ -82,22 +76,16 @@ export function CourseCombobox({
   );
 
   // The picker's one way in: `CreatableCombobox` reports a pick, a committed
-  // exact match and a clear through the same callback, so the full-record
-  // notification is derived here rather than at four call sites.
+  // exact match and a clear through the same callback, so the notification is
+  // derived here rather than at four call sites. Every pickable row came from a
+  // search, which remembered it.
   const handleChange = (courseId: string | undefined) => {
     onChange(courseId ?? null);
-    const pick = ++pickRef.current;
-    if (!courseId || !onCourseSelected) return;
-    coursesAPI
-      .getCourse(courseId)
-      .then((course) => {
-        if (pickRef.current === pick) onCourseSelected(course);
-      })
-      .catch((error) => console.error("Failed to fetch course:", error));
+    const course = courseId ? courses[courseId] : undefined;
+    if (course) onCourseSelected?.(course);
   };
 
   const handleCreated = (newCourse: Course) => {
-    pickRef.current += 1;
     remember(newCourse);
     onChange(newCourse.uuid);
     onCourseSelected?.(newCourse);
