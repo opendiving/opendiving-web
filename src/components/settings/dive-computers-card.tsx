@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, Watch } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -40,9 +40,11 @@ export function DiveComputersCard() {
   // on the drop for a drag, which reorders live and would otherwise send an
   // order for every row it passes.
   const unsaved = useRef(false);
-  // Only the latest save's answer is drawn, so a quick run of arrow presses
-  // never ends on an earlier order.
-  const latestSave = useRef(0);
+  // One save at a time, so the last order sent is the last one stored: moves
+  // made while one is in flight are sent together once it settles, which
+  // `settledSaves` re-runs the effect for.
+  const saving = useRef(false);
+  const [settledSaves, setSettledSaves] = useState(0);
 
   const onReorder = useCallback(
     (from: number, to: number) => {
@@ -58,24 +60,29 @@ export function DiveComputersCard() {
   });
 
   useEffect(() => {
-    if (draggingIndex !== null || !unsaved.current) return;
+    if (saving.current || draggingIndex !== null || !unsaved.current) return;
     unsaved.current = false;
-    const save = ++latestSave.current;
+    saving.current = true;
     diveComputersAPI
       .setOrder(computers.map((computer) => computer.serial))
       .then((answer) => {
-        if (save === latestSave.current) update(() => answer);
+        // A move since leaves this answer behind; the next save's is drawn.
+        if (!unsaved.current) update(() => answer);
       })
       .catch((error: unknown) => {
-        if (save !== latestSave.current) return;
+        unsaved.current = false;
         toast({
           title: "Error",
           description: getApiErrorMessage(error, ORDER_FAILED),
           variant: "destructive",
         });
         void refresh();
+      })
+      .finally(() => {
+        saving.current = false;
+        setSettledSaves((count) => count + 1);
       });
-  }, [computers, draggingIndex, refresh, toast, update]);
+  }, [computers, draggingIndex, refresh, settledSaves, toast, update]);
 
   if (list.status === "absent" || list.status === "loading") return null;
   if (list.status === "ready" && computers.length === 0) return null;

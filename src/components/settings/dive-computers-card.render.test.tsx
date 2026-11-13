@@ -112,7 +112,7 @@ describe("DiveComputersCard", () => {
     );
   });
 
-  it("draws only the latest answer when moves overlap", async () => {
+  it("holds a move made during a save until it settles, then sends the latest order", async () => {
     mocks.getDiveComputers.mockResolvedValue(inOrder(PERDIX, OCEAN, PLACED));
     let answerFirst: (computers: DiveComputer[]) => void = () => {};
     mocks.setOrder
@@ -132,6 +132,17 @@ describe("DiveComputersCard", () => {
       ),
     );
     await userEvent.keyboard("{ArrowDown}");
+    const latest = [
+      "Suunto Ocean · 2238104 (Porvoo)",
+      "253810000400",
+      "Shearwater Perdix 3 · D9772626",
+    ];
+    await waitFor(() => expect(rows()).toEqual(latest));
+    expect(mocks.setOrder).toHaveBeenCalledTimes(1);
+
+    // The first answer is behind the second move, and is not drawn.
+    await act(async () => answerFirst(inOrder(OCEAN, PERDIX, PLACED)));
+    expect(rows()).toEqual(latest);
 
     await waitFor(() => expect(mocks.setOrder).toHaveBeenCalledTimes(2));
     expect(mocks.setOrder).toHaveBeenLastCalledWith([
@@ -139,15 +150,7 @@ describe("DiveComputersCard", () => {
       "253810000400",
       "D9772626",
     ]);
-    const latest = [
-      "Suunto Ocean · 2238104 (Porvoo)",
-      "253810000400",
-      "Shearwater Perdix 3 · D9772626",
-    ];
-    await waitFor(() => expect(rows()).toEqual(latest));
-
-    // The first answer arrives last, and is not drawn.
-    await act(async () => answerFirst(inOrder(OCEAN, PERDIX, PLACED)));
+    await act(async () => {});
     expect(rows()).toEqual(latest);
   });
 
