@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import {
   adminAPI,
   type AdminSpecies,
   type AdminSpeciesFilter,
+  type AdminSpeciesPhotoProposal,
 } from "@/lib/api/admin";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { speciesDisplayName } from "@/lib/species";
@@ -20,6 +21,11 @@ import {
   type SpeciesPhotoAction,
 } from "@/components/admin/species-catalog-card";
 import { SpeciesPhotoPicker } from "@/components/admin/species-photo-picker";
+import {
+  DeclineProposalDialog,
+  SpeciesPhotoProposals,
+  useSpeciesPhotoProposalReads,
+} from "@/components/admin/species-photo-proposals";
 import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 
 // The API's 503 for pin and re-fetch, worded for either cause it covers - a
@@ -36,6 +42,10 @@ function photoErrorMessage(error: unknown, fallback: string): string {
 
 type Confirming = { species: AdminSpecies; action: "hide" | "refetch" };
 
+type CatalogAction = SpeciesPhotoAction | "accept" | "decline";
+
+type Declining = { species: AdminSpecies; proposal: AdminSpeciesPhotoProposal };
+
 /**
  * The species catalog: every species on this instance, newest first, and the
  * operator's three hands on each one's photo.
@@ -43,7 +53,8 @@ type Confirming = { species: AdminSpecies; action: "hide" | "refetch" };
  * Every action answers with the row as it now stands, which `applySaved` puts in
  * place without reading the list again - so a hidden row stays under a chip it
  * no longer matches until the list is reloaded, which is the scroll position
- * worth keeping.
+ * worth keeping. The count on the Proposed chip is read again after each
+ * action instead, since the list is not.
  */
 export function SpeciesCatalog() {
   const { toast } = useToast();
@@ -55,10 +66,23 @@ export function SpeciesCatalog() {
   const [filter, setFilter] = useState<AdminSpeciesFilter | null>(null);
   const [busy, setBusy] = useState<{
     uuid: string;
-    action: SpeciesPhotoAction;
+    action: CatalogAction;
+    proposal?: string;
   } | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [replacing, setReplacing] = useState<AdminSpecies | null>(null);
+  const [declining, setDeclining] = useState<Declining | null>(null);
+  const [proposedCount, setProposedCount] = useState<number | null>(null);
+
+  const countProposed = useCallback(() => {
+    adminAPI
+      .countSpeciesWithPhotoProposals()
+      .then(setProposedCount, (error) =>
+        console.error("Couldn't count the species with a proposal.", error),
+      );
+  }, []);
+
+  useEffect(countProposed, [countProposed]);
 
   // A new term or chip is a new callback, which is what makes the hook drop the
   // pages it holds and start again from the first.
@@ -89,18 +113,30 @@ export function SpeciesCatalog() {
     errorMessage: "Failed to load the species catalog. Please try again.",
   });
 
+  const { reads, reread } = useSpeciesPhotoProposalReads(species);
+
   const run = async (
     row: AdminSpecies,
-    action: SpeciesPhotoAction,
+    action: CatalogAction,
     request: () => Promise<AdminSpecies>,
     done: string,
+    proposal?: string,
   ): Promise<boolean> => {
-    setBusy({ uuid: row.uuid, action });
+    setBusy({ uuid: row.uuid, action, proposal });
     try {
       applySaved(await request());
       toast({ title: "Photo updated", description: done });
+      reread(row.uuid);
+      countProposed();
       return true;
     } catch (error) {
+      const status = getApiErrorStatus(error);
+      // The proposal was replaced, withdrawn, settled elsewhere or its account
+      // is going since the card was read: read the species' proposals again.
+      if (proposal && (status === 404 || status === 409)) {
+        reread(row.uuid);
+        countProposed();
+      }
       toast({
         title: "Error",
         description: photoErrorMessage(
@@ -139,6 +175,28 @@ export function SpeciesCatalog() {
       `${speciesDisplayName(row)} is pinned to ${file}.`,
     );
 
+  const accept = (row: AdminSpecies, proposal: AdminSpeciesPhotoProposal) =>
+    run(
+      row,
+      "accept",
+      () => adminAPI.acceptSpeciesPhotoProposal(proposal.uuid),
+      `${speciesDisplayName(row)} is pinned to ${proposal.file}.`,
+      proposal.uuid,
+    );
+
+  const decline = (
+    row: AdminSpecies,
+    proposal: AdminSpeciesPhotoProposal,
+    reason: string,
+  ) =>
+    run(
+      row,
+      "decline",
+      () => adminAPI.declineSpeciesPhotoProposal(proposal.uuid, reason),
+      `${proposal.file} is declined for ${speciesDisplayName(row)}.`,
+      proposal.uuid,
+    );
+
   const onAction = (row: AdminSpecies, action: SpeciesPhotoAction) => {
     if (action === "replace") setReplacing(row);
     else if (action === "hide") setConfirming({ species: row, action });
@@ -171,19 +229,49 @@ export function SpeciesCatalog() {
         onSearchChange={setSearchInput}
         filter={filter}
         onFilterChange={setFilter}
+        proposedCount={proposedCount}
         isNarrowed={search.length > 0 || filter !== null}
         isLoadingMore={isLoadingMore}
         loadFailed={loadFailed}
         hasMore={hasMore}
         onLoadMore={loadMore}
-        cards={species.map((row) => (
-          <SpeciesCatalogCard
-            key={row.uuid}
-            species={row}
-            busy={busy?.uuid === row.uuid ? busy.action : null}
-            onAction={onAction}
-          />
-        ))}
+        cards={species.map((row) => {
+          const rowBusy = busy?.uuid === row.uuid ? busy : null;
+          return (
+            <SpeciesCatalogCard
+              key={row.uuid}
+              species={row}
+              busy={
+                rowBusy?.action === "accept" || rowBusy?.action === "decline"
+                  ? null
+                  : (rowBusy?.action ?? null)
+              }
+              disabled={rowBusy !== null}
+              onAction={onAction}
+              proposals={
+                row.photo_proposals_waiting > 0 && (
+                  <SpeciesPhotoProposals
+                    species={row}
+                    read={reads[row.uuid]}
+                    disabled={rowBusy !== null}
+                    deciding={
+                      rowBusy?.proposal &&
+                      (rowBusy.action === "accept" ||
+                        rowBusy.action === "decline")
+                        ? { proposal: rowBusy.proposal, action: rowBusy.action }
+                        : null
+                    }
+                    onAccept={(proposal) => accept(row, proposal)}
+                    onDecline={(proposal) =>
+                      setDeclining({ species: row, proposal })
+                    }
+                    onRetry={() => reread(row.uuid)}
+                  />
+                )
+              }
+            />
+          );
+        })}
       />
 
       <ConfirmDialog
@@ -197,6 +285,17 @@ export function SpeciesCatalog() {
         }
         confirmText={confirming?.action === "hide" ? "Hide" : "Re-fetch"}
         onConfirm={confirmed}
+      />
+
+      <DeclineProposalDialog
+        key={declining?.proposal.uuid}
+        proposal={declining?.proposal ?? null}
+        onClose={() => setDeclining(null)}
+        onDecline={(proposal, reason) => {
+          const row = declining?.species;
+          setDeclining(null);
+          if (row) decline(row, proposal, reason);
+        }}
       />
 
       <SpeciesPhotoPicker

@@ -26,6 +26,7 @@ const SPECIES_FILTERS: { value: AdminSpeciesFilter; label: string }[] = [
   { value: "hidden", label: "Hidden" },
   { value: "pinned", label: "Pinned" },
   { value: "narrow", label: `Below ${SPECIES_PHOTO_FLOOR} px` },
+  { value: "proposed", label: "Proposed" },
 ];
 
 export interface SpeciesCatalogFrameProps {
@@ -42,6 +43,8 @@ export interface SpeciesCatalogFrameProps {
   /** The chip that is on, or null for the whole catalog. */
   filter?: AdminSpeciesFilter | null;
   onFilterChange?: (filter: AdminSpeciesFilter | null) => void;
+  /** How many species have a photo proposal waiting; null until read. */
+  proposedCount?: number | null;
   /** True when a search term or a chip has been asked for. */
   isNarrowed?: boolean;
   isLoadingMore?: boolean;
@@ -107,6 +110,7 @@ export function SpeciesCatalogFrame({
   onSearchChange = noop,
   filter = null,
   onFilterChange = noop,
+  proposedCount = null,
   isNarrowed = false,
   isLoadingMore = false,
   loadFailed = false,
@@ -165,6 +169,12 @@ export function SpeciesCatalogFrame({
                     onClick={() => onFilterChange(value)}
                   >
                     {label}
+                    {value === "proposed" && proposedCount !== null && (
+                      <>
+                        {" "}
+                        <span className="tabular-nums">{proposedCount}</span>
+                      </>
+                    )}
                   </Chip>
                 ))}
               </div>

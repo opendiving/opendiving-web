@@ -8,10 +8,14 @@ vi.mock("@/hooks/useInstanceConfig", () => ({ useInstanceConfig: vi.fn() }));
 
 vi.mock("@/lib/api/admin", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/admin")>()),
-  adminAPI: { getDiveSiteProposals: vi.fn() },
+  adminAPI: {
+    getDiveSiteProposals: vi.fn(),
+    countSpeciesWithPhotoProposals: vi.fn(),
+  },
 }));
 
 const getProposals = vi.mocked(adminAPI.getDiveSiteProposals);
+const countProposed = vi.mocked(adminAPI.countSpeciesWithPhotoProposals);
 
 const primary = (commons_primary: boolean) =>
   vi.mocked(useInstanceConfig).mockReturnValue({
@@ -28,6 +32,7 @@ const primary = (commons_primary: boolean) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  countProposed.mockResolvedValue(0);
   primary(false);
 });
 
@@ -47,6 +52,17 @@ describe("the admin section's landing", () => {
       "href",
       "/admin/species",
     );
+  });
+
+  it("says on the species card how many species have a photo proposal waiting", async () => {
+    countProposed.mockResolvedValue(2);
+    render(<AdminPage />);
+
+    expect(
+      await screen.findByRole("link", {
+        name: /2 species with a photo proposal waiting/,
+      }),
+    ).toHaveAttribute("href", "/admin/species");
   });
 
   it("offers the proposals, with how many wait, where the Commons is edited", async () => {

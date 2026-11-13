@@ -126,21 +126,45 @@ export type SpeciesPhotoCuration = "hidden" | "pinned";
 
 /**
  * The catalog page's chips, as `GET /admin/species` takes them in `filter`.
- * `narrow` is a stored photo under `SPECIES_PHOTO_FLOOR`.
+ * `narrow` is a stored photo under `SPECIES_PHOTO_FLOOR`; `proposed` is a species
+ * with a photo proposal waiting for review.
  */
 export type AdminSpeciesFilter =
-  "with_photo" | "without_photo" | "hidden" | "pinned" | "narrow";
+  "with_photo" | "without_photo" | "hidden" | "pinned" | "narrow" | "proposed";
 
 /**
  * A catalog row as the admin routes return it: the public record plus what an
  * operator curating its photo needs. `photo_width` and `photo_height` are the
  * stored bytes' size, absent for a photo kept before they were measured.
+ * `photo_proposals_waiting` counts the photo proposals waiting on the species,
+ * and is zero on every curated row.
  */
 export interface AdminSpecies extends Species {
   photo_fetched_at: string | null;
   photo_curation: SpeciesPhotoCuration | null;
   photo_width: number | null;
   photo_height: number | null;
+  photo_proposals_waiting: number;
+}
+
+/**
+ * One photo proposal waiting on a species, as the operator reviews it: the
+ * Commons file, the proposer's note and name, and of the file the members a
+ * picker candidate carries, each `null` where Wikimedia gave the API no answer.
+ * The proposal can be accepted or declined either way.
+ */
+export interface AdminSpeciesPhotoProposal {
+  uuid: string;
+  file: string;
+  note: string;
+  proposer_name: string;
+  created_at: string;
+  width: number | null;
+  height: number | null;
+  license: string | null;
+  author: string | null;
+  source_url: string | null;
+  preview: string | null;
 }
 
 /**
@@ -201,8 +225,8 @@ export type DiveSiteProposalAccept =
 
 /**
  * The superuser-only operator routes: the invite queue, the two things that can
- * be done to a selection from it, the daily totals, the species catalog's photos,
- * and the queue of Commons proposals, which is a 404 on a copy that does not edit
+ * be done to a selection from it, the daily totals, the species catalog's photos
+ * and the photo proposals waiting on them, and the queue of Commons proposals, which is a 404 on a copy that does not edit
  * the Commons.
  *
  * Every one of these answers `401` signed out and `403` for a signed-in account
@@ -347,6 +371,59 @@ export const adminAPI = {
   async refetchSpeciesPhoto(uuid: string): Promise<AdminSpecies> {
     const response = await apiClient.post<AdminSpecies>(
       `/admin/species/${encodeURIComponent(uuid)}/photo/refetch`,
+    );
+    return response.data;
+  },
+
+  /**
+   * How many species have a photo proposal waiting: the total of one row of
+   * the `proposed` chip.
+   */
+  async countSpeciesWithPhotoProposals(): Promise<number> {
+    const { total_count } = await adminAPI.getSpecies(1, 1, {
+      filter: "proposed",
+    });
+    return total_count;
+  },
+
+  /**
+   * The photo proposals waiting on one species, oldest first and at most 24.
+   * Slow: the API asks Wikimedia about each file before it answers, so the
+   * catalog reads one species' proposals at a time.
+   */
+  async getSpeciesPhotoProposals(
+    uuid: string,
+  ): Promise<AdminSpeciesPhotoProposal[]> {
+    const response = await apiClient.get<AdminSpeciesPhotoProposal[]>(
+      `/admin/species/${encodeURIComponent(uuid)}/photo-proposals`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Accepts a photo proposal, which pins its file as a pin by hand would, and
+   * answers the species' row. `422` and `503` are a pin's and leave the proposal
+   * waiting; `404` and `409` mean it is no longer there to decide.
+   */
+  async acceptSpeciesPhotoProposal(uuid: string): Promise<AdminSpecies> {
+    const response = await apiClient.post<AdminSpecies>(
+      `/admin/species-photo-proposal/${encodeURIComponent(uuid)}/accept`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Declines a photo proposal, with a reason that may be empty, and answers the
+   * species' row. That file never waits for that species again. `404` and `409`
+   * as for accepting.
+   */
+  async declineSpeciesPhotoProposal(
+    uuid: string,
+    reason: string,
+  ): Promise<AdminSpecies> {
+    const response = await apiClient.post<AdminSpecies>(
+      `/admin/species-photo-proposal/${encodeURIComponent(uuid)}/decline`,
+      { reason },
     );
     return response.data;
   },

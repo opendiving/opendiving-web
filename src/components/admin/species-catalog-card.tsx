@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { EyeOff, ImagePlus, RefreshCw } from "lucide-react";
 import { SPECIES_PHOTO_FLOOR, type AdminSpecies } from "@/lib/api/admin";
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { SpeciesThumbnail } from "@/components/species/species-thumbnail";
+import { cn } from "@/lib/utils";
 
 export type SpeciesPhotoAction = "hide" | "replace" | "refetch";
 
@@ -17,7 +19,11 @@ interface SpeciesCatalogCardProps {
   species: AdminSpecies;
   /** The action in flight on this row, if any. */
   busy: SpeciesPhotoAction | null;
+  /** True while anything is in flight on this row, a decision on a proposal included. */
+  disabled?: boolean;
   onAction: (species: AdminSpecies, action: SpeciesPhotoAction) => void;
+  /** The photos proposed for this species, if any wait; the card then spans the row. */
+  proposals?: ReactNode;
 }
 
 // What the operator has to know about the photo at a glance. A pinned photo under
@@ -44,7 +50,9 @@ const LINK = "underline hover:text-foreground";
 export function SpeciesCatalogCard({
   species,
   busy,
+  disabled = busy !== null,
   onAction,
+  proposals,
 }: SpeciesCatalogCardProps) {
   const name = speciesDisplayName(species);
   const secondary = speciesNameWithRank(species);
@@ -56,7 +64,10 @@ export function SpeciesCatalogCard({
 
   return (
     <article
-      className="flex flex-col rounded-lg border bg-card overflow-hidden"
+      className={cn(
+        "flex flex-col rounded-lg border bg-card overflow-hidden",
+        proposals && "col-span-full",
+      )}
       aria-label={name}
     >
       <div
@@ -124,7 +135,7 @@ export function SpeciesCatalogCard({
           <Button
             size="sm"
             variant="outline"
-            disabled={busy !== null || species.photo_curation === "hidden"}
+            disabled={disabled || species.photo_curation === "hidden"}
             onClick={() => onAction(species, "hide")}
           >
             <EyeOff className="h-4 w-4 mr-1" aria-hidden />
@@ -133,7 +144,7 @@ export function SpeciesCatalogCard({
           <Button
             size="sm"
             variant="outline"
-            disabled={busy !== null}
+            disabled={disabled}
             onClick={() => onAction(species, "replace")}
           >
             <ImagePlus className="h-4 w-4 mr-1" aria-hidden />
@@ -142,7 +153,7 @@ export function SpeciesCatalogCard({
           <Button
             size="sm"
             variant="outline"
-            disabled={busy !== null}
+            disabled={disabled}
             onClick={() => onAction(species, "refetch")}
           >
             {busy === "refetch" ? (
@@ -154,6 +165,7 @@ export function SpeciesCatalogCard({
           </Button>
         </div>
       </div>
+      {proposals}
     </article>
   );
 }

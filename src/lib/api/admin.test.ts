@@ -178,6 +178,51 @@ describe("the species catalog routes", () => {
   });
 });
 
+describe("the species photo proposals", () => {
+  const SPECIES = "01a073b4-2235-7b48-8ee7-68d0d99b9808";
+  const PROPOSAL = "01a073b4-9999-7b48-8ee7-68d0d99b9808";
+  const row = { uuid: SPECIES, photo_proposals_waiting: 0 };
+
+  it("counts the species with one waiting from one row of the chip", async () => {
+    get.mockResolvedValue({ data: { data: [], total_count: 7 } });
+
+    expect(await adminAPI.countSpeciesWithPhotoProposals()).toBe(7);
+    expect(get).toHaveBeenCalledWith("/admin/species", {
+      params: { page: 1, items_per_page: 1, filter: "proposed" },
+    });
+  });
+
+  it("reads one species' waiting proposals", async () => {
+    get.mockResolvedValue({ data: [] });
+
+    expect(await adminAPI.getSpeciesPhotoProposals(SPECIES)).toEqual([]);
+    expect(get).toHaveBeenCalledWith(
+      `/admin/species/${SPECIES}/photo-proposals`,
+    );
+  });
+
+  it("accepts with a bodiless POST and answers the row", async () => {
+    post.mockResolvedValue({ data: row });
+
+    expect(await adminAPI.acceptSpeciesPhotoProposal(PROPOSAL)).toEqual(row);
+    expect(post).toHaveBeenCalledWith(
+      `/admin/species-photo-proposal/${PROPOSAL}/accept`,
+    );
+  });
+
+  it("declines with the reason, empty or not, and answers the row", async () => {
+    post.mockResolvedValue({ data: row });
+
+    expect(await adminAPI.declineSpeciesPhotoProposal(PROPOSAL, "")).toEqual(
+      row,
+    );
+    expect(post).toHaveBeenCalledWith(
+      `/admin/species-photo-proposal/${PROPOSAL}/decline`,
+      { reason: "" },
+    );
+  });
+});
+
 describe("the proposal queue", () => {
   it("asks for a page in the API's own parameter names", async () => {
     get.mockResolvedValue({ data: { data: [], total_count: 0 } });

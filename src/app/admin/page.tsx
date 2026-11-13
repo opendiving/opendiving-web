@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { BarChart3, Fish, Inbox } from "lucide-react";
+import { BarChart3, Inbox } from "lucide-react";
 import { AdminScreenCard } from "@/components/admin/admin-screen-card";
 import { ProposalScreenCard } from "@/components/admin/proposal-screen-card";
+import { SpeciesScreenCard } from "@/components/admin/species-screen-card";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 
 export const metadata: Metadata = { title: "Admin" };
@@ -24,13 +25,6 @@ const SCREENS = [
     description:
       "Daily totals of accounts created, sign-ins and active accounts.",
   },
-  {
-    href: "/admin/species",
-    icon: Fish,
-    title: "Species",
-    description:
-      "The species catalog, and the photo each one shows: hide, replace or re-fetch it.",
-  },
 ];
 
 /**
@@ -51,6 +45,7 @@ export default function AdminPage() {
               <AdminScreenCard {...screen} />
             </li>
           ))}
+          <SpeciesScreenCard />
           <ProposalScreenCard />
         </ul>
       </div>
