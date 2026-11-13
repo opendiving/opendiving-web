@@ -245,3 +245,24 @@ it("disables approval when no permissions are selected", async () => {
   ).toBeDisabled();
   expect(screen.getByRole("button", { name: "Deny" })).toBeEnabled();
 });
+
+it("marks a self-registered name as unverified and shows where approval returns", async () => {
+  render(<McpConsentPage />);
+  await screen.findByText("Connect Dive assistant");
+  expect(screen.getByText("Unverified name")).toBeInTheDocument();
+  expect(screen.getByText("client.example")).toBeInTheDocument();
+});
+
+it("names the domain that published a metadata-document client's name", async () => {
+  api.getConsent.mockResolvedValue({
+    name: "Dive assistant",
+    client_id: "https://assistant.example/oauth/client.json",
+    redirect_uri: "https://callback.example/done",
+    scopes: ["dives:read"],
+  });
+  render(<McpConsentPage />);
+  await screen.findByText("Connect Dive assistant");
+  expect(screen.getByText("assistant.example")).toBeInTheDocument();
+  expect(screen.getByText("callback.example")).toBeInTheDocument();
+  expect(screen.queryByText("Unverified name")).not.toBeInTheDocument();
+});

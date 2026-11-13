@@ -6,6 +6,7 @@ import { Plug, ShieldCheck } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { mcpAPI, type McpConsent } from "@/lib/api/mcp";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +17,14 @@ import {
 import { PermissionPicker } from "@/components/settings/permission-picker";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
+
+// A client ID that is an HTTPS URL names the client-ID metadata document its name
+// came from, so that document's host vouches for it. Any other name came from
+// unauthenticated dynamic registration and is whatever the registrant typed.
+function metadataHost(clientId: string): string | null {
+  if (!clientId.startsWith("https://") || !URL.canParse(clientId)) return null;
+  return new URL(clientId).host;
+}
 
 type ConsentState =
   | { status: "loading" }
@@ -93,6 +102,7 @@ function ConsentForm({ request, email }: ConsentFormProps) {
   if (state.status === "loading") return <SectionSpinner />;
   if (state.status === "failed")
     return <StatusMessage variant="error">{state.message}</StatusMessage>;
+  const publisher = metadataHost(state.consent.client_id);
 
   return (
     <Card className="overflow-hidden">
@@ -105,6 +115,23 @@ function ConsentForm({ request, email }: ConsentFormProps) {
             <h1 className="break-words text-2xl font-semibold tracking-tight">
               Connect {state.consent.name}
             </h1>
+            {publisher ? (
+              <p className="break-words text-sm text-muted-foreground">
+                Name published by{" "}
+                <span className="font-medium text-foreground">{publisher}</span>
+              </p>
+            ) : (
+              <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant="warning">Unverified name</Badge>
+                The application chose this name itself.
+              </p>
+            )}
+            <p className="break-words text-sm text-muted-foreground">
+              Returns you to{" "}
+              <span className="font-medium text-foreground">
+                {new URL(state.consent.redirect_uri).host}
+              </span>
+            </p>
             <p className="break-words text-sm text-muted-foreground">
               Signed in as{" "}
               <span className="font-medium text-foreground">{email}</span>
