@@ -10,7 +10,7 @@ export const instant = false;
 
 export default function AuthorizePage() {
   return (
-    <StandaloneShell>
+    <StandaloneShell className="max-w-3xl">
       <McpConsentPage />
     </StandaloneShell>
   );

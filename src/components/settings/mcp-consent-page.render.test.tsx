@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { McpConsent } from "@/lib/api/mcp";
 import { McpConsentPage } from "./mcp-consent-page";
@@ -150,4 +151,97 @@ it("denies without granting any requested permissions", async () => {
   await waitFor(() =>
     expect(api.decideConsent).toHaveBeenCalledWith("opaque-request", []),
   );
+});
+
+it("selects all requested permissions and allows them together", async () => {
+  render(<McpConsentPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Select all" }));
+  expect(screen.getByText("3 of 3 selected")).toBeInTheDocument();
+  for (const checkbox of screen.getAllByRole("checkbox")) {
+    expect(checkbox).toBeChecked();
+  }
+  expect(api.decideConsent).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Allow all" }));
+  await waitFor(() =>
+    expect(api.decideConsent).toHaveBeenCalledWith("opaque-request", [
+      "dives:read",
+      "dives:write",
+      "dives:delete",
+    ]),
+  );
+});
+
+it("restores read-only access after selecting all permissions", async () => {
+  render(<McpConsentPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Select all" }));
+  fireEvent.click(screen.getByRole("button", { name: "Read only" }));
+  expect(screen.getByRole("checkbox", { name: "Read dives" })).toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "Create & edit dives" }),
+  ).not.toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "Delete dives" }),
+  ).not.toBeChecked();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Allow selected permissions" }),
+  );
+  await waitFor(() =>
+    expect(api.decideConsent).toHaveBeenCalledWith("opaque-request", [
+      "dives:read",
+    ]),
+  );
+});
+
+it("can allow every requested permission without selecting each one first", async () => {
+  render(<McpConsentPage />);
+  fireEvent.click(await screen.findByRole("button", { name: "Allow all" }));
+  await waitFor(() =>
+    expect(api.decideConsent).toHaveBeenCalledWith("opaque-request", [
+      "dives:read",
+      "dives:write",
+      "dives:delete",
+    ]),
+  );
+});
+
+it("groups permissions by content and keeps every requested scope available", async () => {
+  const scopes = [
+    "dives:delete",
+    "dives:read",
+    "dives:write",
+    "checkin:share",
+    "import:write",
+    "files:read",
+    "custom-resource:custom-action",
+  ];
+  api.getConsent.mockResolvedValue({
+    name: "Dive assistant",
+    client_id: "client-123",
+    redirect_uri: "https://client.example/callback",
+    scopes,
+  });
+  render(<McpConsentPage />);
+  const dives = await screen.findByRole("group", { name: "Dives" });
+  expect(within(dives).getAllByRole("checkbox")).toHaveLength(3);
+  expect(screen.getAllByRole("checkbox")).toHaveLength(scopes.length);
+  expect(
+    screen.getByRole("checkbox", { name: "Share check-in" }),
+  ).not.toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "custom action custom resource" }),
+  ).not.toBeChecked();
+  fireEvent.click(screen.getByRole("button", { name: "Select all" }));
+  fireEvent.click(screen.getByRole("button", { name: "Allow all" }));
+  await waitFor(() =>
+    expect(api.decideConsent).toHaveBeenCalledWith("opaque-request", scopes),
+  );
+});
+
+it("disables approval when no permissions are selected", async () => {
+  render(<McpConsentPage />);
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Read dives" }));
+  expect(
+    screen.getByRole("button", { name: "Allow selected permissions" }),
+  ).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Deny" })).toBeEnabled();
 });
