@@ -36,7 +36,7 @@
     "@base-ui/react": "^1.9.0",
     "@hookform/resolvers": "^5.7.1",
     "@maplibre/maplibre-gl-native": "^6.4.1",
-    "@scalar/api-reference-react": "0.9.86",
+    "@scalar/api-reference-react": "0.9.89",
     "@simplewebauthn/browser": "^14.0.0",
     "axios": "^1.19.0",
     "class-variance-authority": "^0.7.0",
