@@ -23,9 +23,8 @@ import {
 } from "@/lib/api/dive-sites";
 import { commonsMark } from "@/components/sites/commons-site";
 import { geocodeResultLabel } from "@/lib/locations";
-import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
+import { GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { useUnits } from "@/hooks/useUnits";
-import type { UnitSelection } from "@/lib/units";
 import {
   MAX_LOCATION_NAME_LENGTH,
   type LocationFormValue,
@@ -89,7 +88,7 @@ function commonsHint(
   site: DiveSiteLookupItem,
   query: string,
   position: GeoPoint | null,
-  units: UnitSelection,
+  formatDistance: ReturnType<typeof useUnits>["formatDistance"],
 ): string | undefined {
   const parts: string[] = [];
   const otherName = otherNameFor(site, query);
@@ -98,7 +97,7 @@ function commonsHint(
   if (position && site.latitude != null && site.longitude != null) {
     const { latitude, longitude } = site;
     parts.push(
-      formatDistance(haversineMeters(position, { latitude, longitude }), units),
+      formatDistance(haversineMeters(position, { latitude, longitude })),
     );
   }
   return parts.length > 0 ? parts.join(" · ") : undefined;
@@ -154,7 +153,7 @@ export function PlaceSearch({
   disabled,
 }: PlaceSearchProps) {
   const searchId = useId();
-  const { preferences: units } = useUnits();
+  const { formatDistance } = useUnits();
   // What each menu row would place. Held in a ref rather than state because
   // nothing renders from it - the combobox hands back an id, and this is what
   // turns that id back into the pick it came from, already tagged.
@@ -228,7 +227,7 @@ export function PlaceSearch({
           {
             id: site.uuid,
             name: site.name,
-            hint: commonsHint(site, query, point, units),
+            hint: commonsHint(site, query, point, formatDistance),
             ...commonsMark(site),
           },
         );
@@ -262,7 +261,7 @@ export function PlaceSearch({
       // alone never claims there is more.
       return { items, hasMore: sites?.has_more ?? false, credits };
     },
-    [latitude, longitude, listCommonsSites, units],
+    [latitude, longitude, listCommonsSites, formatDistance],
   );
 
   return (

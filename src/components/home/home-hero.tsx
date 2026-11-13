@@ -14,7 +14,6 @@ import type { Location } from "@/lib/api/location";
 import { DEFAULT_BASEMAP_ATTRIBUTION } from "@/lib/basemap";
 import { formatDaysAgo, formatDurationHoursMinutes } from "@/lib/date-time";
 import { daysBetweenIsoDates, todayIsoDate } from "@/lib/date-time";
-import { formatDepth, type UnitSelection } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
 // The diver's picture where a record's page has its kind's icon, at its sizes
@@ -46,7 +45,7 @@ function DiverAvatar({
 function homeFigures(
   stats: UserDiveStats | null,
   places: Location[] | null,
-  units: UnitSelection,
+  formatDepth: ReturnType<typeof useUnits>["formatDepth"],
 ): MapHeroFigure[] {
   const dived = stats?.total_dives !== 0;
   const value = (format: (stats: UserDiveStats) => ReactNode) =>
@@ -59,7 +58,7 @@ function homeFigures(
         label: "Max depth",
         // Whole units and whole hours past the first: a career's totals,
         // where the remainder is noise.
-        value: value((s) => formatDepth(s.max_depth, units, { decimals: 0 })),
+        value: value((s) => formatDepth(s.max_depth, { decimals: 0 })),
       },
       {
         label: "Total dive time",
@@ -127,7 +126,7 @@ export function HomeHero({
   places: Location[] | null;
   actions?: ReactNode;
 }) {
-  const { preferences: units } = useUnits();
+  const { formatDepth } = useUnits();
   const facts = homeFacts(stats);
   return (
     <MapHero
@@ -135,7 +134,7 @@ export function HomeHero({
       title={title}
       subtitle={facts}
       actions={actions}
-      figures={homeFigures(stats, places, units)}
+      figures={homeFigures(stats, places, formatDepth)}
       credit={DEFAULT_BASEMAP_ATTRIBUTION}
       backdrop={({ map, covered }) => (
         <MapBackdrop

@@ -27,7 +27,6 @@ import {
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/error";
 import { useUnits } from "@/hooks/useUnits";
-import { formatDepth, type UnitSelection } from "@/lib/units";
 import { countNoun } from "@/lib/format";
 import { type DiveAxis, diveAxisEnd } from "@/lib/dive-profile";
 
@@ -71,7 +70,7 @@ interface DiveProfileCardProps {
 // the chart drawing past its plot.
 function describeProfileContents(
   info: DiveProfileInfo,
-  units: UnitSelection,
+  formatDepth: ReturnType<typeof useUnits>["formatDepth"],
 ): string {
   const parts = [
     `${info.depth_sample_count.toLocaleString()} depth samples recorded by the dive computer`,
@@ -84,7 +83,7 @@ function describeProfileContents(
   // this card worth knowing without reading a chart.
   if (info.max_ceiling != null) {
     parts.push(
-      `a deco ceiling to ${formatDepth(info.max_ceiling, units, { decimals: 1 })}`,
+      `a deco ceiling to ${formatDepth(info.max_ceiling, { decimals: 1 })}`,
     );
   }
   // The two figures a diver asks of a heart-rate trace, which the chart answers
@@ -127,7 +126,7 @@ function describeProfileContents(
 // switching moves the curve and nothing else.
 
 export function DiveProfileCard({ dive }: DiveProfileCardProps) {
-  const { preferences: units } = useUnits();
+  const { formatDepth } = useUnits();
   // Every charted recording's samples by recording uuid, all fetched together:
   // the shown one is drawn, and the others set its scales alongside it - see
   // `scaleWith`. Null while in flight, for the reasons `ProfileResult` gives.
@@ -330,7 +329,7 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
         {/* At the foot, as the Gas Consumption card puts its own note: it
             describes the recording, and the chart is what the card is for. */}
         <p className="mt-4 text-xs text-muted-foreground">
-          {describeProfileContents(info, units)}
+          {describeProfileContents(info, formatDepth)}
         </p>
       </CardContent>
     </Card>

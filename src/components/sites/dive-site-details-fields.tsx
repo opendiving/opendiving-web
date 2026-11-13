@@ -22,7 +22,7 @@ import {
   WATER_TYPE_LABELS,
   WATER_TYPES,
 } from "@/lib/api/dives";
-import { unitLabel, type EntryDimension } from "@/lib/units";
+import { type EntryDimension } from "@/lib/units";
 import type { DiveSiteFormInput } from "@/lib/validations/dive-site";
 
 export interface DiveSiteDetailsFieldsProps {
@@ -43,7 +43,7 @@ export function DiveSiteDetailsFields({
   control,
   withTags = true,
 }: DiveSiteDetailsFieldsProps) {
-  const { entryUnits, toggleEntryUnits } = useEntryUnits();
+  const { entryUnits, entryUnitLabel, toggleEntryUnits } = useEntryUnits();
 
   // `EntryUnitLabelRow` keeps the toggle out of flow, so a label with one shares
   // its line box with a label without - Water type beside Altitude.
@@ -57,7 +57,7 @@ export function DiveSiteDetailsFields({
       onToggle={() => toggleEntryUnits(dimension)}
     >
       <FormLabel>
-        {label} ({unitLabel(dimension, entryUnits(dimension))})
+        {label} ({entryUnitLabel(dimension)})
       </FormLabel>
     </EntryUnitLabelRow>
   );

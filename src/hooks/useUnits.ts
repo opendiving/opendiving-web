@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import * as units from "@/lib/units";
+import { formatDistance } from "@/lib/geo-distance";
 
 /** Account units and formatters that follow the diver's measurement preferences. */
 export function useUnits() {
@@ -13,6 +14,7 @@ export function useUnits() {
     const preferences = units.resolveUnitPreferences(system, overrides);
     return {
       preferences,
+      formatDistance: (meters: number) => formatDistance(meters, preferences),
       unitSystemFor: (dimension: units.Dimension | "volume") =>
         units.unitSystemFor(dimension, preferences),
       unitLabel: (dimension: units.Dimension) =>
