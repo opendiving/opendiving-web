@@ -101,7 +101,7 @@ function ConsentForm({ request, email }: ConsentFormProps) {
           <p className="text-sm text-muted-foreground">Signed in as {email}</p>
           <CardDescription>
             Select what this application may do with your OpenDiving account.
-            You can revoke access in Authentication settings.
+            You can revoke access in MCP settings.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
