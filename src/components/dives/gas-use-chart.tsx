@@ -57,7 +57,7 @@ import {
   toDisplayUnits,
   unitLabel,
   unitWord,
-  type UnitSystem,
+  type UnitSelection,
 } from "@/lib/units";
 
 // Hand-rolled SVG rather than a charting library, for two reasons. The app ships
@@ -576,7 +576,7 @@ function GasUseLegend({
   // the mark is drawn, since the legend describes what the toggle turns on.
   unit: BinUnit;
   onToggle: (mark: GasUseMark) => void;
-  units: UnitSystem;
+  units: UnitSelection;
 }) {
   return (
     <div
@@ -669,7 +669,7 @@ function MarkToggle({
 function describeSeries(
   dives: number,
   medianRmv: number,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string {
   // Metric in, and through the same formatter the visible "Median" stat uses, so
   // the two cannot disagree: one decimal in L/min, two in cuft/min. Spelled out
@@ -695,7 +695,7 @@ function GasUseTooltip({
   cx: number;
   cy: number;
   chartWidth: number;
-  units: UnitSystem;
+  units: UnitSelection;
   // Where the dive opens, for a card a finger pinned: there is no cursor on the
   // dot to click it with, so the card carries the link.
   openHref?: string;
@@ -756,7 +756,10 @@ function GasUseTooltip({
 // quietly wrong beside the other. What replaces them is the one thing a diver
 // needs to read the dot correctly: this rate is per cylinder, and the detail
 // page is where the cylinders are.
-function describePointBasis(point: DiveGasUsePoint, units: UnitSystem): string {
+function describePointBasis(
+  point: DiveGasUsePoint,
+  units: UnitSelection,
+): string {
   const tanks = point.gas_use.tanks?.length ?? 0;
   if (isPerTankPoint(point)) {
     return `Per tank across ${tanks} ${tanks === 1 ? "cylinder" : "cylinders"} - see the dive for the split`;
@@ -782,7 +785,7 @@ function isPerTankPoint(point: DiveGasUsePoint): boolean {
 
 // The accessible name of a dot's link, since the visual tooltip is `aria-hidden`
 // decoration.
-function describePoint(point: DiveGasUsePoint, units: UnitSystem): string {
+function describePoint(point: DiveGasUsePoint, units: UnitSelection): string {
   const date = formatDiveDateTime(point.start_time, {
     year: "numeric",
     month: "short",

@@ -1,5 +1,5 @@
 import type { Trip } from "@/lib/api/trips";
-import { formatDepth, type UnitSystem } from "@/lib/units";
+import { formatDepth, type UnitSelection } from "@/lib/units";
 
 export interface TripFigure {
   label: string;
@@ -13,7 +13,7 @@ export interface TripFigure {
  * card rounds its depths. A card takes the first three, so a trip with species
  * shows those over its depth.
  */
-export function tripFigures(trip: Trip, units: UnitSystem): TripFigure[] {
+export function tripFigures(trip: Trip, units: UnitSelection): TripFigure[] {
   const figures: TripFigure[] = [
     { label: "Dives", value: trip.dive_count },
     { label: "Dive sites", value: trip.dive_site_count },

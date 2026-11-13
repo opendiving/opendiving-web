@@ -26,7 +26,7 @@ import type { TankGas } from "@/components/icons/tank-icon";
 import {
   formatComparableDepth,
   formatDepth,
-  type UnitSystem,
+  type UnitSelection,
 } from "@/lib/units";
 
 // Every depth this module *computes* is metres, and every depth it *prints* goes
@@ -491,7 +491,7 @@ function isPastLimit(depth: number, limit: number): boolean {
 export function modWarning(
   mixture: OxygenFractions,
   breathedDepth: number | null | undefined,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string | null {
   if (breathedDepth == null || !Number.isFinite(breathedDepth)) return null;
 
@@ -547,7 +547,7 @@ export function gasHintParts({
   ppO2?: number | null | undefined;
   // Which system the depths in these strings are written in. ppO₂ is not one of
   // them: it is bar in both, as it is on every dive computer ever made.
-  units: UnitSystem;
+  units: UnitSelection;
 }): string[] {
   const name = gasName(oxygen, helium);
   if (name === null) return [];
@@ -697,7 +697,7 @@ export function isSingleGasParallelSet(
 export function diveModWarning(
   mixtures: readonly OxygenFractions[],
   maxDepth: number | null | undefined,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string | null {
   if (maxDepth == null || !Number.isFinite(maxDepth)) return null;
   if (mixtures.length === 0) return null;

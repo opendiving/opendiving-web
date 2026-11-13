@@ -9,7 +9,11 @@ import {
   toggleDimension,
   writeEntryUnits,
 } from "@/lib/entry-units";
-import type { EntryDimension, UnitSystem } from "@/lib/units";
+import {
+  unitSystemFor,
+  type EntryDimension,
+  type UnitSystem,
+} from "@/lib/units";
 
 /** What `useEntryUnits` returns. */
 export interface EntryUnits {
@@ -45,7 +49,8 @@ export function useEntryUnits(): EntryUnits {
   const overrides = useMemo(() => parseEntryUnits(raw), [raw]);
 
   const entryUnits = useCallback(
-    (dimension: EntryDimension) => overrides[dimension] ?? accountUnits,
+    (dimension: EntryDimension) =>
+      overrides[dimension] ?? unitSystemFor(dimension, accountUnits),
     [overrides, accountUnits],
   );
 
@@ -59,7 +64,13 @@ export function useEntryUnits(): EntryUnits {
       // see DECISIONS.md - and solved it with an updater, which needs state this
       // deliberately doesn't keep.)
       const stored = parseEntryUnits(readStoredEntryUnits());
-      writeEntryUnits(toggleDimension(stored, dimension, accountUnits));
+      writeEntryUnits(
+        toggleDimension(
+          stored,
+          dimension,
+          unitSystemFor(dimension, accountUnits),
+        ),
+      );
     },
     [accountUnits],
   );

@@ -1,9 +1,10 @@
 import { cylinderMaterialLabel, type VesselFacts } from "@/lib/api/gear";
 import { presetNameFor } from "@/lib/cylinder-presets";
 import {
+  unitSystemFor,
   cylinderCubicFeet,
   formatPressure,
-  type UnitSystem,
+  type UnitSelection,
 } from "@/lib/units";
 
 /**
@@ -19,14 +20,18 @@ import {
  */
 export function vesselFactParts(
   facts: VesselFacts,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string[] {
   const parts: string[] = [];
   const { volume, working_pressure: pressure, material } = facts;
   const name = presetNameFor(facts);
   if (name) {
     parts.push(name);
-  } else if (units === "imperial" && volume != null && pressure != null) {
+  } else if (
+    unitSystemFor("volume", units) === "imperial" &&
+    volume != null &&
+    pressure != null
+  ) {
     parts.push(`${cylinderCubicFeet(volume, pressure)} cu ft`);
   }
   if (volume != null) parts.push(`${volume} L`);

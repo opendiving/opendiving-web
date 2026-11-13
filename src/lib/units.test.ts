@@ -1,3 +1,4 @@
+import { unitPreset, resolveUnitPreferences, getUnitPreset } from "./units";
 import { describe, expect, it } from "vitest";
 import {
   ENTRY_DIMENSIONS,
@@ -420,5 +421,38 @@ describe("formatWindSpeed", () => {
   it("shows metres per second as whole knots", () => {
     expect(formatWindSpeed(5.9)).toBe("11 kn");
     expect(formatWindSpeed(0)).toBe("0 kn");
+  });
+});
+
+describe("independent account preferences", () => {
+  const mixed = resolveUnitPreferences("metric", {
+    depth: "imperial",
+    pressure: "imperial",
+    volume: "imperial",
+  });
+
+  it("converts each measurement using its own family", () => {
+    expect(formatDepth(30.48, mixed)).toBe("100 ft");
+    expect(formatTemperature(20, mixed)).toBe("20°C");
+    expect(formatWeight(6, mixed)).toBe("6 kg");
+    expect(formatPressure(206.84, mixed)).toBe("3000 psi");
+    expect(formatSac(0.82, mixed)).toBe("11.9 psi/min");
+    expect(formatRmv(18.24, mixed)).toBe("0.64 cuft/min");
+    expect(formatGasVolume(3618, mixed)).toBe("127.8 cuft");
+    expect(formatVisibility(15, mixed)).toBe("49 ft");
+    expect(formatAltitude(372, mixed)).toBe("1220 ft");
+    expect(unitWord("temperature", mixed)).toBe("degrees Celsius");
+    expect(formatComparableDepth(30.48, mixed)).toBe("100 ft");
+  });
+
+  it("recognizes presets only when all families match", () => {
+    expect(getUnitPreset(unitPreset("imperial"))).toBe("imperial");
+    expect(getUnitPreset(unitPreset("metric"))).toBe("metric");
+    expect(getUnitPreset(mixed)).toBe("custom");
+  });
+
+  it("preserves the legacy preset for an account without overrides", () => {
+    expect(resolveUnitPreferences("imperial")).toEqual(unitPreset("imperial"));
+    expect(resolveUnitPreferences("metric")).toEqual(unitPreset("metric"));
   });
 });

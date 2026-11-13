@@ -14,7 +14,7 @@ import type { Location } from "@/lib/api/location";
 import { DEFAULT_BASEMAP_ATTRIBUTION } from "@/lib/basemap";
 import { formatDaysAgo, formatDurationHoursMinutes } from "@/lib/date-time";
 import { daysBetweenIsoDates, todayIsoDate } from "@/lib/date-time";
-import { formatDepth, type UnitSystem } from "@/lib/units";
+import { formatDepth, type UnitSelection } from "@/lib/units";
 import { cn } from "@/lib/utils";
 
 // The diver's picture where a record's page has its kind's icon, at its sizes
@@ -46,7 +46,7 @@ function DiverAvatar({
 function homeFigures(
   stats: UserDiveStats | null,
   places: Location[] | null,
-  units: UnitSystem,
+  units: UnitSelection,
 ): MapHeroFigure[] {
   const dived = stats?.total_dives !== 0;
   const value = (format: (stats: UserDiveStats) => ReactNode) =>
