@@ -24,6 +24,11 @@ describe("getUserInitials", () => {
     expect(getUserInitials("jane")).toBe("J");
   });
 
+  it("returns nothing for a blank name", () => {
+    expect(getUserInitials("")).toBe("");
+    expect(getUserInitials("   ")).toBe("");
+  });
+
   it("truncates to two characters for names with more than two words", () => {
     expect(getUserInitials("jane q doe")).toBe("JQ");
   });

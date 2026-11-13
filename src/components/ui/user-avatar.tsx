@@ -66,7 +66,7 @@ export function UserAvatar({
         className="bg-primary/10 text-primary font-medium"
         style={size ? { fontSize: size * 0.4 } : undefined}
       >
-        {initials.length >= 2 ? initials : <User className="h-1/2 w-1/2" />}
+        {initials || <User className="h-1/2 w-1/2" />}
       </AvatarFallback>
     </Avatar>
   );

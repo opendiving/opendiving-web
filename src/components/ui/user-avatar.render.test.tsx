@@ -61,6 +61,21 @@ describe("UserAvatar", () => {
     expect(getPictureBlob).not.toHaveBeenCalled();
   });
 
+  it("draws one letter for a one-word name", async () => {
+    render(<UserAvatar name="Aleksei" avatarSha={null} />);
+
+    expect(await screen.findByText("A")).toBeInTheDocument();
+  });
+
+  it("draws the person glyph for a blank name", async () => {
+    const { container } = render(<UserAvatar name="   " avatarSha={null} />);
+
+    await waitFor(() =>
+      expect(container.querySelector("svg.lucide-user")).toBeInTheDocument(),
+    );
+    expect(container).toHaveTextContent(/^$/);
+  });
+
   it("fetches the picture with its digest and renders it from an object URL", async () => {
     render(<UserAvatar name="Jane Doe" avatarSha="abc123" />);
 
