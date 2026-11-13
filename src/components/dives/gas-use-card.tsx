@@ -45,7 +45,7 @@ const GAS_USE_SOURCE: ChartPeriodSource<DiveGasUsePoint> = {
 // `GasUseChart` owns that message, since it's the component that knows two
 // points are the minimum.
 export function GasUseCard() {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const view = useChartPeriodView(GAS_USE_SOURCE);
   const { points, times, scope, anchor } = view;
 

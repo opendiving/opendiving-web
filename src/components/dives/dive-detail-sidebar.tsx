@@ -66,7 +66,7 @@ export function DiveDetailSidebar({
   onEdit,
   onEditRecordings,
 }: DiveDetailSidebarProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const withReturnTo = useWithReturnTo();
   const divePeople = dive.people ?? [];
   const hasPeople = divePeople.some(

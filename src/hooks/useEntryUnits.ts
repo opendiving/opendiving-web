@@ -9,11 +9,7 @@ import {
   toggleDimension,
   writeEntryUnits,
 } from "@/lib/entry-units";
-import {
-  unitSystemFor,
-  type EntryDimension,
-  type UnitSystem,
-} from "@/lib/units";
+import { type EntryDimension, type UnitSystem } from "@/lib/units";
 
 /** What `useEntryUnits` returns. */
 export interface EntryUnits {
@@ -37,7 +33,7 @@ export interface EntryUnits {
  * erasing what a previous visit stored.
  */
 export function useEntryUnits(): EntryUnits {
-  const accountUnits = useUnits();
+  const { unitSystemFor } = useUnits();
   const raw = useSyncExternalStore(
     subscribeToEntryUnits,
     readStoredEntryUnits,
@@ -50,8 +46,8 @@ export function useEntryUnits(): EntryUnits {
 
   const entryUnits = useCallback(
     (dimension: EntryDimension) =>
-      overrides[dimension] ?? unitSystemFor(dimension, accountUnits),
-    [overrides, accountUnits],
+      overrides[dimension] ?? unitSystemFor(dimension),
+    [overrides, unitSystemFor],
   );
 
   const toggleEntryUnits = useCallback(
@@ -65,14 +61,10 @@ export function useEntryUnits(): EntryUnits {
       // deliberately doesn't keep.)
       const stored = parseEntryUnits(readStoredEntryUnits());
       writeEntryUnits(
-        toggleDimension(
-          stored,
-          dimension,
-          unitSystemFor(dimension, accountUnits),
-        ),
+        toggleDimension(stored, dimension, unitSystemFor(dimension)),
       );
     },
-    [accountUnits],
+    [unitSystemFor],
   );
 
   return { entryUnits, toggleEntryUnits };

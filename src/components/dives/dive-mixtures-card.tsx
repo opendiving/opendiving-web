@@ -186,7 +186,7 @@ function TankCard({
  * why the maths lives client-side.
  */
 export function DiveMixturesCard({ dive, onEdit }: DiveMixturesCardProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const withReturnTo = useWithReturnTo();
 
   if (!dive.mixtures || dive.mixtures.length === 0) return null;

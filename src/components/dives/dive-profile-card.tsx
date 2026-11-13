@@ -127,7 +127,7 @@ function describeProfileContents(
 // switching moves the curve and nothing else.
 
 export function DiveProfileCard({ dive }: DiveProfileCardProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   // Every charted recording's samples by recording uuid, all fetched together:
   // the shown one is drawn, and the others set its scales alongside it - see
   // `scaleWith`. Null while in flight, for the reasons `ProfileResult` gives.

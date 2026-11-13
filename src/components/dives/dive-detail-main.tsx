@@ -35,7 +35,6 @@ import type { DiveCardSection } from "@/components/dives/dive-section-dialog";
 import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
-import { formatWeight } from "@/lib/units";
 
 // One figure per sighting: its count, or its band with the band's range, and none for
 // "seen, not counted", which is not 1.
@@ -81,7 +80,7 @@ interface DiveDetailMainProps {
  */
 export function DiveDetailMain({ dive, onEdit }: DiveDetailMainProps) {
   const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
-  const units = useUnits();
+  const { formatWeight } = useUnits();
   const withReturnTo = useWithReturnTo();
   const sightings = dive.sightings ?? [];
 
@@ -159,7 +158,7 @@ export function DiveDetailMain({ dive, onEdit }: DiveDetailMainProps) {
                 </div>
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Weight className="h-4 w-4 text-muted-foreground" />
-                  {formatWeight(dive.weight, units)}
+                  {formatWeight(dive.weight)}
                 </div>
               </div>
             )}

@@ -415,7 +415,7 @@ export function DiveProfileChart({
   scaleWith = NO_PEERS,
   axis,
 }: DiveProfileChartProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   // The recording cut at the dive's end, with `duration` moved to that instant,
   // on its own clock. Cutting the samples before anything derives from them,
   // rather than ending only the x scale, is what keeps the surface stretch out
@@ -1582,12 +1582,7 @@ export function DiveProfileChart({
           </Button>
         </IconTooltip>
       )}
-      <LegendMenu
-        available={available}
-        visible={visible}
-        onToggle={toggle}
-        units={units}
-      />
+      <LegendMenu available={available} visible={visible} onToggle={toggle} />
       <IconTooltip label={inFullscreen ? "Exit full screen" : "Full screen"}>
         <Button
           ref={inFullscreen ? undefined : enterButtonRef}
@@ -2116,12 +2111,10 @@ function LegendMenu({
   available,
   visible,
   onToggle,
-  units,
 }: {
   available: readonly ProfileViewKey[];
   visible: readonly ProfileViewKey[];
   onToggle: (key: ProfileViewKey) => void;
-  units: UnitSelection;
 }) {
   // Named for what this dive's legend actually holds. Most dives carry no
   // markers and get no switch for them, and a group announcing a control it
@@ -2153,7 +2146,6 @@ function LegendMenu({
           available={available}
           visible={visible}
           onToggle={onToggle}
-          units={units}
         />
       </PopoverContent>
     </Popover>
@@ -2165,14 +2157,13 @@ function LegendToggles({
   available,
   visible,
   onToggle,
-  units,
 }: {
   label: string;
   available: readonly ProfileViewKey[];
   visible: readonly ProfileViewKey[];
   onToggle: (key: ProfileViewKey) => void;
-  units: UnitSelection;
 }) {
+  const { preferences: units } = useUnits();
   // One group per graph, as the crosshair's readout is grouped: the depth plot
   // with the markers that stand on its baseline, then each panel row.
   const onGraph = (key: ProfileViewKey) =>

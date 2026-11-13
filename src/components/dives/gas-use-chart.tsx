@@ -54,7 +54,6 @@ import {
   displayNumber,
   formatDepth,
   formatGasVolume,
-  toDisplayUnits,
   unitLabel,
   unitWord,
   type UnitSelection,
@@ -129,7 +128,7 @@ export interface GasUseChartProps {
 const readStoredMarks = () => readStoredSeries(GAS_USE_SERIES_KEY);
 
 export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
-  const units = useUnits();
+  const { preferences: units, toDisplayUnits } = useUnits();
   const withReturnTo = useWithReturnTo();
   const [chartRef, width] = useChartWidth(CHART_WIDTH);
   // Index into `points` of the dive under the cursor, keyboard focus or finger.
@@ -216,7 +215,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // Converted once, here, and everything below - the domain, the axis ticks, the
   // bins, the baseline - is then in the diver's own units, so `niceDomain` picks
   // round cuft/min rather than round L/min rescaled.
-  const displayRmv = (rmv: number) => toDisplayUnits(rmv, "rmv", units);
+  const displayRmv = (rmv: number) => toDisplayUnits(rmv, "rmv");
   const rmvs = points.map((point) => displayRmv(point.gas_use.rmv));
 
   // Derived from the *whole* series, deliberately, and then windowed. The y axis

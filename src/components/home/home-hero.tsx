@@ -127,7 +127,7 @@ export function HomeHero({
   places: Location[] | null;
   actions?: ReactNode;
 }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const facts = homeFacts(stats);
   return (
     <MapHero
