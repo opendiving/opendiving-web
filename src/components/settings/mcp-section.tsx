@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LinkAddressField } from "@/components/ui/link-address-field";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
+import { McpConnectionCard } from "./mcp-connection-card";
 
 const loadConnections = () => mcpAPI.getConnections();
 
@@ -105,24 +106,11 @@ export function McpSection({ serverUrl }: { serverUrl: string }) {
           )}
           {list.status === "ready" &&
             list.data.map((connection) => (
-              <div
+              <McpConnectionCard
                 key={connection.uuid}
-                className="flex items-start justify-between gap-4 border-b pb-4 last:border-0"
-              >
-                <div className="min-w-0 space-y-1">
-                  <p className="font-medium">{connection.name}</p>
-                  <p className="break-all text-sm text-muted-foreground">
-                    {connection.client_id}
-                  </p>
-                  <p className="text-sm">{connection.scopes.join(", ")}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => setSelected(connection)}
-                >
-                  Revoke
-                </Button>
-              </div>
+                connection={connection}
+                onRevoke={() => setSelected(connection)}
+              />
             ))}
           <StatusMessage variant="error">{error}</StatusMessage>
           <ConfirmDialog
