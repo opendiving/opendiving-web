@@ -204,21 +204,21 @@ describe("the check-in link", () => {
     ).toHaveTextContent(/section 4\.9/);
     expect(
       screen.getByText(
-        /The invitation, check-in link and linking\s+grants above/,
+        /The invitation, check-in link, linking and photo proposal grants\s+above/,
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/The next three paragraphs are the three things/),
+      screen.getByText(/The next four paragraphs are the four things/),
     ).toBeInTheDocument();
   });
 
-  it("is on §2's list, and §2 counts three cases of one person shown another", async () => {
+  it("is on §2's list, and §2 counts four cases of one person shown another", async () => {
     await renderPage(false);
 
     expect(
       screen.getByText(/share it as a link that works\s+for a day/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/in three cases only/)).toHaveTextContent(
+    expect(screen.getByText(/in four cases only/)).toHaveTextContent(
       /a check-in link you make/,
     );
   });
@@ -244,12 +244,12 @@ describe("linking a person to an account", () => {
   it("is counted in §2, which no longer says there are no dive buddies", async () => {
     await renderPage(false);
 
-    expect(screen.getByText(/in three cases only/)).toHaveTextContent(
+    expect(screen.getByText(/in four cases only/)).toHaveTextContent(
       /a person you link to an account here/,
     );
     expect(screen.queryByText(/no dive buddies/)).toBeNull();
     // What §2 keeps saying, which is still true.
-    expect(screen.getByText(/in three cases only/)).toHaveTextContent(
+    expect(screen.getByText(/in four cases only/)).toHaveTextContent(
       /no public profiles/,
     );
   });
@@ -348,10 +348,47 @@ describe("the invite link", () => {
       /create your account through a\s+member’s invite link, you grant the operator/,
     );
     expect(grant).toHaveTextContent(/as it is and as you change it/);
-    // Still three paragraphs of things shown across accounts.
+    // Still one paragraph for each thing shown across accounts.
     expect(
-      screen.getByText(/The next three paragraphs are the three things/),
+      screen.getByText(/The next four paragraphs are the four things/),
     ).toBeInTheDocument();
+  });
+});
+
+// A photo proposal shows its proposer's name, note and file title to whoever runs
+// the copy, on every copy, so it carries its own grant and a place in both counts.
+describe.each([[false], [true]])("a photo proposal, Commons %s", (commons) => {
+  it("has a grant of its own in §5, pointing at privacy §4.12", async () => {
+    await renderPage(false, false, commons);
+
+    const grant = screen.getByText(
+      /Where a tool of yours proposes a Wikimedia Commons file/,
+    );
+    expect(grant).toHaveTextContent(
+      /further\s+permission that act needs, and only that/,
+    );
+    expect(grant).toHaveTextContent(
+      /the note sent with it and the name on your\s+account/,
+    );
+    expect(grant).toHaveTextContent(
+      /send the file’s title to Wikimedia Commons/,
+    );
+    expect(grant).toHaveTextContent(/refuse that file for that species/);
+    expect(grant).toHaveTextContent(/section 4\.12/);
+  });
+
+  it("is counted in §2 and §5", async () => {
+    await renderPage(false, false, commons);
+
+    expect(screen.getByText(/cases only/)).toHaveTextContent(
+      /a photo a tool of yours proposes for\s+a species/,
+    );
+    expect(screen.getByText(/The next \w+ paragraphs/)).toHaveTextContent(
+      /a photo proposal,\s+which is an entry shown to whoever reviews it alone/,
+    );
+    expect(screen.getByText(/grants above are that rule/)).toHaveTextContent(
+      /photo proposal/,
+    );
   });
 });
 
@@ -371,8 +408,8 @@ describe("proposing for OpenDiving Commons", () => {
   const FALSE_ON_THE_PRIMARY = [
     "a private dive log",
     "no comments",
-    "gives its holder no view of anything you enter",
-    "This copy shows one person to another in three cases only",
+    "apart from an administrator's, which reads a photo a tool of yours proposes for a species.",
+    "This copy shows one person to another in four cases only",
     "is stored as given",
     "Nobody checks it, and nothing here corrects it",
     "is yours, and you are responsible for it",
@@ -380,17 +417,17 @@ describe("proposing for OpenDiving Commons", () => {
     "it holds what the next paragraph grants the operator and nothing beyond that",
     "only the permission technically needed",
     "Your entries are not published, shared with other users",
-    "The next three paragraphs are the three things this copy does show one person to another",
-    "The invitation, check-in link and linking grants above are that rule being kept",
-    "exporting everything you have entered",
+    "The next four paragraphs are the four things this copy does show one person to another",
+    "The invitation, check-in link, linking and photo proposal grants above are that rule being kept",
+    "exporting what you have entered, your photo proposals aside",
   ];
 
   const ONLY_ON_THE_PRIMARY = [
     "Proposing for OpenDiving Commons",
     "OpenDiving Commons",
     "CC0",
-    "four cases only",
-    "The next four paragraphs",
+    "five cases only",
+    "The next five paragraphs",
     "a report about a Commons record",
   ];
 
@@ -449,14 +486,14 @@ describe("proposing for OpenDiving Commons", () => {
   it("counts the proposal in §2 and §5, and the closing rule names it", async () => {
     await renderPage(false, false, true);
 
-    expect(screen.getByText(/in four cases only/)).toHaveTextContent(
+    expect(screen.getByText(/in five cases only/)).toHaveTextContent(
       /a proposal for OpenDiving Commons/,
     );
-    expect(screen.getByText(/The next four paragraphs/)).toHaveTextContent(
-      /and a proposal/,
+    expect(screen.getByText(/The next five paragraphs/)).toHaveTextContent(
+      /and a proposal for OpenDiving Commons/,
     );
     expect(pageText()).toContain(
-      "The invitation, check-in link, linking and proposal grants above are that rule being kept",
+      "The invitation, check-in link, linking, photo proposal and Commons proposal grants above are that rule being kept",
     );
   });
 });

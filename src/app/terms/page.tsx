@@ -264,16 +264,18 @@ export default async function TermsPage() {
                 dive is part of your own log. The people you record are private
                 records of yours, not connections between accounts.{" "}
                 {commonsPrimary
-                  ? "An account on this copy gives its holder no view of what you enter, apart from an administrator's, which reads what you propose for OpenDiving Commons."
-                  : "An account on this copy gives its holder no view of anything you enter."}{" "}
+                  ? "An account on this copy gives its holder no view of what you enter, apart from an administrator's, which reads what you propose for OpenDiving Commons and a photo a tool of yours proposes for a species."
+                  : "An account on this copy gives its holder no view of what you enter, apart from an administrator's, which reads a photo a tool of yours proposes for a species."}{" "}
                 This copy shows one person to another in{" "}
-                {commonsPrimary ? "four" : "three"} cases only: an invitation,
+                {commonsPrimary ? "five" : "four"} cases only: an invitation,
                 which is about your name rather than about anything you entered;
                 a check-in link you make, which shows your check-in page to
-                whoever holds it, account or not; {!commonsPrimary && "and "}a
-                person you link to an account here, which shows you that
-                account&rsquo;s current username and puts its identifier in your
-                own export
+                whoever holds it, account or not; a person you link to an
+                account here, which shows you that account&rsquo;s current
+                username and puts its identifier in your own export;{" "}
+                {!commonsPrimary && "and "}a photo a tool of yours proposes for
+                a species, which shows the file, its note and your name to
+                whoever reviews it
                 {commonsPrimary &&
                   "; and a proposal for OpenDiving Commons, which shows what you proposed and your name to whoever reviews it, and publishes what is accepted, without your name"}
                 . Section 5 says exactly what each is, and what follows from the
@@ -449,20 +451,21 @@ export default async function TermsPage() {
                 &mdash; to store your entries, show them back to you, and
                 include them in exports you ask for.{" "}
                 {commonsPrimary
-                  ? "Nothing you enter is published, shared with other users, or shown to anyone else by this software, except through a check-in link you make or a proposal you send for OpenDiving Commons."
-                  : "Your entries are not published, shared with other users, or shown to anyone else by this software, except through a check-in link you make."}{" "}
+                  ? "Nothing you enter is published, shared with other users, or shown to anyone else by this software, except through a check-in link you make, a photo proposal a tool of yours sends, or a proposal you send for OpenDiving Commons."
+                  : "Your entries are not published, shared with other users, or shown to anyone else by this software, except through a check-in link you make or a photo proposal a tool of yours sends."}{" "}
                 Printing your check-in summary and handing it to a dive shop is
                 you showing your own entries to someone, not this copy showing
                 them, and the permission above is unchanged by it.{" "}
                 {commonsPrimary
-                  ? "The next four paragraphs are the four things"
-                  : "The next three paragraphs are the three things"}{" "}
+                  ? "The next five paragraphs are the five things"
+                  : "The next four paragraphs are the four things"}{" "}
                 this copy does show one person to another: an invitation, which
-                is not an entry; a check-in link, which is;{" "}
-                {!commonsPrimary && "and "}a person linked to an account, which
-                shows you something of theirs rather than anything of yours
+                is not an entry; a check-in link, which is; a person linked to
+                an account, which shows you something of theirs rather than
+                anything of yours; {!commonsPrimary && "and "}a photo proposal,
+                which is an entry shown to whoever reviews it alone
                 {commonsPrimary &&
-                  "; and a proposal, which is an entry, and the one thing here that can end up public"}
+                  "; and a proposal for OpenDiving Commons, which is an entry, and the one thing here that can end up public"}
                 .
               </p>
               <p className="text-foreground mb-4">
@@ -512,6 +515,22 @@ export default async function TermsPage() {
                 and nothing else. The privacy policy&rsquo;s section 4.10 sets
                 out the same in its own register.
               </p>
+              <p className="text-foreground mb-4">
+                Where a tool of yours proposes a Wikimedia Commons file as a
+                species&rsquo; photo, you grant the operator the further
+                permission that act needs, and only that: to show whoever
+                reviews it the file, the note sent with it and the name on your
+                account; to send the file&rsquo;s title to Wikimedia Commons
+                when the proposal is shown or accepted; to make the file the
+                species&rsquo; photo if it is accepted; to keep the proposal,
+                tied to your account, until your account goes; and, if it is
+                declined, to refuse that file for that species from then on.
+                Nothing else you have logged is involved, and no other diver is
+                shown any of it. The file stays its author&rsquo;s, under the
+                licence Commons gives it, and proposing it grants nobody
+                anything in it. The privacy policy&rsquo;s section 4.12 sets out
+                the same in its own register.
+              </p>
               {commonsPrimary && (
                 <p className="text-foreground mb-4">
                   Where you propose a dive site of yours, or a change to a
@@ -556,8 +575,8 @@ export default async function TermsPage() {
                 arrives with a permission of its own written here and a section
                 of its own on the privacy page, rather than leaning on this one.{" "}
                 {commonsPrimary
-                  ? "The invitation, check-in link, linking and proposal grants above are that rule being kept, not exceptions to it."
-                  : "The invitation, check-in link and linking grants above are that rule being kept, not exceptions to it."}
+                  ? "The invitation, check-in link, linking, photo proposal and Commons proposal grants above are that rule being kept, not exceptions to it."
+                  : "The invitation, check-in link, linking and photo proposal grants above are that rule being kept, not exceptions to it."}
               </p>
             </section>
 
@@ -580,8 +599,8 @@ export default async function TermsPage() {
               <p className="text-foreground mb-4">
                 Two things worth knowing without reading it:{" "}
                 {commonsPrimary
-                  ? "exporting what you have entered, your proposals for OpenDiving Commons aside,"
-                  : "exporting everything you have entered"}{" "}
+                  ? "exporting what you have entered, your photo proposals and your proposals for OpenDiving Commons aside,"
+                  : "exporting what you have entered, your photo proposals aside,"}{" "}
                 and deleting your account are both buttons in Settings, and
                 neither needs anyone&rsquo;s permission.
               </p>

@@ -57,10 +57,10 @@ export default async function PrivacyPage() {
   // copy has. A sentence elsewhere that proposing makes false is reworded inline on
   // `commonsPrimary`, and on every other copy reads as it always has.
   const proposingSection =
-    12 + (googleClientId ? 1 : 0) + (diveConditions ? 1 : 0);
+    13 + (googleClientId ? 1 : 0) + (diveConditions ? 1 : 0);
 
-  // Seven things every copy has, the map tiles and the proposals where it has them.
-  const outsideTheButtons = ["Seven", "Eight", "Nine"][
+  // Eight things every copy has, the map tiles and the proposals where it has them.
+  const outsideTheButtons = ["Eight", "Nine", "Ten"][
     Number(mapTiles) + Number(commonsPrimary)
   ];
 
@@ -344,6 +344,12 @@ export default async function PrivacyPage() {
                   this copy by typing its username, and section 4.10 says what
                   that shows, and to whom
                 </li>
+                <li>
+                  <strong>Photo Proposals:</strong> A Wikimedia Commons file
+                  that a tool of yours proposes as a species&rsquo; photo, with
+                  the note it adds saying why. Neither app offers this; section
+                  4.12 says who reads it and what is sent where
+                </li>
                 {commonsPrimary && (
                   <li>
                     <strong>Proposals for OpenDiving Commons:</strong> A dive
@@ -379,7 +385,7 @@ export default async function PrivacyPage() {
                 is fetched by this server and stored here as your avatar &mdash;
                 once, when the account is made, and never again afterwards. That
                 only happens on instances with Google sign-in turned on; section
-                4.12 describes it if this one does.
+                4.13 describes it if this one does.
               </p>
               <p className="text-foreground mb-4">
                 Two more addresses can reach this copy before any account
@@ -404,8 +410,8 @@ export default async function PrivacyPage() {
               </p>
               <p className="text-foreground mb-4">
                 {commonsPrimary
-                  ? "There are no photos of dives, no bio, no experience level, and no comments or posts, because there are no community features to put them in. The one message here is the word you may add to a proposal for OpenDiving Commons, and the reason a reviewer gives for declining one, which pass between you and the reviewer and go no further."
-                  : "There are no photos of dives, no bio, no experience level, and no messages, comments or posts, because there are no community features to put them in."}
+                  ? "There are no photos of dives, no bio, no experience level, and no comments or posts, because there are no community features to put them in. The messages here are the note a tool of yours adds to a photo proposal, the word you may add to a proposal for OpenDiving Commons, and the reason a reviewer may give for declining either, which pass between you and the reviewer and go no further."
+                  : "There are no photos of dives, no bio, no experience level, and no comments or posts, because there are no community features to put them in. The one message here is the note a tool of yours adds to a photo proposal, and the reason whoever runs this copy may give for declining it, which pass between you and them and go no further."}
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -485,16 +491,16 @@ export default async function PrivacyPage() {
                   can only do signed in, such as exporting your data, importing
                   a logbook, changing your username or email, linking a person
                   to an account, registering a passkey, making an API key,
-                  inviting somebody,{" "}
+                  inviting somebody, proposing a photo for a species,{" "}
                   {commonsPrimary && "proposing for OpenDiving Commons, "}
                   looking up place and species names, and searching the dive
                   site map. Each counter is a number and expires by itself:
                   after 5 minutes on dive site map searches, after 15 minutes on
                   the sign-in and account paths, after an hour on the support
                   form, the invite-request form, exports, logbook imports, and
-                  the place- and species-name lookups
-                  {commonsPrimary &&
-                    "; and after a day on proposals for OpenDiving Commons"}
+                  the place- and species-name lookups; and after a day on photo
+                  proposals
+                  {commonsPrimary && " and on proposals for OpenDiving Commons"}
                   . Other counters exist that hold no identifier at all &mdash;
                   they cap how often this server as a whole may call an outside
                   provider, and are keyed on the provider, not on anyone
@@ -717,6 +723,13 @@ export default async function PrivacyPage() {
                   so that a write the OpenDiving app queued against the site, or
                   a dive draft naming it, still lands on the record
                 </li>
+                <li>
+                  <strong>Review a photo proposal:</strong> Show a photo a tool
+                  of yours proposes for a species, with your name and its note,
+                  to whoever runs this copy, tell the tool what became of it,
+                  and keep a declined file from being proposed for that species
+                  again. Section 4.12 says exactly what that shows and sends
+                </li>
                 {commonsPrimary && (
                   <li>
                     <strong>Keep OpenDiving Commons:</strong> Show what you
@@ -775,11 +788,12 @@ export default async function PrivacyPage() {
                 for a day, and section 4.9 says exactly what that shows; where
                 this copy is invite-only, an invite link shows your name &mdash;
                 and nothing you entered &mdash; to whoever opens it, until you
-                reset or remove it, as section 4.8 says;{" "}
-                {!commonsPrimary && "and "}an API key you make lets whatever
-                holds it read your account as you &mdash; and change it, if you
-                let it &mdash; until it expires or you revoke it, as section
-                4.11 says
+                reset or remove it, as section 4.8 says; an API key you make
+                lets whatever holds it read your account as you &mdash; and
+                change it, if you let it &mdash; until it expires or you revoke
+                it, as section 4.11 says; {!commonsPrimary && "and "}a photo a
+                tool of yours proposes for a species is shown, with your name
+                and its note, to whoever runs this copy, as section 4.12 says
                 {commonsPrimary && (
                   <>
                     ; and a dive site or a change you propose is read by whoever
@@ -795,8 +809,8 @@ export default async function PrivacyPage() {
               </h3>
               <p className="text-foreground mb-4">
                 {commonsPrimary
-                  ? "What you enter stays in your account unless you propose it for OpenDiving Commons. There are no groups, nothing one diver can post for another, and no shared logs,"
-                  : "Nothing you have entered is shared between accounts. There are no groups, no comments and no shared logs,"}{" "}
+                  ? "What you enter stays in your account unless you propose it for OpenDiving Commons, or a tool of yours proposes a photo for a species. There are no groups, nothing one diver can post for another, and no shared logs,"
+                  : "What you enter stays in your account unless a tool of yours proposes a photo for a species. There are no groups, no comments and no shared logs,"}{" "}
                 and the people you record are your own notes about them rather
                 than a connection between two accounts.{" "}
                 {commonsPrimary ? (
@@ -805,11 +819,12 @@ export default async function PrivacyPage() {
                     dive, trip, gear item, course, certification, contact,
                     person or tag of yours, and no dive site you added unless it
                     has been accepted into OpenDiving Commons. The account that
-                    reviews proposals does read a site you propose, as section
-                    4.{proposingSection} says.
+                    reviews proposals does read a photo proposal of yours, as
+                    section 4.12 says, and a site you propose, as section 4.
+                    {proposingSection} says.
                   </>
                 ) : (
-                  "Another diver with an account on this same copy cannot see any dive, dive site you added, trip, gear item, course, certification, contact, person or tag of yours."
+                  "Another diver with an account on this same copy cannot see any dive, dive site you added, trip, gear item, course, certification, contact, person or tag of yours. Whoever runs this copy does read a photo proposal of yours, as section 4.12 says."
                 )}{" "}
                 What does cross between accounts, when you link a person to one,
                 runs towards you and is small: that an account with the username
@@ -818,7 +833,7 @@ export default async function PrivacyPage() {
                 its identifier.
               </p>
               <p className="text-foreground mb-4">
-                There are {commonsPrimary ? "four" : "three"} exceptions. The
+                There are {commonsPrimary ? "five" : "four"} exceptions. The
                 first is not about anything you entered: inviting somebody shows
                 them your name, and shows you whether they went on to register;
                 and, where this copy is invite-only, an invite link you make
@@ -832,11 +847,14 @@ export default async function PrivacyPage() {
                 about another account rather than yours: linking a person you
                 recorded to an account here shows you that account&rsquo;s
                 current username, and tells the account nothing. Section 4.10
-                sets out what that discloses.
+                sets out what that discloses. The fourth is about what you
+                entered, and only a tool of yours can make it: a photo it
+                proposes for a species is shown to whoever runs this copy, with
+                your name and its note. Section 4.12 sets out what that shows.
                 {commonsPrimary && (
                   <>
                     {" "}
-                    The fourth is about what you entered too, and you choose it
+                    The fifth is about what you entered too, and you choose it
                     each time: a dive site or a change you propose for
                     OpenDiving Commons is shown to whoever reviews it, with your
                     name, and what is accepted is public, without it. Section 4.
@@ -1116,9 +1134,12 @@ export default async function PrivacyPage() {
                 All of this happens only as you fill a dive in or import a
                 logbook, never when you view a dive, a species or your species
                 list you have already saved. If you never open the species
-                picker and never import a file naming marine life, nothing is
-                sent at all. The photographs on those pages come from this copy
-                of OpenDiving like every other image on the site.
+                picker, never import a file naming marine life and never have a
+                tool propose a photo for a species, nothing is sent at all. A
+                photo proposal is the one case in which Wikimedia Commons is
+                sent a name you chose rather than one worked out here, and
+                section 4.12 says when. The photographs on those pages come from
+                this copy of OpenDiving like every other image on the site.
               </p>
               <p className="text-foreground mb-4">
                 If you run your own copy of OpenDiving you can point it at your
@@ -1167,17 +1188,17 @@ export default async function PrivacyPage() {
                 account on it or only people who have been invited
                 {joinLinks && <> or who follow one of its join links</>}. Where
                 it is invitations, this is one of the{" "}
-                {commonsPrimary ? "four" : "three"} places in the software where
+                {commonsPrimary ? "five" : "four"} places in the software where
                 something about one person is shown to another &mdash; the
-                others are a check-in link, in section 4.9,{" "}
+                others are a check-in link, in section 4.9, linking a person to
+                an account, in section 4.10,{" "}
                 {commonsPrimary ? (
                   <>
-                    linking a person to an account, in section 4.10, and a
-                    proposal for OpenDiving Commons, in section 4.
-                    {proposingSection}
+                    a photo proposal, in section 4.12, and a proposal for
+                    OpenDiving Commons, in section 4.{proposingSection}
                   </>
                 ) : (
-                  "and linking a person to an account, in section 4.10"
+                  "and a photo proposal, in section 4.12"
                 )}{" "}
                 &mdash; and this section is the whole of it.
               </p>
@@ -1289,8 +1310,8 @@ export default async function PrivacyPage() {
                 the software where something about one person is shown to
                 another,{" "}
                 {commonsPrimary
-                  ? "one of the two that show what you entered"
-                  : "the only one that shows what you entered"}
+                  ? "one of the three that show what you entered"
+                  : "one of the two that show what you entered"}
                 , and this section is the whole of it.
               </p>
               <p className="text-foreground mb-4">
@@ -1344,8 +1365,8 @@ export default async function PrivacyPage() {
                 the username the account has now shows beside the name you gave
                 them.{" "}
                 {commonsPrimary
-                  ? "This is the third of the four places"
-                  : "This is the third place"}{" "}
+                  ? "This is the third of the five places"
+                  : "This is the third of the four places"}{" "}
                 in the software where something about one person is shown to
                 another, and this section is the whole of it.
               </p>
@@ -1399,7 +1420,7 @@ export default async function PrivacyPage() {
               </p>
 
               {/* Unconditional as well: every account on every copy can make a
-                key, so Google takes the number after this one. */}
+                key, so Google takes a number after this one. */}
               <h3 className="text-xl font-semibold text-foreground mb-3">
                 4.11 API Keys
               </h3>
@@ -1408,15 +1429,18 @@ export default async function PrivacyPage() {
                 secret that lets a script or a program of your own use this
                 copy&rsquo;s API as you &mdash; to read your dives into a
                 spreadsheet, say, or to log them from another tool. A key
-                reaches your own account and no one else&rsquo;s, nothing about
-                you is shown to anybody by making one, and this section is the
-                whole of it.
+                reaches your own account and no one else&rsquo;s, and making one
+                shows nothing about you to anybody. This section is the whole of
+                what a key does but one thing: a read-and-write key can propose
+                a photo for a species, which shows something of yours to whoever
+                runs this copy, and section 4.12 says what.
               </p>
               <p className="text-foreground mb-4">
                 <strong>What a key can do:</strong> what its scope allows. A
                 read-only key can read whatever your account can and change
                 nothing; a read-and-write key can also add, change and delete
-                what you could in the app. Neither can make, list or revoke API
+                what you could in the app, and propose a photo for a species,
+                which neither app offers. Neither can make, list or revoke API
                 keys, passkeys or signed-in devices, make a check-in link or an
                 invite link, change the email address you sign in with, or
                 delete your account &mdash; those need you signed in, in a
@@ -1445,10 +1469,73 @@ export default async function PrivacyPage() {
                 date. Section 7 says when a key is deleted.
               </p>
 
+              {/* Unconditional: a tool can propose a photo on every copy, so this
+                takes a fixed number and Google moves after it. */}
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                4.12 Proposing a Photo for a Species
+              </h3>
+              <p className="text-foreground mb-4">
+                A species&rsquo; photo is chosen by a rule this copy runs, and a
+                tool can suggest a better one: a Wikimedia Commons file,
+                proposed as the photo for a species, with a note saying why.
+                Neither this site nor the OpenDiving app offers it. It is done
+                through the API, by a tool holding a read-and-write API key of
+                yours, as section 4.11 describes &mdash; a script that rates
+                photographs, say. This is the fourth place in the software where
+                something about one person is shown to another, the second that
+                shows what you entered, and this section is the whole of it.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What the reviewer is shown:</strong> whoever runs this
+                copy reviews photo proposals, from an administrator&rsquo;s
+                account. They are shown the name on your account, never your
+                address; the file; the note; and when it was proposed. No other
+                diver is shown any of it.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What is sent where:</strong> proposing sends nothing
+                anywhere &mdash; this copy checks only that the title looks like
+                a picture file&rsquo;s. When the reviewer&rsquo;s screen shows
+                your proposal, our servers ask Wikimedia Commons about that file
+                &mdash; its size, licence, author and a small preview &mdash;
+                and when the reviewer accepts it, they download the picture, as
+                section 4.6 describes for every species photo. What Commons
+                receives is the file&rsquo;s title, the one your tool proposed:
+                nothing about you or your account goes with it, and it is sent
+                by our servers rather than by a browser, so Wikimedia sees
+                neither your IP address nor the reviewer&rsquo;s.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What happens to it:</strong> an accepted file becomes
+                the species&rsquo; photo, which every account here sees,
+                credited as Commons credits it and never to you. A declined one
+                is never waiting for that species again, whoever proposes it,
+                and the reviewer may give a reason. A proposal still waiting
+                when whoever runs this copy chooses the species&rsquo; photo
+                some other way is closed, which says nothing about the file.
+                Proposing for the same species again replaces your waiting one.
+                No email is sent about a proposal: your tool reads what became
+                of it through the API, and can withdraw one that waits there
+                too; neither app has a button for either. Photo proposals are
+                limited per account per day, counted with the other rate limits
+                in section 2.2.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What this copy keeps:</strong> the proposal &mdash; the
+                species, the file, the note, whether it waits or was accepted,
+                declined, withdrawn or closed, any reason, and when. It is tied
+                to your account and never published, and it is not in the
+                export: your tool lists your proposals and what became of each,
+                and a copy of the rest is asked for as section 6.2 says. It goes
+                when your account goes, whatever became of it. A declined one is
+                what keeps its file from waiting for that species again, and
+                goes with your account like the rest.
+              </p>
+
               {googleClientId && (
                 <>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
-                    4.12 Signing In with Google
+                    4.13 Signing In with Google
                   </h3>
                   <p className="text-foreground mb-4">
                     This copy of OpenDiving offers &ldquo;Continue with
@@ -1512,7 +1599,7 @@ export default async function PrivacyPage() {
               {diveConditions && (
                 <>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
-                    4.{googleClientId ? 13 : 12} Weather at Your Dives
+                    4.{googleClientId ? 14 : 13} Weather at Your Dives
                   </h3>
                   <p className="text-foreground mb-4">
                     This copy of OpenDiving fills in the weather for the dives
@@ -1567,8 +1654,8 @@ export default async function PrivacyPage() {
                     site can be corrected with <em>Propose a change</em> on its
                     page. Both go one site at a time, and neither goes anywhere
                     until you tick the words it shows you and send it. This is
-                    the fourth place in the software where something about one
-                    person is shown to another, the second that shows what you
+                    the fifth place in the software where something about one
+                    person is shown to another, the third that shows what you
                     entered, and the only one that publishes anything, and this
                     section is the whole of it.
                   </p>
@@ -1779,8 +1866,8 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   {commonsPrimary
-                    ? "Export what you have entered, all but your proposals for OpenDiving Commons"
-                    : "Export everything you have entered"}
+                    ? "Export what you have entered, all but your photo proposals and your proposals for OpenDiving Commons"
+                    : "Export what you have entered, all but your photo proposals"}
                 </li>
                 <li>
                   Bring a logbook back in &mdash; a file this app exported, or
@@ -1799,13 +1886,14 @@ export default async function PrivacyPage() {
                 absence is the point:{" "}
                 {commonsPrimary
                   ? "what you log is neither public nor shared unless you propose it, so there is nothing to switch off. What does have a switch is a check-in link you made, which"
-                  : "nothing of yours is public or shared, so there is nothing to switch off. The exceptions are a check-in link you made, which"}{" "}
+                  : "nothing you log is public or shared, so there is nothing to switch off. The exceptions are a check-in link you made, which"}{" "}
                 Revoke on your check-in page switches off at once &mdash;
                 section 4.9; where this copy is invite-only, your invite link,
                 which Remove on the Invitations card switches off at once
-                &mdash; section 4.8; {!commonsPrimary && "and "}an API key you
-                made, which Revoke on the API keys card switches off at once
-                &mdash; section 4.11
+                &mdash; section 4.8; an API key you made, which Revoke on the
+                API keys card switches off at once &mdash; section 4.11;{" "}
+                {!commonsPrimary && "and "}a photo proposal that waits, which
+                only a tool can withdraw, through the API &mdash; section 4.12
                 {commonsPrimary && (
                   <>
                     ; and a proposal that waits, which Withdraw on the site or
@@ -1885,8 +1973,11 @@ export default async function PrivacyPage() {
                     {proposingSection} says.
                   </>
                 )}{" "}
-                The last two, that request, and anything else go to whoever runs
-                this copy &mdash; section 13 says how to reach them.
+                Nor is a photo proposal: a tool of yours can list each one and
+                what became of it through the API, and a copy of the rest has to
+                be asked for in the same way, as section 4.12 says. The last
+                two, that request, and anything else go to whoever runs this
+                copy &mdash; section 13 says how to reach them.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -2084,6 +2175,13 @@ export default async function PrivacyPage() {
                 removes the site, and its identifier stays with your account,
                 pointing at the record, until your account goes.
               </p>
+              <p className="text-foreground mb-4">
+                A <strong>photo proposal</strong> is not swept either. It is
+                kept, whatever became of it, until your account goes; a declined
+                one is what keeps its file from waiting for that species again.
+                A photo accepted from one stays as the species&rsquo; photo
+                after that, being the species&rsquo; and not yours.
+              </p>
               {commonsPrimary && (
                 <p className="text-foreground mb-4">
                   A <strong>proposal for OpenDiving Commons</strong> is not
@@ -2139,6 +2237,12 @@ export default async function PrivacyPage() {
                   your notes and tags on it go
                   {commonsPrimary &&
                     ". A site or a change of yours that was accepted into OpenDiving Commons stays too, having stopped being yours when it was accepted"}
+                </li>
+                <li>
+                  Your photo proposals go with it, whatever became of them. One
+                  still waiting leaves the review as soon as you ask to delete
+                  the account, and comes back if you bring the account back and
+                  the species&rsquo; photo has not been settled meanwhile
                 </li>
                 {commonsPrimary && (
                   <li>
@@ -2511,7 +2615,7 @@ export default async function PrivacyPage() {
                   site, and Google sets nothing in your browser under this
                   address. Signing in with Google takes you to Google, where
                   whatever it stores is its own on its own address &mdash;
-                  section 4.12 has the detail.
+                  section 4.13 has the detail.
                 </p>
               )}
               <p className="text-foreground mb-4">
@@ -2597,8 +2701,8 @@ export default async function PrivacyPage() {
                 Most of what people write to a privacy address to ask for, you
                 can simply do.{" "}
                 {commonsPrimary
-                  ? "Exporting what you have entered, your proposals for OpenDiving Commons aside, and deleting your account are buttons in Settings,"
-                  : "Exporting everything you have entered and deleting your account are buttons in Settings,"}{" "}
+                  ? "Exporting what you have entered, your photo proposals and your proposals for OpenDiving Commons aside, and deleting your account are buttons in Settings,"
+                  : "Exporting what you have entered, your photo proposals aside, and deleting your account are buttons in Settings,"}{" "}
                 and bringing a logbook back in is one on the Import page; they
                 work immediately, they need nobody&rsquo;s approval, and no
                 request has to be sent to anyone.
