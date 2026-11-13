@@ -42,7 +42,7 @@ import {
   formatTemperature,
   formatVisibility,
   formatWeight,
-  type UnitSystem,
+  type UnitSelection,
 } from "@/lib/units";
 
 /**
@@ -53,7 +53,7 @@ export type ImportChangeRow =
   | { kind: "element"; text: string }
   | { kind: "value"; label: string; before: string; after: string };
 
-type Format = (value: unknown, units: UnitSystem) => string;
+type Format = (value: unknown, units: UnitSelection) => string;
 
 interface Member {
   label: string;
@@ -69,7 +69,7 @@ function asSent(value: unknown): string {
 const plain: Format = (value) => asSent(value);
 
 const measured =
-  (format: (value: number, units: UnitSystem) => string): Format =>
+  (format: (value: number, units: UnitSelection) => string): Format =>
   (value, units) =>
     typeof value === "number" ? format(value, units) : asSent(value);
 
@@ -233,7 +233,7 @@ const PROFILE_MEMBERS: Record<string, Member> = {
 /** What a recording's samples come to, on one line: span, depth and how many. */
 export function recordingProfileSummary(
   profile: DiveProfileInfo,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string {
   return [
     formatDurationHoursMinutes(Math.round(profile.duration / 1000)),
@@ -303,7 +303,7 @@ function valueRow(
   label: string,
   { before, after }: LogbookImportChange,
   format: Format,
-  units: UnitSystem,
+  units: UnitSelection,
 ): ImportChangeRow {
   const shown = (value: unknown) =>
     value === null ? "—" : format(value, units);
@@ -322,7 +322,7 @@ function recordingRow(
   index: number,
   rest: string[],
   change: LogbookImportChange,
-  units: UnitSystem,
+  units: UnitSelection,
 ): ImportChangeRow | null {
   const prefix = `Recording ${index + 1}: `;
   const [first, second, third] = rest;
@@ -374,7 +374,7 @@ function mixtureRow(
   index: number,
   rest: string[],
   change: LogbookImportChange,
-  units: UnitSystem,
+  units: UnitSelection,
 ): ImportChangeRow | null {
   const tank = `Tank ${index + 1}`;
   if (rest.length === 0) {
@@ -388,7 +388,7 @@ function mixtureRow(
 
 function labelledRow(
   change: LogbookImportChange,
-  units: UnitSystem,
+  units: UnitSelection,
 ): ImportChangeRow | null {
   const [head, second, ...rest] = change.member.split("/");
   if (second === undefined) {
@@ -414,7 +414,7 @@ function labelledRow(
  */
 export function describeImportChange(
   change: LogbookImportChange,
-  units: UnitSystem,
+  units: UnitSelection,
 ): ImportChangeRow {
   return (
     labelledRow(change, units) ?? valueRow(change.member, change, plain, units)

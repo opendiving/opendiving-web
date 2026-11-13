@@ -53,7 +53,7 @@ describe("useUnits", () => {
     expect(result.current.unitLabel("rmv")).toBe("L/min");
     expect(result.current.formatVisibility(30.48)).toBe("100 ft");
     expect(result.current.formatDistance(30.48)).toBe("100 ft");
-    expect(result.current.unitSystemFor("speed")).toBe("imperial");
+    expect(result.current.formatWindSpeed(5.9)).toBe("11 kn");
     expect(result.current.formatRmv(18, { decimals: 0 })).toBe("18 L/min");
   });
 

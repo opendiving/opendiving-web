@@ -3,7 +3,7 @@ import type { AdminDiveSiteProposal } from "@/lib/api/admin";
 import type { DiveSiteSharedMembers } from "@/lib/api/dive-sites";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
 import type { GeoPoint } from "@/lib/geo-distance";
-import type { UnitSystem } from "@/lib/units";
+import type { UnitSelection } from "@/lib/units";
 
 function pinOf(
   place: Pick<DiveSiteSharedMembers, "latitude" | "longitude">,
@@ -30,7 +30,7 @@ export function pinMoveMetres(proposal: AdminDiveSiteProposal): number | null {
  */
 export function reviewMarkers(
   proposal: AdminDiveSiteProposal,
-  units: UnitSystem,
+  units: UnitSelection,
 ): ReviewMarker[] {
   const proposed = pinOf(proposal.proposed);
   if (!proposed) return [];

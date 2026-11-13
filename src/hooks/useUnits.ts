@@ -53,7 +53,7 @@ export function useUnits() {
       formatGasVolume: (liters: number, options?: units.FormatOptions) =>
         units.formatGasVolume(liters, preferences, options),
       formatWindSpeed: (metersPerSecond: number) =>
-        units.formatWindSpeed(metersPerSecond, preferences),
+        units.formatWindSpeed(metersPerSecond),
     };
   }, [system, overrides]);
 }

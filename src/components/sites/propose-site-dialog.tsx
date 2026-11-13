@@ -81,7 +81,7 @@ function MatchesStep({
   onContinue: () => void;
   onReplace: (match: DiveSiteCommonsMatch) => void;
 }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const pinned = hasPin(site);
   const hasIdentityMatch = !!matches?.some(
     (match) => match.rule === "identity",
@@ -206,7 +206,7 @@ function ReviewStep({
   onEdit: () => void;
   onProposed: (proposal: DiveSiteProposal) => void;
 }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const [ticked, setTicked] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);

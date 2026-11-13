@@ -51,7 +51,7 @@ export function ProposalReview({
   onBack,
   onSettled,
 }: ProposalReviewProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const [decision, setDecision] = useState<Decision | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
