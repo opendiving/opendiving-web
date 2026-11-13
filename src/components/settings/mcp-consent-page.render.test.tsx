@@ -161,7 +161,9 @@ it("selects all requested permissions and allows them together", async () => {
     expect(checkbox).toBeChecked();
   }
   expect(api.decideConsent).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Allow all" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Allow selected permissions" }),
+  );
   await waitFor(() =>
     expect(api.decideConsent).toHaveBeenCalledWith("opaque-request", [
       "dives:read",
@@ -192,16 +194,12 @@ it("restores read-only access after selecting all permissions", async () => {
   );
 });
 
-it("can allow every requested permission without selecting each one first", async () => {
+it("offers no one-click approval of everything requested", async () => {
   render(<McpConsentPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Allow all" }));
-  await waitFor(() =>
-    expect(api.decideConsent).toHaveBeenCalledWith("opaque-request", [
-      "dives:read",
-      "dives:write",
-      "dives:delete",
-    ]),
-  );
+  await screen.findByText("Connect Dive assistant");
+  expect(
+    screen.queryByRole("button", { name: "Allow all" }),
+  ).not.toBeInTheDocument();
 });
 
 it("groups permissions by content and keeps every requested scope available", async () => {
@@ -209,7 +207,7 @@ it("groups permissions by content and keeps every requested scope available", as
     "dives:delete",
     "dives:read",
     "dives:write",
-    "checkin:share",
+    "checkin:read",
     "import:write",
     "files:read",
     "custom-resource:custom-action",
@@ -225,13 +223,16 @@ it("groups permissions by content and keeps every requested scope available", as
   expect(within(dives).getAllByRole("checkbox")).toHaveLength(3);
   expect(screen.getAllByRole("checkbox")).toHaveLength(scopes.length);
   expect(
-    screen.getByRole("checkbox", { name: "Share check-in" }),
+    screen.getByRole("checkbox", { name: "Read check-in" }),
   ).not.toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Read files" })).toBeChecked();
   expect(
     screen.getByRole("checkbox", { name: "custom action custom resource" }),
   ).not.toBeChecked();
   fireEvent.click(screen.getByRole("button", { name: "Select all" }));
-  fireEvent.click(screen.getByRole("button", { name: "Allow all" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Allow selected permissions" }),
+  );
   await waitFor(() =>
     expect(api.decideConsent).toHaveBeenCalledWith("opaque-request", scopes),
   );

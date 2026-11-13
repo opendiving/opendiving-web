@@ -22,7 +22,6 @@ const ACTION_LABELS = new Map([
   ["read", { label: "Read", order: 0 }],
   ["write", { label: "Create & edit", order: 1 }],
   ["delete", { label: "Delete", order: 2 }],
-  ["share", { label: "Share", order: 3 }],
 ]);
 
 interface Permission {

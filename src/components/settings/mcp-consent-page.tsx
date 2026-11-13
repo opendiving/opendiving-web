@@ -67,7 +67,12 @@ function ConsentForm({ request, email }: ConsentFormProps) {
           setState({
             status: "ready",
             consent,
-            selected: consent.scopes.filter((scope) => scope.endsWith(":read")),
+            // Check-in reads include the diver's insurance and emergency contact,
+            // so they are never granted without being picked.
+            selected: consent.scopes.filter(
+              (scope) =>
+                scope.endsWith(":read") && !scope.startsWith("checkin:"),
+            ),
           });
       })
       .catch((cause: unknown) => {
@@ -185,13 +190,6 @@ function ConsentForm({ request, email }: ConsentFormProps) {
             onClick={() => void decide([])}
           >
             Deny
-          </Button>
-          <Button
-            variant="outline"
-            disabled={busy || state.consent.scopes.length === 0}
-            onClick={() => void decide(state.consent.scopes)}
-          >
-            Allow all
           </Button>
           <Button
             disabled={busy || state.selected.length === 0}
