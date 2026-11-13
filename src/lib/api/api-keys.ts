@@ -1,51 +1,35 @@
 import { apiClient, type MessageResponse } from "./client";
 
-/** What a key may do: `read` is the safe methods only, `write` is what a browser can. */
-export type ApiKeyScope = "read" | "write";
+import { z } from "zod";
 
-/** How long a key lasts, chosen at creation; the API turns it into `expires_at`. */
-export type ApiKeyLifetime = "30d" | "90d" | "1y" | "never";
+const permissionMode = z.discriminatedUnion("scope", [
+  z.object({ scope: z.enum(["read", "write"]), scopes: z.null().optional() }),
+  z.object({ scope: z.literal("scoped"), scopes: z.array(z.string()).min(1) }),
+]);
+const keySchema = z
+  .object({
+    uuid: z.string(),
+    name: z.string(),
+    prefix: z.string(),
+    created_at: z.string(),
+    last_used_at: z.string().nullable(),
+    expires_at: z.string().nullable(),
+  })
+  .and(permissionMode);
+const lifetimeSchema = z.enum(["30d", "90d", "1y", "never"]);
 
-/** One of the account's API keys, as `GET /user/api-keys` lists it. */
-export interface ApiKey {
-  uuid: string;
-  /** The label the diver typed when making it. Not unique. */
-  name: string;
-  /**
-   * The secret's first twelve characters, `odk_` and eight more, kept in clear so a
-   * row can name a key nobody here holds any longer. Not enough to use it.
-   */
-  prefix: string;
-  scope: ApiKeyScope;
-  created_at: string;
-  /**
-   * Null for a key that has never been used. Stamped at most every few minutes,
-   * so it is accurate to the day the card shows rather than to the second.
-   */
-  last_used_at: string | null;
-  /**
-   * Null for a key that never expires. An expired key stays listed until it is
-   * revoked, and counts toward the cap until then.
-   */
-  expires_at: string | null;
-}
-
-/** What the create form sends. A lifetime rather than a date: the server computes it. */
-export interface ApiKeyCreate {
-  name: string;
-  scope: ApiKeyScope;
-  lifetime: ApiKeyLifetime;
-}
-
-/** `POST /user/api-keys`'s answer: the one response that ever carries the secret. */
-export interface ApiKeyCreated extends ApiKey {
-  /**
-   * The whole key, `odk_` and 43 more characters. Only a fingerprint of it is
-   * kept, so nothing can show it again - hold it in component state and nowhere
-   * else.
-   */
-  secret: string;
-}
+/** A key's access mode and selected content permissions. */
+export type ApiKeyScope = z.infer<typeof permissionMode>["scope"];
+/** How long a key lasts. The server computes its expiry date. */
+export type ApiKeyLifetime = z.infer<typeof lifetimeSchema>;
+/** A listed key, without its secret. */
+export type ApiKey = z.infer<typeof keySchema>;
+/** Creation accepts explicit permissions or legacy read/write access. */
+export type ApiKeyCreate = { name: string; lifetime: ApiKeyLifetime } & z.infer<
+  typeof permissionMode
+>;
+/** The secret appears only in the creation response. */
+export type ApiKeyCreated = ApiKey & { secret: string };
 
 /**
  * The account's API keys, for tools of the diver's own, and the two things done
@@ -57,10 +41,15 @@ export interface ApiKeyCreated extends ApiKey {
  * which `ApiKeysCard` reads as a feature this copy does not have.
  */
 export const apiKeysAPI = {
+  /** Permissions supported by this instance, shared with MCP authorization. */
+  async getPermissions(): Promise<string[]> {
+    const response = await apiClient.get<unknown>("/user/api-key-permissions");
+    return z.array(z.string()).min(1).parse(response.data);
+  },
   /** Every key on the account, oldest first, expired ones included. Unpaginated. */
   async getApiKeys(): Promise<ApiKey[]> {
-    const response = await apiClient.get<ApiKey[]>("/user/api-keys");
-    return response.data;
+    const response = await apiClient.get<unknown>("/user/api-keys");
+    return z.array(keySchema).parse(response.data);
   },
 
   /**
@@ -68,11 +57,8 @@ export const apiKeysAPI = {
    * with a sentence of the API's own worth showing as it is.
    */
   async createApiKey(body: ApiKeyCreate): Promise<ApiKeyCreated> {
-    const response = await apiClient.post<ApiKeyCreated>(
-      "/user/api-keys",
-      body,
-    );
-    return response.data;
+    const response = await apiClient.post<unknown>("/user/api-keys", body);
+    return keySchema.and(z.object({ secret: z.string() })).parse(response.data);
   },
 
   /**

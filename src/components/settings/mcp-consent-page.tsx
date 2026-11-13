@@ -13,7 +13,7 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { McpPermissions } from "@/components/settings/mcp-permissions";
+import { PermissionPicker } from "@/components/settings/permission-picker";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
 
@@ -117,7 +117,7 @@ function ConsentForm({ request, email }: ConsentFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5 p-5 sm:p-6">
-        <McpPermissions
+        <PermissionPicker
           scopes={state.consent.scopes}
           selected={state.selected}
           disabled={busy}

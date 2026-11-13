@@ -3,26 +3,28 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { groupMcpPermissions } from "@/lib/mcp-permissions";
+import { groupPermissions } from "@/lib/permissions";
 
-interface McpPermissionsProps {
+interface PermissionPickerProps {
+  legend?: string;
   scopes: string[];
   selected: string[];
   disabled: boolean;
   onChange: (selected: string[]) => void;
 }
 
-export function McpPermissions({
+export function PermissionPicker({
+  legend = "Requested permissions",
   scopes,
   selected,
   disabled,
   onChange,
-}: McpPermissionsProps) {
-  const groups = groupMcpPermissions(scopes);
+}: PermissionPickerProps) {
+  const groups = groupPermissions(scopes);
 
   return (
     <fieldset disabled={disabled} className="min-w-0 space-y-3">
-      <legend className="text-base font-semibold">Requested permissions</legend>
+      <legend className="text-base font-semibold">{legend}</legend>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground" aria-live="polite">
           {selected.length} of {scopes.length} selected
