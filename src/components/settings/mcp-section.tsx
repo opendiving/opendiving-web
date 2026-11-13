@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { mcpAPI, type McpConnection } from "@/lib/api/mcp";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { useInstanceConfig } from "@/hooks/useInstanceConfig";
 import { useOptionalList } from "@/hooks/useOptionalList";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,13 +15,34 @@ import {
 } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LinkAddressField } from "@/components/ui/link-address-field";
+import { NotFoundState } from "@/components/ui/not-found-state";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
 import { McpConnectionCard } from "./mcp-connection-card";
 
 const loadConnections = () => mcpAPI.getConnections();
 
-export function McpSection({ serverUrl }: { serverUrl: string }) {
+interface McpSectionProps {
+  serverUrl: string;
+}
+
+// The settings menu offers this page only where the API serves MCP; a direct visit
+// anywhere else finds no such page rather than a request to the operator.
+export function McpSection({ serverUrl }: McpSectionProps) {
+  const { config, isLoading } = useInstanceConfig();
+  if (isLoading) return <SectionSpinner />;
+  if (config?.mcp_enabled !== true)
+    return (
+      <NotFoundState
+        message="This instance does not offer MCP."
+        backHref="/settings"
+        backLabel="Back to settings"
+      />
+    );
+  return <McpConnections serverUrl={serverUrl} />;
+}
+
+function McpConnections({ serverUrl }: McpSectionProps) {
   const { list, update } = useOptionalList(
     loadConnections,
     "Couldn't load connected applications.",
