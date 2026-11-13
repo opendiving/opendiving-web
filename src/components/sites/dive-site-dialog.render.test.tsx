@@ -467,6 +467,11 @@ describe("DiveSiteDialog location search", () => {
       searchDialog().getByRole("button", { name: "Cancel" }),
     );
 
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Search location" }),
+      ).not.toBeInTheDocument(),
+    );
     expect(screen.getByLabelText("Location")).toHaveValue("");
     expect(latitude()).toHaveValue("");
   });

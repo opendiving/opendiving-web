@@ -187,7 +187,9 @@ describe("DialogContent focus return", () => {
     await user.keyboard("{Escape}");
     await settle();
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
     await waitFor(() => expect(edit).toHaveFocus());
   });
 
@@ -237,7 +239,9 @@ describe("DialogContent focus return", () => {
     await user.keyboard("{Escape}");
     await settle();
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
     await waitFor(() => expect(more).toHaveFocus());
   });
 });
