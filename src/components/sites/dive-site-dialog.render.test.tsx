@@ -143,13 +143,19 @@ const searchLocation = async (
   if (use) await clickUseLocation();
 };
 
-const clickUseLocation = () =>
-  userEvent.click(
+const clickUseLocation = async () => {
+  await userEvent.click(
     within(screen.getByRole("dialog", { name: "Search location" })).getByRole(
       "button",
       { name: "Use location" },
     ),
   );
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("dialog", { name: "Search location" }),
+    ).not.toBeInTheDocument(),
+  );
+};
 
 describe("DiveSiteDialog coordinate paste", () => {
   it("splits a pasted pair across both fields", () => {
