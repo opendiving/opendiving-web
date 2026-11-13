@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DeviceMemoryCard } from "@/components/settings/device-memory-card";
+import { DiveComputersCard } from "@/components/settings/dive-computers-card";
 import { TagsCard } from "@/components/settings/tags-card";
 import { UnitsCard } from "@/components/settings/units-card";
 import { pageTitle } from "@/lib/page-title";
@@ -18,6 +19,8 @@ export default function PreferencesSettingsPage() {
       <UnitsCard />
       <TagsCard />
       <DeviceMemoryCard />
+      {/* Last, since it appears only once its list has loaded. */}
+      <DiveComputersCard />
     </>
   );
 }

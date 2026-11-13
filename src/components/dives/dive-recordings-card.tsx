@@ -115,8 +115,7 @@ export function DiveRecordingsCard({
       await onChanged();
       toast({
         title: "Shown by default",
-        description:
-          "This recording now supplies the dive's figures and its charted profile.",
+        description: "This recording is now shown by default.",
       });
     } catch (error) {
       toast({

@@ -309,14 +309,18 @@ export default async function PrivacyPage() {
                   whoever runs this copy has set, if there is one, runs out, so
                   that you can finish it on another device; only files the app
                   could read are held, and they are deleted once the import is
-                  applied. An import&rsquo;s review and log stay readable after
-                  that, for as long as whoever runs this copy keeps them, which
-                  may be until you delete them. A dive the OpenDiving app
-                  downloads from a dive computer over Bluetooth keeps the
-                  computer&rsquo;s original download the same way, on the dive
-                  it becomes. A file from a computer with a wrist sensor or a
-                  heart-rate strap switched on carries your heart rate, which is
-                  read into the dive log above
+                  applied. An import applied as it is uploaded, without a
+                  review, holds no file at all. An import&rsquo;s review and log
+                  stay readable after that, for as long as whoever runs this
+                  copy keeps them, which may be until you delete them. A dive
+                  the OpenDiving app downloads from a dive computer over
+                  Bluetooth keeps the computer&rsquo;s original download the
+                  same way, on the dive it becomes. A file from a computer with
+                  a wrist sensor or a heart-rate strap switched on carries your
+                  heart rate, which is read into the dive log above. The account
+                  also keeps the order you put your dive computers in, by their
+                  serial numbers, which decides whose recording a dive shows by
+                  default when more than one of them recorded it
                 </li>
                 <li>
                   <strong>Equipment Data:</strong> Diving equipment details and
