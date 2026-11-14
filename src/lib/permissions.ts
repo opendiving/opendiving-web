@@ -14,6 +14,7 @@ const RESOURCE_LABELS = new Map([
   ["presets", "Presets"],
   ["profile", "Profile"],
   ["sites", "Dive sites"],
+  ["species", "Species"],
   ["tags", "Tags"],
   ["trips", "Trips"],
 ]);

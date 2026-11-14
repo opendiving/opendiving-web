@@ -95,7 +95,9 @@ export function PermissionPicker({
       <p className="text-xs leading-relaxed text-muted-foreground">
         Create &amp; edit allows changes to your content. Delete allows
         permanent removal. Share allows creating links others can use to view
-        your check-in.
+        your check-in. Species &mdash; Create &amp; edit also lets a tool
+        propose photos, which the operator sees with your name, and add species
+        to the catalog every account shares.
       </p>
     </fieldset>
   );

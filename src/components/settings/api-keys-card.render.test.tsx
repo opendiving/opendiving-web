@@ -362,6 +362,22 @@ describe("detailed API-key permissions", () => {
     ).toHaveTextContent("Create & edit");
   });
 
+  it("labels the species permission and says what it reaches beyond your content", async () => {
+    mocks.getPermissions.mockResolvedValue(["dives:read", "species:write"]);
+    const user = userEvent.setup();
+    render(<ApiKeysCard />);
+    await screen.findByText("laptop");
+    await user.click(screen.getByRole("button", { name: /create api key/i }));
+    expect(
+      await screen.findByRole("checkbox", { name: "Create & edit species" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Create & edit allows changes to your content/),
+    ).toHaveTextContent(
+      "Species — Create & edit also lets a tool propose photos, which the operator sees with your name, and add species to the catalog every account shares.",
+    );
+  });
+
   it("requires at least one permission", async () => {
     const user = userEvent.setup();
     render(<ApiKeysCard />);

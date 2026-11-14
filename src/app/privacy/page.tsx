@@ -1500,23 +1500,44 @@ export default async function PrivacyPage() {
                 spreadsheet, say, or to log them from another tool. A key
                 reaches your own account and no one else&rsquo;s, and making one
                 shows nothing about you to anybody. This section is the whole of
-                what a key does but one thing: a read-and-write key can propose
-                a photo for a species, which shows something of yours to whoever
-                runs this copy, and section 4.12 says what.
+                what a key does but{" "}
+                {commonsPrimary ? "two things" : "one thing"}: a key can be
+                allowed to propose a photo for a species, which shows something
+                of yours to whoever runs this copy, and section 4.12 says what
+                {commonsPrimary ? (
+                  <>
+                    ; and a read-and-write key can send a proposal for
+                    OpenDiving Commons, which is public once accepted, as
+                    section 4.{proposingSection} says.
+                  </>
+                ) : (
+                  "."
+                )}
               </p>
               <p className="text-foreground mb-4">
-                <strong>What a key can do:</strong> what its scope allows. A
-                read-only key can read whatever your account can and change
-                nothing; a read-and-write key can also add, change and delete
-                what you could in the app, and propose a photo for a species,
-                which neither app offers. Neither can make, list or revoke API
-                keys, passkeys or signed-in devices, make a check-in link or an
-                invite link, change the email address you sign in with, or
-                delete your account &mdash; those need you signed in, in a
-                browser or the OpenDiving app &mdash; and neither reaches
-                anything only whoever runs this copy can. Whoever holds a key
-                can use it from anywhere, so treat it like a password: anyone
-                you give it to can pass it on.
+                <strong>What a key can do:</strong> what its permissions allow.
+                You pick them when you make the key: reading, adding and
+                changing, and deleting are separate permissions for each part of
+                your logbook, and your profile, your preferences, your files,
+                exporting your logbook and importing one are permissions of
+                their own. Create &amp; edit under Species is the one that lets
+                a key propose a photo for a species, which neither app offers,
+                and add a species to the catalog every account shares. A key
+                made before permissions could be picked has one of two older
+                scopes instead, and keeps it: a read-only key can read whatever
+                your account can and change nothing; a read-and-write key can
+                also add, change and delete what you could in the app, and
+                propose a photo for a species
+                {commonsPrimary &&
+                  ", and send a proposal for OpenDiving Commons"}
+                . No key can make, list or revoke API keys, passkeys or
+                signed-in devices, make a check-in link or an invite link,
+                change the email address you sign in with, or delete your
+                account &mdash; those need you signed in, in a browser or the
+                OpenDiving app &mdash; and none reaches anything only whoever
+                runs this copy can. Whoever holds a key can use it from
+                anywhere, so treat it like a password: anyone you give it to can
+                pass it on.
               </p>
               <p className="text-foreground mb-4">
                 <strong>For how long:</strong> until the expiry you chose when
@@ -1531,9 +1552,9 @@ export default async function PrivacyPage() {
                 rather than the key itself, which is why it is shown to you
                 once, when you make it, and never again; its first twelve
                 characters, so the card and the emails can tell your keys apart
-                without holding one; and the name you gave it, its scope, and
-                when it was made, last used and expires. Making or revoking a
-                key emails you and is one of the account security events in
+                without holding one; and the name you gave it, its permissions,
+                and when it was made, last used and expires. Making or revoking
+                a key emails you and is one of the account security events in
                 section 2.2; using one records nothing beyond its last-used
                 date. Section 7 says when a key is deleted.
               </p>
@@ -1548,11 +1569,13 @@ export default async function PrivacyPage() {
                 tool can suggest a better one: a Wikimedia Commons file,
                 proposed as the photo for a species, with a note saying why.
                 Neither this site nor the OpenDiving app offers it. It is done
-                through the API, by a tool holding a read-and-write API key of
-                yours, as section 4.11 describes &mdash; a script that rates
-                photographs, say. This is the fourth place in the software where
-                something about one person is shown to another, the second that
-                shows what you entered, and this section is the whole of it.
+                through the API, by a tool holding an API key of yours with the
+                Create &amp; edit permission under Species, or an older
+                read-and-write key, as section 4.11 describes &mdash; a script
+                that rates photographs, say. This is the fourth place in the
+                software where something about one person is shown to another,
+                the second that shows what you entered, and this section is the
+                whole of it.
               </p>
               <p className="text-foreground mb-4">
                 <strong>What the reviewer is shown:</strong> whoever runs this

@@ -384,6 +384,9 @@ describe.each([
     expect(text).toMatch(/What a key can do:/);
     expect(text).toMatch(/For how long:.*leaves every key working/);
     expect(text).toMatch(/What this copy keeps:\s*a fingerprint of the key/);
+    expect(text.replace(/\s+/g, " ")).toMatch(
+      /what its permissions allow\. You pick them when you make the key.*Create & edit under Species is the one that lets a key propose a photo for a species.*A key made before permissions could be picked has one of two older scopes/,
+    );
 
     expect(
       screen.getByText(/no setting that makes any of it public/),
@@ -411,6 +414,40 @@ describe.each([
       screen.getByText(/is not swept either\. It is kept, expired or not/),
     ).toHaveTextContent(/API key.*until you revoke it or your account goes/);
   });
+
+  // A read-and-write key can send a Commons proposal, so where that section exists
+  // §4.11 counts it among what a key does outside the section; a key with picked
+  // permissions never can.
+  it.each([false, true])(
+    "§4.11 counts the Commons proposal only where it exists: %s",
+    async (commonsPrimary) => {
+      await renderPage({ google, commonsPrimary });
+
+      const intro = (
+        screen.getByText(
+          /In Settings, under Authentication, you can make an API key/,
+        ).textContent ?? ""
+      ).replace(/\s+/g, " ");
+      const scopes = (
+        screen.getByText(/what its permissions allow/).closest("p")
+          ?.textContent ?? ""
+      ).replace(/\s+/g, " ");
+      if (commonsPrimary) {
+        expect(intro).toMatch(
+          /the whole of what a key does but two things: a key can be allowed to propose a photo for a species.*section 4\.12 says what; and a read-and-write key can send a proposal for OpenDiving Commons, which is public once accepted, as section 4\.1[45] says\./,
+        );
+        expect(scopes).toMatch(
+          /propose a photo for a species, and send a proposal for OpenDiving Commons\. No key/,
+        );
+      } else {
+        expect(intro).toMatch(
+          /the whole of what a key does but one thing: a key can be allowed to propose a photo for a species, which shows something of yours to whoever runs this copy, and section 4\.12 says what\.$/,
+        );
+        expect(scopes).toMatch(/propose a photo for a species\. No key/);
+        expect(intro + scopes).not.toMatch(/OpenDiving Commons/);
+      }
+    },
+  );
 
   // §6.2 splits its rights into two groups by ordinal - "The first four",
   // "The last two" - and the two have to add up to the list. The sentence also
@@ -1790,7 +1827,7 @@ describe.each([
       /never have a tool or an app propose a photo for a species, nothing is sent at all/,
     );
     expect(page).toMatch(
-      /and propose a photo for a species, which neither app offers/,
+      /lets a key propose a photo for a species, which neither app offers/,
     );
     expect(listAfterHeading(/6\.1 Account Control/).join(" ")).toMatch(
       /all but your photo proposals/,
