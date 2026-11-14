@@ -290,7 +290,7 @@ describe("the landing hero on a member's invite link", () => {
 
 describe("the partner apps section", () => {
   it("links both partners, DiveCalc first, with their logos", () => {
-    known({ registration_mode: "open" });
+    known({ registration_mode: "open", project_operated: true });
     render(<LandingPage />);
 
     const section = screen
@@ -304,5 +304,25 @@ describe("the partner apps section", () => {
     expect(
       links.map((link) => link.querySelector("img")?.getAttribute("src")),
     ).toEqual(["/partners/divecalc.svg", "/partners/marola.png"]);
+  });
+
+  it.each([
+    [
+      "a self-hoster's instance",
+      { registration_mode: "open", project_operated: false },
+    ],
+    ["an API that predates project_operated", { registration_mode: "open" }],
+  ])("is absent on %s", (_, config) => {
+    known(config);
+    render(<LandingPage />);
+
+    expect(screen.queryByRole("heading", { name: "Partner Apps" })).toBeNull();
+  });
+
+  it("is absent when the config cannot be read", () => {
+    useInstanceConfig.mockReturnValue({ config: null, isLoading: false });
+    render(<LandingPage />);
+
+    expect(screen.queryByRole("heading", { name: "Partner Apps" })).toBeNull();
   });
 });

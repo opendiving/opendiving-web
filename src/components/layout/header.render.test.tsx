@@ -16,10 +16,19 @@ const stable = vi.hoisted(() => ({
     isLoading: false,
     signOut: vi.fn(),
   },
+  instanceConfig: {
+    config: { project_operated: true } as { project_operated: boolean } | null,
+    isLoading: false,
+  },
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => stable.auth,
+}));
+
+// The project's own instance by default, the one copy that lists partner apps.
+vi.mock("@/hooks/useInstanceConfig", () => ({
+  useInstanceConfig: () => stable.instanceConfig,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -88,6 +97,7 @@ const barNav = () =>
 beforeEach(() => {
   stable.auth.isAuthenticated = true;
   stable.auth.user = diver();
+  stable.instanceConfig.config = { project_operated: true };
 });
 
 describe("the notifications bell", () => {
@@ -320,6 +330,21 @@ describe("the partner apps", () => {
 
     expect(burgerRows().slice(-3)).toEqual(["---", ...partnerRows]);
     expect(within(burger()).getByText("Partner apps")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["a self-hoster's instance", { project_operated: false }],
+    ["an instance whose config is unknown", null],
+  ])("are not listed on %s", async (_, config) => {
+    stable.instanceConfig.config = config;
+    render(<Header />);
+
+    expect(burgerRows().at(-1)).toBe("Contacts");
+    expect(within(burger()).queryByText("Partner apps")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    const menu = await screen.findByRole("menu");
+    expect(menuRows(menu).at(-1)).toBe("Contacts");
+    expect(within(menu).queryByText("Partner apps")).toBeNull();
   });
 });
 

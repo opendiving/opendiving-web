@@ -31,6 +31,12 @@ vi.mock("@/components/layout/quick-create", () => ({
   useQuickCreate: () => vi.fn(),
 }));
 
+// Unknown, so no partner rows: nothing here is about them, and this keeps the
+// header from asking a real API for `/config`.
+vi.mock("@/hooks/useInstanceConfig", () => ({
+  useInstanceConfig: () => ({ config: null, isLoading: false }),
+}));
+
 vi.mock("@/hooks/useNotifications", () => ({
   useNotifications: () => ({
     isLoaded: true,

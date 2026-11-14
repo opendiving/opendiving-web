@@ -413,36 +413,40 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
         </div>
       </section>
 
-      <section id="partners" className="border-t py-20">
-        <div className="max-w-4xl mx-auto px-2.5 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-foreground mb-8 text-center">
-            Partner Apps
-          </h2>
-          <ul className="grid gap-6 sm:grid-cols-2">
-            {PARTNER_APPS.map((partner) => (
-              <li key={partner.href}>
-                <a
-                  href={partner.href}
-                  target="_blank"
-                  rel={PARTNER_LINK_REL}
-                  className="flex h-full items-center gap-4 rounded-lg border bg-card p-6 text-card-foreground shadow-sm transition-colors hover:border-coral"
-                >
-                  <PartnerLogo
-                    partner={partner}
-                    className="h-12 w-12 shrink-0"
-                  />
-                  <span className="flex flex-col gap-1">
-                    <span className="font-semibold">{partner.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {partner.description}
+      {/* The project's partnerships, so only in the project's own voice: on a
+          self-hoster's copy they would be partnerships its operator never made. */}
+      {config?.project_operated === true && (
+        <section id="partners" className="border-t py-20">
+          <div className="max-w-4xl mx-auto px-2.5 sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-bold text-foreground mb-8 text-center">
+              Partner Apps
+            </h2>
+            <ul className="grid gap-6 sm:grid-cols-2">
+              {PARTNER_APPS.map((partner) => (
+                <li key={partner.href}>
+                  <a
+                    href={partner.href}
+                    target="_blank"
+                    rel={PARTNER_LINK_REL}
+                    className="flex h-full items-center gap-4 rounded-lg border bg-card p-6 text-card-foreground shadow-sm transition-colors hover:border-coral"
+                  >
+                    <PartnerLogo
+                      partner={partner}
+                      className="h-12 w-12 shrink-0"
+                    />
+                    <span className="flex flex-col gap-1">
+                      <span className="font-semibold">{partner.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {partner.description}
+                      </span>
                     </span>
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

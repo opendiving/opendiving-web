@@ -266,7 +266,9 @@ The bar carries Home, then the most used record pages in usage order. `More ▾`
 carries the other record pages, then Admin for a superuser. The account menu carries the account,
 with Check-in, Import and Export; "+" carries creation, import included. Below `md` the burger lists
 everything in the same order, ruled into Home, the logbook, the other record pages and Admin.
-Partner apps, under their own label, close both: they are the rows that leave the app.
+Partner apps, under their own label, close both: they are the rows that leave the app. They and the
+landing page's partner section show only where `/config` says `project_operated: true`, since they
+are the project's partnerships, not a self-hoster's.
 
 Tiers are breakpoints, not measurement: an `lg` item is `hidden lg:inline-flex` in the bar and
 `lg:hidden` in More, so the row needs no `ResizeObserver` and never reflows after paint. More stays

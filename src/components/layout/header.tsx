@@ -52,6 +52,7 @@ import {
 import { NotificationsMenu } from "@/components/layout/notifications-menu";
 import { PartnerLogo } from "@/components/partner-logo";
 import { PARTNER_APPS, PARTNER_LINK_REL } from "@/lib/partners";
+import { useInstanceConfig } from "@/hooks/useInstanceConfig";
 
 // Everything the "+" menu can start. It's the one way to create from the chrome
 // at every width - the mobile menu deliberately doesn't repeat these, so the
@@ -155,6 +156,10 @@ export function Header() {
   );
   const barItems = navItems.filter((item) => item.tier !== "more");
   const moreItems = navItems.filter((item) => item.tier !== "primary");
+  // The project's partnerships, not a self-hoster's: listed only where `/config`
+  // says the project runs this copy, and not while that is unknown.
+  const { config } = useInstanceConfig();
+  const showPartners = config?.project_operated === true;
   // The create menu is reachable from every page, so the form it opens is told
   // where it was launched from - otherwise its Back/Cancel would guess.
   const withReturnTo = useWithReturnTo();
@@ -321,36 +326,40 @@ export function Header() {
                           </DropdownMenuItem>
                         );
                       })}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuGroup>
-                        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                          Partner apps
-                        </DropdownMenuLabel>
-                        {PARTNER_APPS.map((partner) => (
-                          <DropdownMenuItem
-                            key={partner.href}
-                            render={
-                              <a
-                                href={partner.href}
-                                target="_blank"
-                                rel={PARTNER_LINK_REL}
-                                className="flex items-start"
-                              />
-                            }
-                          >
-                            <PartnerLogo
-                              partner={partner}
-                              className="mt-0.5 mr-2 h-4 w-4 shrink-0"
-                            />
-                            <span className="flex flex-col">
-                              <span>{partner.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {partner.description}
-                              </span>
-                            </span>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuGroup>
+                      {showPartners && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuGroup>
+                            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                              Partner apps
+                            </DropdownMenuLabel>
+                            {PARTNER_APPS.map((partner) => (
+                              <DropdownMenuItem
+                                key={partner.href}
+                                render={
+                                  <a
+                                    href={partner.href}
+                                    target="_blank"
+                                    rel={PARTNER_LINK_REL}
+                                    className="flex items-start"
+                                  />
+                                }
+                              >
+                                <PartnerLogo
+                                  partner={partner}
+                                  className="mt-0.5 mr-2 h-4 w-4 shrink-0"
+                                />
+                                <span className="flex flex-col">
+                                  <span>{partner.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {partner.description}
+                                  </span>
+                                </span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuGroup>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </>
@@ -585,31 +594,35 @@ export function Header() {
                     </React.Fragment>
                   );
                 })}
-                <hr className="mx-4 my-2" />
-                <p className="px-4 py-2 text-sm text-muted-foreground">
-                  Partner apps
-                </p>
-                {PARTNER_APPS.map((partner) => (
-                  <a
-                    key={partner.href}
-                    href={partner.href}
-                    target="_blank"
-                    rel={PARTNER_LINK_REL}
-                    className="flex items-start gap-3 px-4 py-3 text-lg font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <PartnerLogo
-                      partner={partner}
-                      className="mt-1 h-5 w-5 shrink-0"
-                    />
-                    <span className="flex flex-col">
-                      <span>{partner.name}</span>
-                      <span className="text-sm font-normal text-muted-foreground">
-                        {partner.description}
-                      </span>
-                    </span>
-                  </a>
-                ))}
+                {showPartners && (
+                  <>
+                    <hr className="mx-4 my-2" />
+                    <p className="px-4 py-2 text-sm text-muted-foreground">
+                      Partner apps
+                    </p>
+                    {PARTNER_APPS.map((partner) => (
+                      <a
+                        key={partner.href}
+                        href={partner.href}
+                        target="_blank"
+                        rel={PARTNER_LINK_REL}
+                        className="flex items-start gap-3 px-4 py-3 text-lg font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <PartnerLogo
+                          partner={partner}
+                          className="mt-1 h-5 w-5 shrink-0"
+                        />
+                        <span className="flex flex-col">
+                          <span>{partner.name}</span>
+                          <span className="text-sm font-normal text-muted-foreground">
+                            {partner.description}
+                          </span>
+                        </span>
+                      </a>
+                    ))}
+                  </>
+                )}
               </>
             ) : (
               <>

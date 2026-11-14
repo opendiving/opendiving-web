@@ -1,4 +1,7 @@
-/** An app the project partners with, linked from More and from the landing page. */
+/**
+ * An app the project partners with, linked from More and from the landing page
+ * on the project's own instance only (`project_operated`).
+ */
 export interface PartnerApp {
   name: string;
   href: string;
