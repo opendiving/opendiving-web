@@ -298,7 +298,7 @@ describe("the partner apps section", () => {
       .closest("section")!;
     const links = within(section).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "https://www.divecalc.app/",
+      "https://www.divecalc.app/?utm_source=opendiving&utm_medium=referral&utm_campaign=partner_apps",
       "https://marola.dev/",
     ]);
     expect(

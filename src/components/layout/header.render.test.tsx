@@ -314,7 +314,10 @@ describe("the partner apps", () => {
 
     expect(within(menu).getByText("Partner apps")).toBeInTheDocument();
     const divecalc = within(menu).getByRole("menuitem", { name: /^DiveCalc/ });
-    expect(divecalc).toHaveAttribute("href", "https://www.divecalc.app/");
+    expect(divecalc).toHaveAttribute(
+      "href",
+      "https://www.divecalc.app/?utm_source=opendiving&utm_medium=referral&utm_campaign=partner_apps",
+    );
     expect(divecalc).toHaveAttribute("target", "_blank");
     expect(divecalc.querySelector("img")).toHaveAttribute(
       "src",

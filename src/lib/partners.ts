@@ -14,7 +14,7 @@ export interface PartnerApp {
 export const PARTNER_APPS: readonly PartnerApp[] = [
   {
     name: "DiveCalc",
-    href: "https://www.divecalc.app/",
+    href: "https://www.divecalc.app/?utm_source=opendiving&utm_medium=referral&utm_campaign=partner_apps",
     description: "Tool for recreational and technical divers",
     logo: "/partners/divecalc.svg",
   },
