@@ -59,7 +59,7 @@ export default async function PrivacyPage() {
   const proposingSection =
     13 + (googleClientId ? 1 : 0) + (diveConditions ? 1 : 0);
 
-  // Eight things every copy has, the map tiles and the proposals where it has them.
+  // Nine things every copy has, the map tiles and the proposals where it has them.
   const outsideTheButtons = ["Nine", "Ten", "Eleven"][
     Number(mapTiles) + Number(commonsPrimary)
   ];
@@ -553,17 +553,18 @@ export default async function PrivacyPage() {
                 What is kept in your browser is a separate matter, and section
                 10 lists all of it. No usage data about <em>you</em> is
                 collected: nothing here measures which pages you visit, which
-                dives you open, or how long you spend, and none of the seven
+                dives you open, or how long you spend, and none of the eight
                 above is compared or profiled. The security record names things
                 that happened to your account &mdash; not what you were doing in
                 the app.
               </p>
               <p className="text-foreground mb-4">
                 What is counted is a set of <strong>daily totals</strong>, each
-                a number per day for this copy as a whole: how many accounts
-                were created, and through which door &mdash; an invitation, an
-                invitation answering a request to be invited, signing up where
-                this copy lets anyone in,{" "}
+                a number for this copy as a whole, counted per day or, for one
+                of them, per month: how many accounts were created, and through
+                which door &mdash; an invitation, an invitation answering a
+                request to be invited, signing up where this copy lets anyone
+                in,{" "}
                 {joinLinks && (
                   <>a join link, counted under where it was posted, </>
                 )}
@@ -2232,9 +2233,9 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 The <strong>daily totals</strong> in section 2.2 are kept for as
                 long as this copy runs, and deleting an account does not lower
-                them: each is a count of what happened on one day rather than a
-                record about anyone, and a total that shrank when somebody left
-                would no longer say what happened that day.
+                them: each is a count of what happened on one day or in one
+                month rather than a record about anyone, and a total that shrank
+                when somebody left would no longer say what happened then.
               </p>
               <p className="text-foreground mb-4">
                 When you delete your account:
