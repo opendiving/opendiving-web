@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { LandingPage } from "./landing-page";
 
 // Which form the hero holds and which voice it speaks in, and the one thing about
@@ -286,4 +286,23 @@ describe("the landing hero on a member's invite link", () => {
       ).toBeInTheDocument();
     },
   );
+});
+
+describe("the partner apps section", () => {
+  it("links both partners, DiveCalc first, with their logos", () => {
+    known({ registration_mode: "open" });
+    render(<LandingPage />);
+
+    const section = screen
+      .getByRole("heading", { name: "Partner Apps" })
+      .closest("section")!;
+    const links = within(section).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "https://www.divecalc.app/",
+      "https://marola.dev/",
+    ]);
+    expect(
+      links.map((link) => link.querySelector("img")?.getAttribute("src")),
+    ).toEqual(["/partners/divecalc.svg", "/partners/marola.png"]);
+  });
 });

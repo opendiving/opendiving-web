@@ -15,6 +15,8 @@ import { InviteRequestForm } from "@/components/auth/invite-request-form";
 import type { InviteLinkDoor, JoinChannel } from "@/lib/api/config";
 import { Fish, Anchor, ArrowRight, HardDriveDownload } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
+import { PartnerLogo } from "@/components/partner-logo";
+import { PARTNER_APPS, PARTNER_LINK_REL } from "@/lib/partners";
 
 // Every claim on this page has to be true of the software as it stands, because
 // the page is served by whoever is running the instance and they are the ones it
@@ -408,6 +410,37 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
               Sign in to this instance
             </ButtonLink>
           </div>
+        </div>
+      </section>
+
+      <section id="partners" className="border-t py-20">
+        <div className="max-w-4xl mx-auto px-2.5 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-foreground mb-8 text-center">
+            Partner Apps
+          </h2>
+          <ul className="grid gap-6 sm:grid-cols-2">
+            {PARTNER_APPS.map((partner) => (
+              <li key={partner.href}>
+                <a
+                  href={partner.href}
+                  target="_blank"
+                  rel={PARTNER_LINK_REL}
+                  className="flex h-full items-center gap-4 rounded-lg border bg-card p-6 text-card-foreground shadow-sm transition-colors hover:border-coral"
+                >
+                  <PartnerLogo
+                    partner={partner}
+                    className="h-12 w-12 shrink-0"
+                  />
+                  <span className="flex flex-col gap-1">
+                    <span className="font-semibold">{partner.name}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {partner.description}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </div>

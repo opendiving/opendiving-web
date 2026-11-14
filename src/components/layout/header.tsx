@@ -16,7 +16,9 @@ import { DiveIcon, Logo } from "@/components/logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -48,6 +50,8 @@ import {
   type QuickCreateKind,
 } from "@/components/layout/quick-create";
 import { NotificationsMenu } from "@/components/layout/notifications-menu";
+import { PartnerLogo } from "@/components/partner-logo";
+import { PARTNER_APPS, PARTNER_LINK_REL } from "@/lib/partners";
 
 // Everything the "+" menu can start. It's the one way to create from the chrome
 // at every width - the mobile menu deliberately doesn't repeat these, so the
@@ -292,7 +296,7 @@ export function Header() {
                       More
                       <ChevronDown className="ml-1 h-4 w-4 transition-transform group-data-[popup-open]:rotate-180" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuContent align="start" className="w-64">
                       {moreItems.map((item) => {
                         const Icon = item.icon;
                         // Keyboard navigation skips the rows hidden at `lg`.
@@ -317,6 +321,36 @@ export function Header() {
                           </DropdownMenuItem>
                         );
                       })}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                          Partner apps
+                        </DropdownMenuLabel>
+                        {PARTNER_APPS.map((partner) => (
+                          <DropdownMenuItem
+                            key={partner.href}
+                            render={
+                              <a
+                                href={partner.href}
+                                target="_blank"
+                                rel={PARTNER_LINK_REL}
+                                className="flex items-start"
+                              />
+                            }
+                          >
+                            <PartnerLogo
+                              partner={partner}
+                              className="mt-0.5 mr-2 h-4 w-4 shrink-0"
+                            />
+                            <span className="flex flex-col">
+                              <span>{partner.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {partner.description}
+                              </span>
+                            </span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </>
@@ -551,6 +585,31 @@ export function Header() {
                     </React.Fragment>
                   );
                 })}
+                <hr className="mx-4 my-2" />
+                <p className="px-4 py-2 text-sm text-muted-foreground">
+                  Partner apps
+                </p>
+                {PARTNER_APPS.map((partner) => (
+                  <a
+                    key={partner.href}
+                    href={partner.href}
+                    target="_blank"
+                    rel={PARTNER_LINK_REL}
+                    className="flex items-start gap-3 px-4 py-3 text-lg font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <PartnerLogo
+                      partner={partner}
+                      className="mt-1 h-5 w-5 shrink-0"
+                    />
+                    <span className="flex flex-col">
+                      <span>{partner.name}</span>
+                      <span className="text-sm font-normal text-muted-foreground">
+                        {partner.description}
+                      </span>
+                    </span>
+                  </a>
+                ))}
               </>
             ) : (
               <>

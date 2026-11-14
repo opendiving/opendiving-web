@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Header } from "./header";
 import type { User } from "@/lib/api/auth";
+import { PARTNER_APPS } from "@/lib/partners";
 
 // Returned by identity rather than rebuilt per call - the real `AuthContext`
 // holds this in state, and a fresh object per render is the shape that has
@@ -78,6 +79,9 @@ const burgerRows = () =>
   Array.from(burger().querySelectorAll("a, hr")).map((row) =>
     row.tagName === "HR" ? "---" : (row.textContent ?? ""),
   );
+// The partner rows' text, name then description, as `textContent` reads them.
+const partnerRows = PARTNER_APPS.map((p) => `${p.name}${p.description}`);
+
 const barNav = () =>
   screen.getAllByRole("navigation").find((nav) => !burger().contains(nav))!;
 
@@ -111,18 +115,23 @@ describe("the notifications bell", () => {
 });
 
 describe("the Admin entry", () => {
-  it("ends More and the burger for a superuser, ruled off from the rest", async () => {
+  it("ends the app's pages in More and the burger for a superuser, ruled off from the rest", async () => {
     stable.auth.user = diver({ is_superuser: true });
     render(<Header />);
 
-    expect(burgerRows().slice(-2)).toEqual(["---", "Admin"]);
+    expect(burgerRows().slice(-5)).toEqual([
+      "---",
+      "Admin",
+      "---",
+      ...partnerRows,
+    ]);
     expect(
       within(burger()).getByRole("link", { name: "Admin" }),
     ).toHaveAttribute("href", "/admin");
 
     await userEvent.click(screen.getByRole("button", { name: "More" }));
     const menu = await screen.findByRole("menu");
-    expect(menuRows(menu).slice(-1)).toEqual(["Admin"]);
+    expect(menuRows(menu).slice(-4)).toEqual(["Admin", "---", ...partnerRows]);
   });
 
   it("is not offered to an ordinary diver", () => {
@@ -274,6 +283,8 @@ describe("the More menu", () => {
       "Courses",
       "People",
       "Contacts",
+      "---",
+      ...partnerRows,
     ]);
     // Gear and Certifications are in the bar from `lg`, so More drops them there.
     expect(within(menu).getByRole("menuitem", { name: "Gear" })).toHaveClass(
@@ -282,6 +293,33 @@ describe("the More menu", () => {
     expect(
       within(menu).getByRole("menuitem", { name: "Courses" }),
     ).not.toHaveClass("lg:hidden");
+  });
+});
+
+describe("the partner apps", () => {
+  it("close More, DiveCalc first, each opening the partner's site in a new tab", async () => {
+    render(<Header />);
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    const menu = await screen.findByRole("menu");
+
+    expect(within(menu).getByText("Partner apps")).toBeInTheDocument();
+    const divecalc = within(menu).getByRole("menuitem", { name: /^DiveCalc/ });
+    expect(divecalc).toHaveAttribute("href", "https://www.divecalc.app/");
+    expect(divecalc).toHaveAttribute("target", "_blank");
+    expect(divecalc.querySelector("img")).toHaveAttribute(
+      "src",
+      "/partners/divecalc.svg",
+    );
+    expect(
+      within(menu).getByRole("menuitem", { name: /^marola/ }),
+    ).toHaveAttribute("href", "https://marola.dev/");
+  });
+
+  it("close the burger, after a rule", () => {
+    render(<Header />);
+
+    expect(burgerRows().slice(-3)).toEqual(["---", ...partnerRows]);
+    expect(within(burger()).getByText("Partner apps")).toBeInTheDocument();
   });
 });
 
@@ -325,6 +363,8 @@ describe("the mobile menu", () => {
       "Courses",
       "People",
       "Contacts",
+      "---",
+      ...partnerRows,
     ]);
     expect(
       within(burger()).getByRole("link", { name: "Home" }),
