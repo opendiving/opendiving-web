@@ -42,6 +42,12 @@ const answer = (
       { slug: "reddit", label: "Reddit" },
     ],
     days,
+    months: [
+      {
+        month: `${from.slice(0, 7)}-01`,
+        active_accounts: from.startsWith("2026-09") ? 23 : null,
+      },
+    ],
     totals: { accounts: 57, active_now: 21 },
   };
 };
@@ -123,6 +129,28 @@ describe("the stats screen", () => {
         selector: "li",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("keys active accounts by the month's distinct count, or by nothing", async () => {
+    const user = userEvent.setup();
+    render(<AdminStatsPage />);
+    await screen.findByText("57");
+
+    const keyEntry = (name: string) =>
+      within(card("Activity")).getByText(name).closest("li");
+    // September's days add up to 30 active accounts; 23 distinct ones made them.
+    expect(keyEntry("Active accounts")).toHaveTextContent(
+      /^Active accounts23$/,
+    );
+    expect(keyEntry("Sign-ins")).toHaveTextContent(/^Sign-ins16$/);
+
+    await user.click(screen.getByRole("button", { name: "Previous month" }));
+    await screen.findByText("August 2026");
+    await waitFor(() =>
+      expect(keyEntry("Active accounts")).toHaveTextContent(
+        /^Active accounts$/,
+      ),
+    );
   });
 
   it("totals accounts, active now, and the month's peak and average daily active", async () => {

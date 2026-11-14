@@ -91,6 +91,17 @@ export interface AdminStatsDay {
 }
 
 /**
+ * One calendar month the range touches, counted over the whole month whatever
+ * day the range starts or ends on. `month` is its first day, `YYYY-MM-01`.
+ * `active_accounts` is the distinct accounts with a session used in it - so far,
+ * for the current month - or null for a month the instance holds no count of.
+ */
+export interface AdminStatsMonth {
+  month: string;
+  active_accounts: number | null;
+}
+
+/**
  * Two figures as of the request rather than of any day: every account, and the
  * accounts holding a session that can still authenticate.
  */
@@ -108,6 +119,7 @@ export interface AdminStats {
   to: string;
   channels: AdminStatsChannel[];
   days: AdminStatsDay[];
+  months: AdminStatsMonth[];
   totals: AdminStatsTotals;
 }
 

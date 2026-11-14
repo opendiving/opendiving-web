@@ -95,6 +95,9 @@ export interface Series {
   colour: string;
   // One value per day of the response, in its order.
   values: number[];
+  // The month's figure in the key. Left out, the days add up to it; null when
+  // they do not and the month has no figure of its own.
+  total?: number | null;
 }
 
 /**
@@ -143,8 +146,14 @@ export function accountSeries(stats: AdminStats): Series[] {
   ];
 }
 
-/** The activity chart's two series: sign-ins, and accounts with a session used. */
+/**
+ * The activity chart's two series: sign-ins, and accounts with a session used.
+ * An account active on ten days is one active account for the month, not ten, so
+ * that series' total is the API's distinct count for the month the range starts
+ * in rather than the sum of its days.
+ */
 export function activitySeries(stats: AdminStats): Series[] {
+  const month = `${stats.from.slice(0, 7)}-01`;
   return [
     {
       key: "sign_ins",
@@ -157,6 +166,9 @@ export function activitySeries(stats: AdminStats): Series[] {
       label: "Active accounts",
       colour: "text-teal",
       values: stats.days.map((day) => day.active_accounts),
+      total:
+        stats.months.find((one) => one.month === month)?.active_accounts ??
+        null,
     },
   ];
 }
@@ -170,9 +182,7 @@ export interface DailyActive {
 }
 
 /**
- * The month's peak and average daily active, from `days` alone: no count of
- * distinct accounts over a window exists to ask for, because nothing records who
- * was active on which day beyond the day's total.
+ * The month's peak and average daily active, from `days`.
  *
  * The average runs over the days up to and including today, since the API
  * zero-fills the rest of the month and counting those would halve a current

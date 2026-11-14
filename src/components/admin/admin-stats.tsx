@@ -39,11 +39,9 @@ type Loaded =
  * active accounts per day, and the figures beside them - one UTC month at a
  * time, one request per month.
  *
- * Nothing here names an account, because nothing the route returns does. And
- * there is no 7- or 30-day active figure: the API records a day's total and
- * never who made it up, so a count of distinct accounts over a window does not
- * exist to be shown. Peak and average daily active are what the month's days
- * can honestly say.
+ * Nothing here names an account, because nothing the route returns does. The
+ * only distinct count over more than a day is the calendar month's active
+ * accounts, so there is no 7- or 30-day active figure.
  */
 export function AdminStatsScreen() {
   const [thisMonth] = useState(() => currentMonth());
