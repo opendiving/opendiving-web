@@ -164,6 +164,7 @@ describe("SettingsNav", () => {
       map_tiles: false,
       dive_conditions: false,
       commons_primary: false,
+      mcp_enabled: true,
     };
     render(<SettingsNav />);
 
@@ -171,6 +172,7 @@ describe("SettingsNav", () => {
       "Account",
       "Check-in",
       "Authentication",
+      "MCP",
       "Data",
       "Notifications",
       "Preferences",
@@ -186,10 +188,12 @@ describe("SettingsNav", () => {
       map_tiles: false,
       dive_conditions: false,
       commons_primary: false,
+      mcp_enabled: false,
     };
     render(<SettingsNav />);
 
     expect(labels()).not.toContain("Invitations");
+    expect(labels()).not.toContain("MCP");
   });
 
   it("keeps Invitations while the mode is not known", () => {
@@ -198,5 +202,7 @@ describe("SettingsNav", () => {
     render(<SettingsNav />);
 
     expect(labels()).toContain("Invitations");
+    // MCP is off unless the API says otherwise, so an unknown config hides it.
+    expect(labels()).not.toContain("MCP");
   });
 });

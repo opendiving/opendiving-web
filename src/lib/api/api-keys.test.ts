@@ -78,3 +78,34 @@ describe("revokeApiKey", () => {
     expect(remove).toHaveBeenCalledWith("/user/api-key/key-1");
   });
 });
+
+describe("detailed permissions", () => {
+  it("loads the instance permission catalog", async () => {
+    get.mockResolvedValue({ data: ["dives:read", "dives:write"] });
+    await expect(apiKeysAPI.getPermissions()).resolves.toEqual([
+      "dives:read",
+      "dives:write",
+    ]);
+    expect(get).toHaveBeenCalledWith("/user/api-key-permissions");
+  });
+
+  it("submits and validates scoped keys", async () => {
+    const key = {
+      ...KEY,
+      scope: "scoped",
+      scopes: ["dives:read"],
+      secret: "odk_example",
+    };
+    post.mockResolvedValue({ data: key });
+    const body = {
+      name: "laptop",
+      scope: "scoped",
+      scopes: ["dives:read"],
+      lifetime: "1y",
+    } satisfies Parameters<typeof apiKeysAPI.createApiKey>[0];
+    await expect(apiKeysAPI.createApiKey(body)).resolves.toEqual(key);
+    expect(post).toHaveBeenCalledWith("/user/api-keys", body);
+    post.mockResolvedValue({ data: { ...key, scopes: null } });
+    await expect(apiKeysAPI.createApiKey(body)).rejects.toThrow();
+  });
+});

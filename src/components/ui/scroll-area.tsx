@@ -1,0 +1,60 @@
+"use client";
+
+import * as React from "react";
+import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area";
+
+import { cn } from "@/lib/utils";
+import type { AppComponentProps } from "./component-props";
+
+interface ScrollAreaProps extends AppComponentProps<
+  typeof ScrollAreaPrimitive.Root
+> {
+  viewportClassName?: string;
+}
+
+const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(
+  ({ className, viewportClassName, children, ...props }, ref) => (
+    <ScrollAreaPrimitive.Root
+      ref={ref}
+      className={cn("relative overflow-hidden", className)}
+      {...props}
+    >
+      <ScrollAreaPrimitive.Viewport
+        tabIndex={0}
+        className={cn(
+          "h-full w-full rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          viewportClassName,
+        )}
+      >
+        <ScrollAreaPrimitive.Content>{children}</ScrollAreaPrimitive.Content>
+      </ScrollAreaPrimitive.Viewport>
+      <ScrollBar />
+      <ScrollAreaPrimitive.Corner />
+    </ScrollAreaPrimitive.Root>
+  ),
+);
+ScrollArea.displayName = "ScrollArea";
+
+const ScrollBar = React.forwardRef<
+  HTMLDivElement,
+  AppComponentProps<typeof ScrollAreaPrimitive.Scrollbar>
+>(({ className, orientation = "vertical", ...props }, ref) => (
+  <ScrollAreaPrimitive.Scrollbar
+    ref={ref}
+    orientation={orientation}
+    className={cn(
+      "flex touch-none select-none opacity-0 transition-opacity data-[hovering]:opacity-100 data-[scrolling]:opacity-100",
+      orientation === "vertical" &&
+        "h-full w-2.5 border-l border-l-transparent p-px",
+      orientation === "horizontal" &&
+        "h-2.5 flex-col border-t border-t-transparent p-px",
+      className,
+    )}
+    {...props}
+  >
+    <ScrollAreaPrimitive.Thumb className="relative flex-1 rounded-full bg-border" />
+  </ScrollAreaPrimitive.Scrollbar>
+));
+ScrollBar.displayName = "ScrollBar";
+
+export { ScrollArea, ScrollBar };

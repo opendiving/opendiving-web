@@ -9,6 +9,7 @@ import {
   HardDrive,
   KeyRound,
   MailPlus,
+  Plug,
   SlidersHorizontal,
   User,
   type LucideIcon,
@@ -31,6 +32,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     label: "Authentication",
     icon: KeyRound,
   },
+  { href: "/settings/mcp", label: "MCP", icon: Plug },
   { href: "/settings/data", label: "Data", icon: HardDrive },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
   {
@@ -147,10 +149,11 @@ export function SettingsNav() {
   // An instance anyone may register on has nobody to invite. Hidden only once the
   // config says so: while it loads, or if it failed, the entry stays, because the
   // page behind it answers for itself either way.
-  const sections = SETTINGS_SECTIONS.filter(
-    (section) =>
-      section.href !== "/settings/invitations" ||
-      config?.registration_mode !== "open",
+  // MCP is the reverse: off by default, so shown only once the config says it is on.
+  const sections = SETTINGS_SECTIONS.filter((section) =>
+    section.href === "/settings/invitations"
+      ? config?.registration_mode !== "open"
+      : section.href !== "/settings/mcp" || config?.mcp_enabled === true,
   );
 
   return (

@@ -107,6 +107,7 @@ const CONFIG: InstanceConfig = {
   map_tiles: false,
   dive_conditions: false,
   commons_primary: false,
+  mcp_enabled: false,
 };
 
 const CHECKIN_DETAILS: CheckinDetails = {

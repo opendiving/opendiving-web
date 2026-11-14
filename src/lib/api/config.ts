@@ -55,6 +55,12 @@ export interface InstanceConfig {
    * from the server, to say what proposing shows, publishes and takes away.
    */
   commons_primary: boolean;
+  /**
+   * Whether this instance's API serves MCP. The settings menu shows its MCP entry,
+   * and `/settings/mcp` its page, only on `true`; an API too old to carry the
+   * field has no MCP to offer.
+   */
+  mcp_enabled: boolean;
 }
 
 /** One live join link: the slug its address carries, and the name it is shown by. */
@@ -95,8 +101,8 @@ export const JOIN_CHANNEL_SLUG = /^[a-z0-9-]{1,32}$/;
  * anyway, the mode by which form it then shows and the operator by how that form
  * reads, and `/privacy` discloses `join_links` by whether its join-link paragraph
  * is there, `map_tiles` by whether a card shows a map at all, `dive_conditions`
- * by whether a dive page credits a weather service and `commons_primary` by what
- * `/privacy` says of its maps.
+ * by whether a dive page credits a weather service, `commons_primary` by what
+ * `/privacy` says of its maps and `mcp_enabled` by whether the MCP endpoint answers.
  */
 export const configAPI = {
   /**

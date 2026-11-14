@@ -26,6 +26,7 @@ const primary = (commons_primary: boolean) =>
       map_tiles: false,
       dive_conditions: false,
       commons_primary,
+      mcp_enabled: false,
     },
     isLoading: false,
   });

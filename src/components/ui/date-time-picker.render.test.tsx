@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useLayoutEffect, useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePointer } from "@/test/pointer";
 import { DateTimePicker } from "./date-time-picker";
@@ -159,8 +159,8 @@ describe("DateTimePicker text entry", () => {
     await userEvent.keyboard("{Escape}");
 
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    await waitFor(() => expect(icon).toHaveFocus());
     expect(document.body).not.toHaveFocus();
-    expect(icon).toHaveFocus();
   });
 
   it("never paints the value it held before an outside change", async () => {
