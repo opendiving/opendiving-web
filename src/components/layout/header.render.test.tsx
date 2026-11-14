@@ -339,11 +339,11 @@ describe("the partner apps", () => {
     stable.instanceConfig.config = config;
     render(<Header />);
 
-    expect(burgerRows().at(-1)).toBe("Contacts");
+    expect(burgerRows().slice(-1)).toEqual(["Contacts"]);
     expect(within(burger()).queryByText("Partner apps")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "More" }));
     const menu = await screen.findByRole("menu");
-    expect(menuRows(menu).at(-1)).toBe("Contacts");
+    expect(menuRows(menu).slice(-1)).toEqual(["Contacts"]);
     expect(within(menu).queryByText("Partner apps")).toBeNull();
   });
 });
