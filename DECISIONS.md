@@ -3505,9 +3505,11 @@ analytics, because none exist and the CSP forbids one structurally (`connect-src
 nothing else). Template claims like "Usage Data: pages visited, features used, time spent", "analyze
 usage patterns" or an "Analytics Cookies" bullet do not belong there: a policy that overstates what
 is collected is not the safe direction to be wrong, since it is the document a reader uses to decide
-whether to trust the rest. The daily totals are not usage analytics in that sense: per-day counts of
-the whole copy — accounts created by door, sign-ins, active accounts — naming nobody, and §2.2
-admits the one-sign-up-day inference rather than calling them anonymous.
+whether to trust the rest. The daily totals are not usage analytics in that sense: per-day and
+per-month counts of the whole copy — accounts created by door, sign-ins, active accounts — naming
+nobody, and §2.2 admits the one-sign-up-day inference rather than calling them anonymous. The list
+of the month's active accounts the monthly count is taken from does name accounts, so §2.2 lists it
+as a record and §7 gives it its month-long life.
 
 ## HSTS is decided per request, and omits `preload`
 

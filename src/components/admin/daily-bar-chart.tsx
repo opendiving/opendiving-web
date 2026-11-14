@@ -235,7 +235,7 @@ export function DailyBarChart({
       )}
 
       {/* The key, with each series' total for the month - the figure the bars
-          are worst at giving exactly. */}
+          are worst at giving exactly - or no figure where the series has none. */}
       <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
         {series.map((one) => (
           <li key={one.key} className="flex items-center gap-1.5">
@@ -247,9 +247,11 @@ export function DailyBarChart({
               <rect width={10} height={10} rx={2} fill="currentColor" />
             </svg>
             <span>{one.label}</span>
-            <span className="tabular-nums text-muted-foreground">
-              {one.values.reduce((sum, value) => sum + value, 0)}
-            </span>
+            {one.total !== null && (
+              <span className="tabular-nums text-muted-foreground">
+                {one.total ?? one.values.reduce((sum, value) => sum + value, 0)}
+              </span>
+            )}
           </li>
         ))}
       </ul>

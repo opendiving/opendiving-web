@@ -59,8 +59,8 @@ export default async function PrivacyPage() {
   const proposingSection =
     13 + (googleClientId ? 1 : 0) + (diveConditions ? 1 : 0);
 
-  // Eight things every copy has, the map tiles and the proposals where it has them.
-  const outsideTheButtons = ["Eight", "Nine", "Ten"][
+  // Nine things every copy has, the map tiles and the proposals where it has them.
+  const outsideTheButtons = ["Nine", "Ten", "Eleven"][
     Number(mapTiles) + Number(commonsPrimary)
   ];
 
@@ -422,11 +422,12 @@ export default async function PrivacyPage() {
                 2.2 Automatically Collected Information
               </h3>
               <p className="text-foreground mb-4">
-                Seven things are recorded without you asking for them, and all
-                seven are ordinary machinery. Two of them &mdash; signed-in
+                Eight things are recorded without you asking for them, and all
+                eight are ordinary machinery. Two of them &mdash; signed-in
                 devices and account security events &mdash; are also counted,
-                into daily totals that name nobody, which the end of this
-                section describes:
+                into totals that name nobody, which the end of this section
+                describes, and a third exists only so that one of those totals
+                can be counted:
               </p>
               <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
                 <li>
@@ -451,9 +452,18 @@ export default async function PrivacyPage() {
                   or the OpenDiving app&rsquo;s longer one, which section 10.1
                   describes. That record is what makes the list in Settings
                   possible, and it is the only reason signing another device out
-                  can work at all. It is also counted into the day&rsquo;s total
-                  of active accounts, below. It holds nothing from the sign-in
-                  cookie itself
+                  can work at all. It is also counted into the day&rsquo;s and
+                  the month&rsquo;s totals of active accounts, below. It holds
+                  nothing from the sign-in cookie itself
+                </li>
+                <li>
+                  <strong>This month&rsquo;s active accounts:</strong> A list of
+                  the accounts that used a signed-in session in the current
+                  calendar month, UTC, and nothing else &mdash; not when, not
+                  how often, not from where. It is how the month&rsquo;s total
+                  of active accounts counts an account active on ten days once
+                  rather than ten times, and it goes as soon as that total is
+                  final, as section 7 says
                 </li>
                 <li>
                   <strong>Account security events:</strong> A record of things
@@ -543,26 +553,29 @@ export default async function PrivacyPage() {
                 What is kept in your browser is a separate matter, and section
                 10 lists all of it. No usage data about <em>you</em> is
                 collected: nothing here measures which pages you visit, which
-                dives you open, or how long you spend, and none of the seven
+                dives you open, or how long you spend, and none of the eight
                 above is compared or profiled. The security record names things
                 that happened to your account &mdash; not what you were doing in
                 the app.
               </p>
               <p className="text-foreground mb-4">
                 What is counted is a set of <strong>daily totals</strong>, each
-                a number per day for this copy as a whole: how many accounts
-                were created, and through which door &mdash; an invitation, an
-                invitation answering a request to be invited, signing up where
-                this copy lets anyone in,{" "}
+                a number for this copy as a whole, counted per day or, for one
+                of them, per month: how many accounts were created, and through
+                which door &mdash; an invitation, an invitation answering a
+                request to be invited, signing up where this copy lets anyone
+                in,{" "}
                 {joinLinks && (
                   <>a join link, counted under where it was posted, </>
                 )}
                 or being the first account on a new copy; how many accounts
                 signed in; and how many were active, meaning a signed-in session
-                of theirs was used that day. No account is named in any of them.
-                They are not anonymous in every case, though, and this page will
-                not claim they are: on a day when only one account was created,
-                that day&rsquo;s total and the account&rsquo;s own creation date
+                of theirs was used that day, and how many were active in each
+                calendar month, each account counted once however many days it
+                was active. No account is named in any of them. They are not
+                anonymous in every case, though, and this page will not claim
+                they are: on a day when only one account was created, that
+                day&rsquo;s total and the account&rsquo;s own creation date
                 together show which door it came through. Section 7 says how
                 long the totals are kept.
               </p>
@@ -748,8 +761,10 @@ export default async function PrivacyPage() {
                   <strong>Count how this copy is used:</strong> Keep the daily
                   totals from section 2.2 &mdash; accounts created and through
                   which door, accounts that signed in, accounts that were active
-                  &mdash; so whoever runs this copy can see how many people it
-                  serves and how they got in. They name nobody
+                  that day and that month &mdash; so whoever runs this copy can
+                  see how many people it serves and how they got in. They name
+                  nobody; the list of this month&rsquo;s active accounts they
+                  are counted from does, and is kept for that count alone
                 </li>
               </ul>
               <p className="text-foreground mb-4">
@@ -1963,11 +1978,12 @@ export default async function PrivacyPage() {
                     for 30 days after.
                   </>
                 )}{" "}
-                And three records in section 2.2 are in neither, the account
-                security events, the retry records and the identifiers of
-                replaced sites: nothing in the app shows them to you and no
-                button copies them, so a copy of any of them has to be asked for
-                like the rights below.
+                And four records in section 2.2 are in neither, the account
+                security events, the retry records, the identifiers of replaced
+                sites and the list of this month&rsquo;s active accounts:
+                nothing in the app shows them to you and no button copies them,
+                so a copy of any of them has to be asked for like the rights
+                below.
                 {commonsPrimary && (
                   <>
                     {" "}
@@ -2111,7 +2127,7 @@ export default async function PrivacyPage() {
                 older dives would be the wrong product.
               </p>
               <p className="text-foreground mb-4">
-                Three of the records in section 2.2 expire on their own, whether
+                Four of the records in section 2.2 expire on their own, whether
                 or not you delete anything, because none is anything you
                 entered. A <strong>signed-in device&rsquo;s session</strong> is
                 deleted after it stops being able to sign you in: one that went
@@ -2131,7 +2147,11 @@ export default async function PrivacyPage() {
                 OpenDiving app&rsquo;s session can sit unused &mdash; about
                 three months, the window section 10.1 describes &mdash; so that
                 something the app sends again days after a lost reply still
-                finds it.
+                finds it. The{" "}
+                <strong>list of this month&rsquo;s active accounts</strong> is
+                emptied of a month within the first hour of the next, once that
+                month&rsquo;s total is written, so no account is on it for
+                longer than a calendar month.
               </p>
               <p className="text-foreground mb-4">
                 An <strong>import</strong> expires on its own too, if whoever
@@ -2213,9 +2233,9 @@ export default async function PrivacyPage() {
               <p className="text-foreground mb-4">
                 The <strong>daily totals</strong> in section 2.2 are kept for as
                 long as this copy runs, and deleting an account does not lower
-                them: each is a count of what happened on one day rather than a
-                record about anyone, and a total that shrank when somebody left
-                would no longer say what happened that day.
+                them: each is a count of what happened on one day or in one
+                month rather than a record about anyone, and a total that shrank
+                when somebody left would no longer say what happened then.
               </p>
               <p className="text-foreground mb-4">
                 When you delete your account:
@@ -2270,7 +2290,8 @@ export default async function PrivacyPage() {
                   shows no username
                 </li>
                 <li>
-                  Your sessions, your API keys, your retry records and your
+                  Your sessions, your API keys, your retry records, your place
+                  on the list of this month&rsquo;s active accounts and your
                   account security events go with it. The entries made before
                   the account existed have nothing linking them to it, so they
                   are found by the email address instead &mdash; the same way

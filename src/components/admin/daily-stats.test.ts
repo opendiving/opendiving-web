@@ -29,6 +29,7 @@ const stats = (
   to: days[days.length - 1].day,
   channels,
   days,
+  months: [],
   totals: { accounts: 10, active_now: 3 },
 });
 
@@ -118,6 +119,32 @@ describe("the activity series", () => {
       ["Sign-ins", [2]],
       ["Active accounts", [5]],
     ]);
+  });
+
+  const september = (months: AdminStats["months"]) => ({
+    ...stats([
+      day("2026-09-01", { sign_ins: 1, active_accounts: 3 }),
+      day("2026-09-02", { sign_ins: 1, active_accounts: 2 }),
+    ]),
+    months,
+  });
+
+  it("totals active accounts by the month's distinct count, not its days", () => {
+    const [signIns, active] = activitySeries(
+      september([{ month: "2026-09-01", active_accounts: 4 }]),
+    );
+
+    expect(signIns.total).toBeUndefined();
+    expect(active.total).toBe(4);
+  });
+
+  it("has no active total for a month the API holds no count of", () => {
+    expect(
+      activitySeries(
+        september([{ month: "2026-09-01", active_accounts: null }]),
+      )[1].total,
+    ).toBeNull();
+    expect(activitySeries(september([]))[1].total).toBeNull();
   });
 });
 

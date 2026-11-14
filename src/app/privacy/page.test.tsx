@@ -253,7 +253,7 @@ describe.each([
       /records in section 2\.2 expire on their own/,
     );
     expect(expiring).toHaveTextContent(
-      /^Three of the records in section 2\.2 expire on their own/,
+      /^Four of the records in section 2\.2 expire on their own/,
     );
     const named = [...expiring.querySelectorAll("strong")].map(
       (strong) => strong.textContent,
@@ -262,6 +262,7 @@ describe.each([
       "signed-in device’s session",
       "account security events",
       "retry record",
+      "list of this month’s active accounts",
     ]);
     expect(expiring).toHaveTextContent(/about three\s+months/);
   });
@@ -692,6 +693,7 @@ describe.each([
     expect(totals).toMatch(/how many accounts\s+were created/);
     expect(totals).toMatch(/how many accounts\s+signed in/);
     expect(totals).toMatch(/how many were active/);
+    expect(totals).toMatch(/how many were active in each\s+calendar month/);
     expect(totals).toMatch(/No account is named in any of them/);
     expect(totals).toMatch(/on a day when only one account was created/);
 
@@ -921,9 +923,9 @@ describe("the map tiles", () => {
       /map pictures?|tiles this copy draws/i,
     );
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Eight things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Nine things sit outside those buttons/);
     expect(rights).toHaveTextContent(
-      /three records in section 2\.2 are in neither, the account security events, the retry records and the identifiers of replaced sites/,
+      /four records in section 2\.2 are in neither, the account security events, the retry records, the identifiers of replaced sites and the list of this month’s active accounts/,
     );
     expect(rights).toHaveTextContent(
       /The email address you sign in with, your username, the list of signed-in devices and your API keys are in Settings but are not part of the export/,
@@ -965,7 +967,7 @@ describe("the map tiles", () => {
 
     // §6.2: outside the export, and outside the deletion, because not yours.
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Nine things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Ten things sit outside those buttons/);
     expect(rights).toHaveTextContent(
       /The email address you sign in with, your username, the list of signed-in devices and your API keys are in Settings but are not part of the export/,
     );
@@ -1656,11 +1658,11 @@ describe("proposing for OpenDiving Commons", () => {
 
   it("§6.2 counts proposals among what sits outside the buttons", async () => {
     await renderPage({ google: false, commonsPrimary: true });
-    expect(pageText()).toContain("Nine things sit outside those buttons");
+    expect(pageText()).toContain("Ten things sit outside those buttons");
 
     cleanup();
     await renderPage({ google: false, commonsPrimary: true, mapTiles: true });
-    expect(pageText()).toContain("Ten things sit outside those buttons");
+    expect(pageText()).toContain("Eleven things sit outside those buttons");
     expect(pageText()).toMatch(
       /Nor is a proposal for OpenDiving Commons in the export/,
     );
@@ -1699,7 +1701,7 @@ describe("proposing for OpenDiving Commons", () => {
         /The identifier of a replaced site has no expiry of its own/,
       );
       expect(text).toMatch(
-        /three records in section 2\.2 are in neither, the account security events, the retry records and the identifiers of replaced sites/,
+        /four records in section 2\.2 are in neither, the account security events, the retry records, the identifiers of replaced sites and the list of this month’s active accounts/,
       );
     },
   );
