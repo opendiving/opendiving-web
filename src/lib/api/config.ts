@@ -62,6 +62,32 @@ export interface InstanceConfig {
    * is unknown the entry stays and the page asks the connections endpoint.
    */
   mcp_enabled: boolean;
+  /**
+   * The experimental features this instance switches on, each once and sorted;
+   * `all` switches on every one. Read it through `experimentalFeatureOn` or
+   * `useExperimentalFeature`, never directly. Optional because an API older than
+   * the member, and a response a browser cached before it, both lack it - and a
+   * config without it switches nothing on.
+   */
+  experimental_features?: string[];
+}
+
+/** The entry of `experimental_features` that switches on every feature. */
+export const EVERY_EXPERIMENTAL_FEATURE = "all";
+
+/**
+ * Whether the instance switches the named experimental feature on. Off until it
+ * has answered: an unknown config, whether still loading or failed, and one too
+ * old to carry the member, all read as off.
+ */
+export function experimentalFeatureOn(
+  config: InstanceConfig | null,
+  name: string,
+): boolean {
+  const features = config?.experimental_features ?? [];
+  return (
+    features.includes(EVERY_EXPERIMENTAL_FEATURE) || features.includes(name)
+  );
 }
 
 /** One live join link: the slug its address carries, and the name it is shown by. */
@@ -103,7 +129,8 @@ export const JOIN_CHANNEL_SLUG = /^[a-z0-9-]{1,32}$/;
  * reads, and `/privacy` discloses `join_links` by whether its join-link paragraph
  * is there, `map_tiles` by whether a card shows a map at all, `dive_conditions`
  * by whether a dive page credits a weather service, `commons_primary` by what
- * `/privacy` says of its maps and `mcp_enabled` by whether the MCP endpoint answers.
+ * `/privacy` says of its maps, `mcp_enabled` by whether the MCP endpoint answers
+ * and `experimental_features` by whether a feature's pages and routes are there.
  */
 export const configAPI = {
   /**

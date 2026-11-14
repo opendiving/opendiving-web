@@ -108,6 +108,7 @@ const CONFIG: InstanceConfig = {
   dive_conditions: false,
   commons_primary: false,
   mcp_enabled: false,
+  experimental_features: [],
 };
 
 const CHECKIN_DETAILS: CheckinDetails = {

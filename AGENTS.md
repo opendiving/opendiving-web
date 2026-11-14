@@ -82,6 +82,26 @@ limit/offset.
 
 Full contract, including the status codes in use, is in `opendiving-api/AGENTS.md`.
 
+## Experimental features
+
+A feature that is not ready merges behind a gate and is off unless the instance switches it on:
+`GET /config`'s `experimental_features` names it or says `all`. The API is the only source — no
+runtime-config member and no `NEXT_PUBLIC_` variable takes part. Read it through
+`useExperimentalFeature("<name>")` (`hooks/useExperimentalFeature.ts`), or
+`experimentalFeatureOn(config, "<name>")` (`lib/api/config.ts`) where a component already holds the
+config; both read a config still loading, a failed read and an API too old to carry the member as
+off. The API gates the same name with `require_experimental_feature`.
+
+- **A route** is a thin server page whose client body holds its loading frame while `isLoading`
+  and renders `NotFoundState` on `!isOn`, the way `components/admin/proposal-queue.tsx` does for
+  `commons_primary`.
+- **A navigation entry** is filtered where its list is defined, as `SETTINGS_SECTIONS` is in
+  `components/settings/settings-nav.tsx`.
+- **A section inside a page** renders nothing while the feature is off.
+- **A test supplies the answer** by mocking `useInstanceConfig` with a config whose
+  `experimental_features` names the feature, or leaves it out for the off case. The e2e suite's
+  `/config` fixture in `e2e/support/api.ts` answers `[]`, so every feature is off there.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
