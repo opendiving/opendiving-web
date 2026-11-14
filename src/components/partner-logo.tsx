@@ -5,8 +5,8 @@ interface PartnerLogoProps {
   className?: string;
 }
 
-// Decorative: the partner's name always sits beside it. A plain `<img>` because
-// both files are already small, and `next/image` would refuse the SVG.
+// Decorative: the partner's name always sits beside it. A plain `<img>`, as
+// everywhere in the app: nothing uses `next/image` (see `next.config.js`).
 export function PartnerLogo({ partner, className }: PartnerLogoProps) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
