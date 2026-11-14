@@ -29,13 +29,7 @@ import {
 import { Activity } from "lucide-react";
 import { CardFigure, CardFigures } from "@/components/dives/card-figure";
 import { useUnits } from "@/hooks/useUnits";
-import {
-  formatDepth,
-  formatGasVolume,
-  formatRmv,
-  formatSac,
-  type UnitSystem,
-} from "@/lib/units";
+
 import { labelOrFallback } from "@/lib/api/labels";
 
 interface DiveGasConsumptionCardProps {
@@ -63,7 +57,7 @@ interface DiveGasConsumptionCardProps {
  * tank was breathed when), where silence would read as a bug.
  */
 export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
-  const units = useUnits();
+  const { formatDepth, formatGasVolume, formatRmv, formatSac } = useUnits();
 
   // Null both when the figures are present and when the dive was never a candidate for
   // any, so `dive.gas_use || reason` is the whole "is there anything to show" test.
@@ -176,17 +170,15 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                         <TableCell>
                           {formatTimeOnGas(row.use.seconds_on_gas)}
                         </TableCell>
+                        <TableCell>{formatDepth(row.use.mean_depth)}</TableCell>
                         <TableCell>
-                          {formatDepth(row.use.mean_depth, units)}
-                        </TableCell>
-                        <TableCell>
-                          {formatGasVolume(row.use.gas_used, units)}
+                          {formatGasVolume(row.use.gas_used)}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatRmv(row.use.rmv, units)}
+                          {formatRmv(row.use.rmv)}
                         </TableCell>
                         <TableCell>
-                          {formatSac(row.use.sac_bar_per_min, units)}
+                          {formatSac(row.use.sac_bar_per_min)}
                         </TableCell>
                       </>
                     ) : (
@@ -221,7 +213,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                   separator and weight that were otherwise hand-applied. */}
               {attributedCount > 1 && (
                 <TableFooter>
-                  <TotalRow gasUse={gasUse} units={units} />
+                  <TotalRow gasUse={gasUse} />
                 </TableFooter>
               )}
             </Table>
@@ -251,7 +243,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                   on; SAC is how fast *this* cylinder emptied, and is the field the API
                   already calls `sac_bar_per_min`. Units stay with the values, never
                   doubled in the label. */}
-              <CardFigure label="RMV" value={formatRmv(gasUse.rmv, units)} />
+              <CardFigure label="RMV" value={formatRmv(gasUse.rmv)} />
               {/* Nullable: an additive parallel set whose cylinders are of
                   *unequal* volume gets a null SAC alongside an empty `tanks`,
                   because a mean pressure drop across two different volumes is not
@@ -262,13 +254,13 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                 label="SAC"
                 value={
                   gasUse.sac_bar_per_min != null
-                    ? formatSac(gasUse.sac_bar_per_min, units)
+                    ? formatSac(gasUse.sac_bar_per_min)
                     : null
                 }
               />
               <CardFigure
                 label="Gas used"
-                value={formatGasVolume(gasUse.gas_used, units)}
+                value={formatGasVolume(gasUse.gas_used)}
               />
             </CardFigures>
             {/* **Not** gated on the SAC. This sentence *names the denominator*,
@@ -290,9 +282,8 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
             {dive.avg_depth != null && (
               <p className="text-xs text-muted-foreground mt-4">
                 What you&apos;d have breathed doing the same dive at the
-                surface, from an average depth of{" "}
-                {formatDepth(dive.avg_depth, units)}. Assumes salt water at sea
-                level. Lower is better.
+                surface, from an average depth of {formatDepth(dive.avg_depth)}.
+                Assumes salt water at sea level. Lower is better.
               </p>
             )}
           </>
@@ -330,13 +321,8 @@ function formatTimeOnGas(seconds: number): string {
  * API sends `sac_bar_per_min: null` on precisely these dives for that reason, which is
  * what the dash is rendering.
  */
-function TotalRow({
-  gasUse,
-  units,
-}: {
-  gasUse: NonNullable<Dive["gas_use"]>;
-  units: UnitSystem;
-}) {
+function TotalRow({ gasUse }: { gasUse: NonNullable<Dive["gas_use"]> }) {
+  const { formatGasVolume, formatRmv, formatSac } = useUnits();
   const attributed = gasUse.attributed_seconds;
 
   return (
@@ -355,15 +341,15 @@ function TotalRow({
         {attributed != null ? formatTimeOnGas(attributed) : "-"}
       </TableCell>
       <TableCell className="text-muted-foreground">-</TableCell>
-      <TableCell>{formatGasVolume(gasUse.gas_used, units)}</TableCell>
-      <TableCell>{formatRmv(gasUse.rmv, units)}</TableCell>
+      <TableCell>{formatGasVolume(gasUse.gas_used)}</TableCell>
+      <TableCell>{formatRmv(gasUse.rmv)}</TableCell>
       <TableCell
         className={
           gasUse.sac_bar_per_min == null ? "text-muted-foreground" : undefined
         }
       >
         {gasUse.sac_bar_per_min != null
-          ? formatSac(gasUse.sac_bar_per_min, units)
+          ? formatSac(gasUse.sac_bar_per_min)
           : "-"}
       </TableCell>
     </TableRow>

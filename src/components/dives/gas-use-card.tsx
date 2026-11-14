@@ -23,7 +23,6 @@ import {
   useChartPeriodView,
 } from "@/hooks/useChartPeriodView";
 import { useUnits } from "@/hooks/useUnits";
-import { displayNumber, unitLabel, type UnitSystem } from "@/lib/units";
 
 const GAS_USE_SOURCE: ChartPeriodSource<DiveGasUsePoint> = {
   load: () => diveStatsAPI.getGasUseHistory(),
@@ -45,7 +44,6 @@ const GAS_USE_SOURCE: ChartPeriodSource<DiveGasUsePoint> = {
 // `GasUseChart` owns that message, since it's the component that knows two
 // points are the minimum.
 export function GasUseCard() {
-  const units = useUnits();
   const view = useChartPeriodView(GAS_USE_SOURCE);
   const { points, times, scope, anchor } = view;
 
@@ -84,7 +82,7 @@ export function GasUseCard() {
           <ChartSkeleton stats={3} legend />
         ) : (
           <>
-            {summary && <GasUseSummaryRow summary={summary} units={units} />}
+            {summary && <GasUseSummaryRow summary={summary} />}
             <GasUseChart points={points} scope={scope} anchor={anchor} />
           </>
         )}
@@ -112,20 +110,14 @@ export function GasUseCard() {
 // The chart shows the shape; this answers "am I improving", which is the
 // question the card exists for and the one a scatter of dots is worst at
 // answering at a glance.
-function GasUseSummaryRow({
-  summary,
-  units,
-}: {
-  summary: GasUseSummary;
-  units: UnitSystem;
-}) {
+function GasUseSummaryRow({ summary }: { summary: GasUseSummary }) {
   return (
     <ChartStatRow className="mb-5">
       <ChartStat label="Median" detail={<Change summary={summary} />}>
-        <Figure value={summary.median} units={units} />
+        <Figure value={summary.median} />
       </ChartStat>
       <ChartStat label="Best dive">
-        <Figure value={summary.best} units={units} />
+        <Figure value={summary.best} />
       </ChartStat>
       <ChartStat label="Dives">
         <span className="text-base font-semibold tabular-nums">
@@ -149,15 +141,14 @@ function GasUseSummaryRow({
 // Value and unit are drawn at different sizes, so this builds the string from the
 // two halves `lib/units.ts` exports rather than calling `formatRmv` - the numbers
 // and the label are the same either way.
-function Figure({ value, units }: { value: number; units: UnitSystem }) {
+function Figure({ value }: { value: number }) {
+  const { displayNumber, unitLabel } = useUnits();
   return (
     <>
       <span className="text-base font-semibold tabular-nums">
-        {displayNumber(value, "rmv", units, { decimals: 1 })}
+        {displayNumber(value, "rmv", { decimals: 1 })}
       </span>
-      <span className="text-sm text-muted-foreground">
-        {unitLabel("rmv", units)}
-      </span>
+      <span className="text-sm text-muted-foreground">{unitLabel("rmv")}</span>
     </>
   );
 }

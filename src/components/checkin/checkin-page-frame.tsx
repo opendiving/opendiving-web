@@ -40,7 +40,7 @@ import {
 } from "@/lib/checkin";
 import { formatDateOnly, formatDateTime } from "@/lib/date-time";
 import { todayIsoDate } from "@/lib/date-time";
-import { formatDepth, type UnitSystem } from "@/lib/units";
+import { formatDepth, type UnitSelection } from "@/lib/units";
 import { shrinkPicture } from "@/lib/shrink-picture";
 import { cn } from "@/lib/utils";
 import { useAuthedBlobUrl } from "@/hooks/useAuthedBlobUrl";
@@ -172,7 +172,7 @@ export interface CheckInPageFrameProps {
    */
   details?: "loading" | "failed";
   /** The system the depth prints in - the diver's own, whoever is reading. */
-  units: UnitSystem;
+  units: UnitSelection;
   /** Every card the diver holds, in the list endpoint's own order. */
   certifications?: CheckInCard[];
   /**

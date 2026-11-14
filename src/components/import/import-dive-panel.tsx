@@ -35,11 +35,11 @@ import {
   mixtureSummary,
   recordingProfileSummary,
 } from "@/lib/import-changes";
-import { formatPressure, type UnitSystem } from "@/lib/units";
+import { formatPressure, type UnitSelection } from "@/lib/units";
 
 // A new dive's cylinders and recordings, which a stored dive's page gives cards
 // of their own: the dive does not have that page yet.
-function reviewSections(dive: Dive, units: UnitSystem): RecordInfoSection[] {
+function reviewSections(dive: Dive, units: UnitSelection): RecordInfoSection[] {
   const sections = diveInfoSections(dive, units);
   if (dive.mixtures.length > 0) {
     sections.push({
@@ -105,7 +105,7 @@ function ChangeList({
   units,
 }: {
   changes: readonly LogbookImportChange[];
-  units: UnitSystem;
+  units: UnitSelection;
 }) {
   return (
     <ul className="divide-y divide-border text-sm">
@@ -154,7 +154,7 @@ export function ImportDivePanel({
   applied: boolean;
   onClose: () => void;
 }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const withReturnTo = useWithReturnTo();
   const dive = row?.dive;
 

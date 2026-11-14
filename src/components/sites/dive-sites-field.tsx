@@ -75,7 +75,7 @@ export function DiveSitesField({
         value.length > 1 || !knownSites?.some((site) => site.uuid === uuid),
     ),
   );
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const [isFinding, setFinding] = useState(false);
   const [proposing, setProposing] = useState<DiveSite | null>(null);
   // Read through the `knownSites` prop rather than copied into `records`: the copy

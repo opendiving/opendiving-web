@@ -14,7 +14,7 @@ import {
 
 // The site's own fields in the site form's order.
 export function DiveSiteInfoDialog({ site }: { site: DiveSite }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const externalIds = site.external_ids ?? [];
   const entryTypes = site.entry_types ?? [];
 

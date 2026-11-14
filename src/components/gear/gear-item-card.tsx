@@ -34,7 +34,7 @@ export function GearItemCard({
   onDelete,
   isDeleting,
 }: GearItemCardProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const label = gearItemLabel(item);
   const facts = [
     gearTypeLabel(item.type),

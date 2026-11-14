@@ -4,7 +4,7 @@ import { ExternalIdLink } from "@/components/sites/external-id-link";
 import type { DiveSiteSharedMembers } from "@/lib/api/dive-sites";
 import { ENTRY_TYPE_LABELS, WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { labelOrFallback } from "@/lib/api/labels";
-import { formatAltitude, formatDepth, type UnitSystem } from "@/lib/units";
+import { formatAltitude, formatDepth, type UnitSelection } from "@/lib/units";
 
 // A site's shared members as a reader meets them, row by row: the review queue
 // against a change, and the proposer's preview of what would be published.
@@ -12,7 +12,7 @@ export interface SharedMemberRow {
   label: string;
   // The wire's names for what the row shows, which is what `changed` holds.
   keys: (keyof DiveSiteSharedMembers)[];
-  show: (members: DiveSiteSharedMembers, units: UnitSystem) => ReactNode;
+  show: (members: DiveSiteSharedMembers, units: UnitSelection) => ReactNode;
 }
 
 export const SHARED_MEMBER_ROWS: SharedMemberRow[] = [
