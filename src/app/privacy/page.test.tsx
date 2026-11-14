@@ -1904,7 +1904,7 @@ describe("the app's downloads from a paired dive computer", () => {
       /downloads that computer’s new dives over Bluetooth by itself each time it connects, even with the phone locked/,
     );
     expect(text).toMatch(
-      /imports them into your logbook without a review — unless you switch Download automatically off for that computer/,
+      /even with the phone locked, unless you switch Download automatically off for that computer\. Every download, whether it started by itself or from the app’s screen, is sent to this copy, which imports it into your logbook without a review\./,
     );
     expect(text).toMatch(
       /kept on the phone until this copy has them, and the app remembers which of them it has sent/,

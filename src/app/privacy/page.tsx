@@ -396,10 +396,11 @@ export default async function PrivacyPage() {
                 Dives can arrive without a tap, too. Once you pair a dive
                 computer with the OpenDiving app on a phone, the app downloads
                 that computer&rsquo;s new dives over Bluetooth by itself each
-                time it connects, even with the phone locked, and sends them to
-                this copy, which imports them into your logbook without a review
-                &mdash; unless you switch <em>Download automatically</em> off
-                for that computer. The downloaded dives are kept on the phone
+                time it connects, even with the phone locked, unless you switch{" "}
+                <em>Download automatically</em> off for that computer. Every
+                download, whether it started by itself or from the app&rsquo;s
+                screen, is sent to this copy, which imports it into your logbook
+                without a review. The downloaded dives are kept on the phone
                 until this copy has them, and the app remembers which of them it
                 has sent, so it sends none twice. Where the phone has no
                 internet, the app leaves iOS a request for this copy&rsquo;s
