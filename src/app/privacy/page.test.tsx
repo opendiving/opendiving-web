@@ -15,7 +15,7 @@ import { PROJECT_OPERATOR } from "@/lib/operator";
 // this block is what holds that - a sentence claiming no control exists is the
 // specific thing this section must not say.
 //
-// This is also where the section's conditional half is pinned. §4.13 and the Google
+// This is also where the section's conditional half is pinned. §4.14 and the Google
 // storage key exist only where an instance has Google sign-in configured, so every
 // count here has two correct answers rather than one, and an instance that has not
 // turned Google on must not read as though it had.
@@ -253,7 +253,7 @@ describe.each([
       /records in section 2\.2 expire on their own/,
     );
     expect(expiring).toHaveTextContent(
-      /^Four of the records in section 2\.2 expire on their own/,
+      /^Five of the records in section 2\.2 expire on their own/,
     );
     const named = [...expiring.querySelectorAll("strong")].map(
       (strong) => strong.textContent,
@@ -261,6 +261,7 @@ describe.each([
     expect(named).toEqual([
       "signed-in device’s session",
       "account security events",
+      "tool calls",
       "retry record",
       "list of this month’s active accounts",
     ]);
@@ -394,7 +395,7 @@ describe.each([
       /API keys card switches off at once/,
     );
     expect(screen.getByText(/The first \w+ need no request/)).toHaveTextContent(
-      /signed-in devices and your API keys are in\s+Settings but are not part of the export/,
+      /signed-in devices, your API keys and your connected apps are in\s+Settings, the last where this copy lets apps connect, but are\s+not part of the export/,
     );
     expect(
       screen.getByText(/Security notices, which arrive/).closest("p"),
@@ -923,12 +924,12 @@ describe("the map tiles", () => {
       /map pictures?|tiles this copy draws/i,
     );
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Nine things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Eleven things sit outside those buttons/);
     expect(rights).toHaveTextContent(
-      /four records in section 2\.2 are in neither, the account security events, the retry records, the identifiers of replaced sites and the list of this month’s active accounts/,
+      /five records in section 2\.2 are in neither, the account security events, the connected apps’ tool calls, the retry records, the identifiers of replaced sites and the list of this month’s active accounts/,
     );
     expect(rights).toHaveTextContent(
-      /The email address you sign in with, your username, the list of signed-in devices and your API keys are in Settings but are not part of the export/,
+      /The email address you sign in with, your username, the list of signed-in devices, your API keys and your connected apps are in Settings, the last where this copy lets apps connect, but are not part of the export/,
     );
   });
 
@@ -967,9 +968,9 @@ describe("the map tiles", () => {
 
     // §6.2: outside the export, and outside the deletion, because not yours.
     const rights = screen.getByText(/The first \w+ need no request/);
-    expect(rights).toHaveTextContent(/Ten things sit outside those buttons/);
+    expect(rights).toHaveTextContent(/Twelve things sit outside those buttons/);
     expect(rights).toHaveTextContent(
-      /The email address you sign in with, your username, the list of signed-in devices and your API keys are in Settings but are not part of the export/,
+      /The email address you sign in with, your username, the list of signed-in devices, your API keys and your connected apps are in Settings, the last where this copy lets apps connect, but are not part of the export/,
     );
     expect(rights).toHaveTextContent(
       /Nor are the map tiles section 4\.4 says this copy draws, and deleting your account leaves them too: they are not yours/,
@@ -1054,9 +1055,9 @@ describe("the Google half of the page", () => {
   // pinning nothing, since a query for Google under its old number finds nothing
   // whether or not the page is right. What is pinned is the set: §4.8 is the
   // invitations section, §4.9 the check-in links, §4.10 linking a person, §4.11
-  // API keys and §4.12 photo proposals, all always here, and Google is §4.13 and
-  // is here only when it is configured.
-  it("ends section 4 at 4.12 with no gap when Google is unconfigured", async () => {
+  // API keys, §4.12 photo proposals and §4.13 connecting an app, all always here,
+  // and Google is §4.14 and is here only when it is configured.
+  it("ends section 4 at 4.13 with no gap when Google is unconfigured", async () => {
     await renderPage({ google: false });
 
     expect(screen.getByText(/4\.7 Legal Requirements/)).toBeInTheDocument();
@@ -1071,15 +1072,16 @@ describe("the Google half of the page", () => {
     expect(
       screen.getByText(/4\.12 Proposing a Photo for a Species/),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/4\.13 Signing In with Google/)).toBeNull();
-    expect(screen.queryByText(/^4\.1[3-9] /)).toBeNull();
+    expect(screen.getByText(/4\.13 Connecting an App/)).toBeInTheDocument();
+    expect(screen.queryByText(/4\.14 Signing In with Google/)).toBeNull();
+    expect(screen.queryByText(/^4\.1[4-9] /)).toBeNull();
     expect(document.querySelector('a[href*="policies.google.com"]')).toBeNull();
     expect(storageEntries().some((entry) => entry.includes("google"))).toBe(
       false,
     );
   });
 
-  it("numbers Google 4.13, after the photo proposals section, where it is configured", async () => {
+  it("numbers Google 4.14, after the connecting-an-app section, where it is configured", async () => {
     await renderPage({ google: true });
 
     expect(
@@ -1093,10 +1095,11 @@ describe("the Google half of the page", () => {
     expect(
       screen.getByText(/4\.12 Proposing a Photo for a Species/),
     ).toBeInTheDocument();
+    expect(screen.getByText(/4\.13 Connecting an App/)).toBeInTheDocument();
     expect(
-      screen.getByText(/4\.13 Signing In with Google/),
+      screen.getByText(/4\.14 Signing In with Google/),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/4\.12 Signing In with Google/)).toBeNull();
+    expect(screen.queryByText(/4\.13 Signing In with Google/)).toBeNull();
   });
 
   // §10.4 names one outside party acting on its own account, not two: Google sets
@@ -1134,8 +1137,8 @@ describe("the weather service", () => {
   });
 
   it.each([
-    [false, "4.13"],
-    [true, "4.14"],
+    [false, "4.14"],
+    [true, "4.15"],
   ])(
     "has a section of its own where it is asked, Google %s, numbered %s",
     async (google, number) => {
@@ -1495,13 +1498,13 @@ describe("proposing for OpenDiving Commons", () => {
     "one of the two that show what you entered",
     "This is the third of the four places in the software where something about one person is shown to another",
     "nothing you log is public or shared, so there is nothing to switch off",
-    "The one message here is the note a tool of yours adds to a photo proposal",
+    "The one message here is the note a tool or an app of yours adds to a photo proposal",
     "Delete your account and everything attached to it",
     "The exceptions are a check-in link you made",
     "Exporting what you have entered, your photo proposals aside",
     "nothing is held back for",
     "While your account exists, what you have entered is kept",
-    "unless a tool of yours proposes a photo for a species. There are no groups, no comments",
+    "unless a tool or an app of yours proposes a photo for a species. There are no groups, no comments",
     "and so is every dive site you add yourself",
     "or that you use the site at all",
     "no groups, no comments and no shared logs",
@@ -1586,10 +1589,10 @@ describe("proposing for OpenDiving Commons", () => {
   });
 
   it.each([
-    [false, false, "4.13"],
-    [true, false, "4.14"],
-    [false, true, "4.14"],
-    [true, true, "4.15"],
+    [false, false, "4.14"],
+    [true, false, "4.15"],
+    [false, true, "4.15"],
+    [true, true, "4.16"],
   ])(
     "numbers the section after the conditional ones (Google %s, weather %s)",
     async (google, diveConditions, number) => {
@@ -1609,7 +1612,7 @@ describe("proposing for OpenDiving Commons", () => {
   it("says what is published, what is kept, and how to report a record", async () => {
     await renderPage({ google: false, commonsPrimary: true });
 
-    const section = sectionText(/4\.13 Proposing for OpenDiving Commons/);
+    const section = sectionText(/4\.14 Proposing for OpenDiving Commons/);
     expect(section).toMatch(/the name on your account, never your address/);
     expect(section).toMatch(/how many of your proposals have been accepted/);
     expect(section).toMatch(/Never your notes, your tags or your dives/);
@@ -1631,9 +1634,9 @@ describe("proposing for OpenDiving Commons", () => {
 
     expect(
       screen.getByText(/one of the five places in the software/),
-    ).toHaveTextContent(/section 4\.13/);
+    ).toHaveTextContent(/section 4\.14/);
     expect(screen.getByText(/There are five exceptions\./)).toHaveTextContent(
-      /Section 4\.13/,
+      /Section 4\.14/,
     );
   });
 
@@ -1658,11 +1661,11 @@ describe("proposing for OpenDiving Commons", () => {
 
   it("§6.2 counts proposals among what sits outside the buttons", async () => {
     await renderPage({ google: false, commonsPrimary: true });
-    expect(pageText()).toContain("Ten things sit outside those buttons");
+    expect(pageText()).toContain("Twelve things sit outside those buttons");
 
     cleanup();
     await renderPage({ google: false, commonsPrimary: true, mapTiles: true });
-    expect(pageText()).toContain("Eleven things sit outside those buttons");
+    expect(pageText()).toContain("Thirteen things sit outside those buttons");
     expect(pageText()).toMatch(
       /Nor is a proposal for OpenDiving Commons in the export/,
     );
@@ -1671,7 +1674,7 @@ describe("proposing for OpenDiving Commons", () => {
   it("§4 says the form offers proposing and the proposal follows the site", async () => {
     await renderPage({ google: false, commonsPrimary: true });
 
-    const section = sectionText(/4\.13 Proposing for OpenDiving Commons/);
+    const section = sectionText(/4\.14 Proposing for OpenDiving Commons/);
     expect(section).toMatch(
       /the form that adds or edits a site of yours offers to start as you save it/,
     );
@@ -1701,7 +1704,7 @@ describe("proposing for OpenDiving Commons", () => {
         /The identifier of a replaced site has no expiry of its own/,
       );
       expect(text).toMatch(
-        /four records in section 2\.2 are in neither, the account security events, the retry records, the identifiers of replaced sites and the list of this month’s active accounts/,
+        /five records in section 2\.2 are in neither, the account security events, the connected apps’ tool calls, the retry records, the identifiers of replaced sites and the list of this month’s active accounts/,
       );
     },
   );
@@ -1778,13 +1781,13 @@ describe.each([
       /Each counter is a number and expires by itself:.*after a day on photo proposals/,
     );
     expect(page).toMatch(
-      /a photo a tool of yours proposes for a species is shown, with your name and its note, to whoever runs this copy, as section 4\.12 says/,
+      /a photo a tool or an app of yours proposes for a species is shown, with your name and its note, to whoever runs this copy, as section 4\.12 says/,
     );
     expect(page).toMatch(
-      /The fourth is about what you entered, and only a tool of yours can make it/,
+      /The fourth is about what you entered, and only a tool or an app of yours can make it/,
     );
     expect(page).toMatch(
-      /never have a tool propose a photo for a species, nothing is sent at all/,
+      /never have a tool or an app propose a photo for a species, nothing is sent at all/,
     );
     expect(page).toMatch(
       /and propose a photo for a species, which neither app offers/,
@@ -1793,10 +1796,10 @@ describe.each([
       /all but your photo proposals/,
     );
     expect(screen.getByText(/nothing to switch off/)).toHaveTextContent(
-      /a photo proposal that waits, which only a tool can withdraw, through the API/,
+      /a photo proposal that waits, which only a tool or a connected app can withdraw, through the API/,
     );
     expect(page).toMatch(
-      /Nor is a photo proposal: a tool of yours can list each one/,
+      /Nor is a photo proposal: a tool or an app of yours can list each one/,
     );
     expect(page).toMatch(/A photo proposal is not swept either/);
     expect(page).toMatch(
@@ -1805,6 +1808,124 @@ describe.each([
     expect(page).toMatch(
       /Exporting what you have entered, your photo proposals/,
     );
+  });
+});
+
+// Unconditional, so every config renders it - and the mock gives the page no MCP
+// flag to branch on. DECISIONS.md, "The numbering in §4 is load-bearing", says why.
+describe.each([
+  { google: false, commonsPrimary: false },
+  { google: true, commonsPrimary: false },
+  { google: false, commonsPrimary: true, mapTiles: true },
+  { google: true, commonsPrimary: true, diveConditions: true },
+])("connecting an app: %j", (config) => {
+  const text = () => (document.body.textContent ?? "").replace(/\s+/g, " ");
+
+  it("has section 4.13 of its own, saying who approves, what is kept and what switching off leaves", async () => {
+    await renderPage(config);
+
+    const heading = screen.getByText(/^4\.13 Connecting an App/);
+    expect(heading.tagName).toBe("H3");
+    const section: string[] = [];
+    for (
+      let node = heading.nextElementSibling;
+      node && node.tagName === "P";
+      node = node.nextElementSibling
+    ) {
+      section.push(node.textContent ?? "");
+    }
+    const body = section.join(" ").replace(/\s+/g, " ");
+    expect(body).toMatch(/Where whoever runs this copy has switched it on/);
+    expect(body).toMatch(/you approve it in a browser you are signed in on/);
+    expect(body).toMatch(/nor can an API key/);
+    expect(body).toMatch(
+      /Reading, adding and changing, and deleting are separate permissions/,
+    );
+    expect(body).toMatch(/under that app’s own privacy policy/);
+    expect(body).toMatch(
+      /until you revoke it in Settings, under MCP.*until the app ends it itself.*spent tokens is sent a second time/,
+    );
+    expect(body).toMatch(/send no email/);
+    expect(body).toMatch(/fingerprints of the tokens/);
+    expect(body).toMatch(/the tool calls in section 2\.2/);
+    expect(body).toMatch(
+      /If this copy switches connections off: no app can use/,
+    );
+    expect(body).toMatch(/Settings stops showing them/);
+    expect(body).toMatch(/deleting your account still removes it/);
+    // Only the Commons-primary copy has proposals to withhold from a connection.
+    expect(body.includes("propose for OpenDiving Commons")).toBe(
+      config.commonsPrimary,
+    );
+  });
+
+  it("is named in every closed list a credential joins", async () => {
+    await renderPage(config);
+
+    const page = text();
+    const events = listAfterHeading(
+      /2\.2 Automatically Collected Information/,
+    ).find((entry) => entry.startsWith("Account security events:"));
+    expect(events).toMatch(
+      /an app connected, or a connection ended, in Settings or by the app itself; a connection’s spent token turning up again/,
+    );
+    expect(events).toMatch(/an API key or a connected app/);
+    expect(
+      listAfterHeading(/2\.2 Automatically Collected Information/).some(
+        (entry) => entry.startsWith("Connected apps’ tool calls:"),
+      ),
+    ).toBe(true);
+    expect(
+      listAfterHeading(/3\. How We Use Your Information/).join(" "),
+    ).toMatch(/an app you connected, within\s+what you approved/);
+    expect(page).toMatch(
+      /an app you connect reads your account as you .* as section 4\.13 says/,
+    );
+    expect(page).toMatch(
+      /Passwordless by design:.*an app you connect holds tokens of its own.*section 4\.13/,
+    );
+    expect(listAfterHeading(/6\.1 Account Control/).join(" ")).toMatch(
+      /see the apps connected to\s+your account/,
+    );
+    expect(screen.getByText(/nothing to switch off/)).toHaveTextContent(
+      /a connected app, which Revoke under MCP switches off at once — section 4\.13/,
+    );
+    expect(page).toMatch(/A connected app is not swept either/);
+    expect(page).toMatch(/Your sessions, your API keys, your connected apps/);
+    // §3 owes the §2.2 record a purpose before "And nothing else." stands.
+    expect(
+      listAfterHeading(/3\. How We Use Your Information/).join(" "),
+    ).toMatch(/Keep your account secure:.*a connected\s+app’s tool calls/);
+    expect(page).toMatch(
+      /the OpenDiving app, a tool of yours or an app you connected sends again/,
+    );
+    // §8: what an app reads leaves this copy, on every copy.
+    expect(page).toMatch(
+      /Where this copy lets apps connect, what an app you connect reads leaves with the app/,
+    );
+  });
+
+  // The lifetimes are API constants, so they are stated as figures and pinned.
+  it("states its lifetimes as figures", async () => {
+    await renderPage(config);
+
+    const page = text();
+    expect(page).toMatch(
+      /tool calls go in an hourly sweep 90 days after each was made/,
+    );
+    expect(page).toMatch(
+      /each deleted within the hour after it runs out, at most 30 days after it was issued/,
+    );
+    expect(page).toMatch(
+      /A connection the app leaves unused for 30 days stops working/,
+    );
+    expect(page).toMatch(
+      /deleted within two hours, sooner if the app discards it/,
+    );
+    expect(page).toMatch(
+      /an approval the app never came back for is deleted within the hour/,
+    );
+    expect(page).toMatch(/reads it again once its copy is an hour old/);
   });
 });
 

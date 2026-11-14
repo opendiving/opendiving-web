@@ -57,10 +57,10 @@ export default async function PrivacyPage() {
   // copy has. A sentence elsewhere that proposing makes false is reworded inline on
   // `commonsPrimary`, and on every other copy reads as it always has.
   const proposingSection =
-    13 + (googleClientId ? 1 : 0) + (diveConditions ? 1 : 0);
+    14 + (googleClientId ? 1 : 0) + (diveConditions ? 1 : 0);
 
-  // Nine things every copy has, the map tiles and the proposals where it has them.
-  const outsideTheButtons = ["Nine", "Ten", "Eleven"][
+  // Eleven things every copy has, the map tiles and the proposals where it has them.
+  const outsideTheButtons = ["Eleven", "Twelve", "Thirteen"][
     Number(mapTiles) + Number(commonsPrimary)
   ];
 
@@ -351,9 +351,10 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   <strong>Photo Proposals:</strong> A Wikimedia Commons file
-                  that a tool of yours proposes as a species&rsquo; photo, with
-                  the note it adds saying why. Neither app offers this; section
-                  4.12 says who reads it and what is sent where
+                  that a tool or an app of yours proposes as a species&rsquo;
+                  photo, with the note it adds saying why. Neither this site nor
+                  the OpenDiving app offers this; section 4.12 says who reads it
+                  and what is sent where
                 </li>
                 {commonsPrimary && (
                   <li>
@@ -390,7 +391,7 @@ export default async function PrivacyPage() {
                 is fetched by this server and stored here as your avatar &mdash;
                 once, when the account is made, and never again afterwards. That
                 only happens on instances with Google sign-in turned on; section
-                4.13 describes it if this one does.
+                4.14 describes it if this one does.
               </p>
               <p className="text-foreground mb-4">
                 Dives can arrive without a tap, too. Once you pair a dive
@@ -442,16 +443,16 @@ export default async function PrivacyPage() {
               </p>
               <p className="text-foreground mb-4">
                 {commonsPrimary
-                  ? "There are no photos of dives, no bio, no experience level, and no comments or posts, because there are no community features to put them in. The messages here are the note a tool of yours adds to a photo proposal, the word you may add to a proposal for OpenDiving Commons, and the reason a reviewer may give for declining either, which pass between you and the reviewer and go no further."
-                  : "There are no photos of dives, no bio, no experience level, and no comments or posts, because there are no community features to put them in. The one message here is the note a tool of yours adds to a photo proposal, and the reason whoever runs this copy may give for declining it, which pass between you and them and go no further."}
+                  ? "There are no photos of dives, no bio, no experience level, and no comments or posts, because there are no community features to put them in. The messages here are the note a tool or an app of yours adds to a photo proposal, the word you may add to a proposal for OpenDiving Commons, and the reason a reviewer may give for declining either, which pass between you and the reviewer and go no further."
+                  : "There are no photos of dives, no bio, no experience level, and no comments or posts, because there are no community features to put them in. The one message here is the note a tool or an app of yours adds to a photo proposal, and the reason whoever runs this copy may give for declining it, which pass between you and them and go no further."}
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
                 2.2 Automatically Collected Information
               </h3>
               <p className="text-foreground mb-4">
-                Eight things are recorded without you asking for them, and all
-                eight are ordinary machinery. Two of them &mdash; signed-in
+                Nine things are recorded without you asking for them, and all
+                nine are ordinary machinery. Two of them &mdash; signed-in
                 devices and account security events &mdash; are also counted,
                 into totals that name nobody, which the end of this section
                 describes, and a third exists only so that one of those totals
@@ -502,26 +503,38 @@ export default async function PrivacyPage() {
                   verified sign-in being offered a new account to make, or a
                   deleted one to bring back; an account created or restored; a
                   second way of signing in attached to an existing account; a
-                  passkey added or removed; an API key made or revoked; a
+                  passkey added or removed; an API key made or revoked; an app
+                  connected, or a connection ended, in Settings or by the app
+                  itself; a connection&rsquo;s spent token turning up again; a
                   passkey reporting a use count that suggests it has been
                   copied; an email address change asked for or completed; an
                   account asked to be deleted; a sign-out; one device signed
                   out, or every other one at once; and a spent sign-in cookie
                   turning up again. Each entry holds what happened and when, the
-                  IP address and user agent it came from, which way into the
-                  account it was about &mdash; email, Google, a passkey or an
-                  API key &mdash; where that applies, and the account it was
-                  about, or, for something that happened before any account
-                  existed, the email address that was typed. An invitation sent
-                  is the one entry that carries both, because both are the point
-                  of it: the account that sent the invitation, and the address
-                  it went to. Never a link, a code, a token or a key itself,
-                  only the fact that one was issued or used. Nothing in the app
-                  shows these to you; they are there for whoever runs this copy
-                  to look into a break-in or a burst of sign-in attempts, and
-                  section 6.2 says what that means for asking for a copy. The
-                  successful sign-ins among them are also counted into the
-                  day&rsquo;s total of accounts that signed in, below
+                  IP address and user agent it came from &mdash; for one an app
+                  causes, the app&rsquo;s rather than yours &mdash; which way
+                  into the account it was about &mdash; email, Google, a
+                  passkey, an API key or a connected app &mdash; where that
+                  applies, and the account it was about, or, for something that
+                  happened before any account existed, the email address that
+                  was typed. An invitation sent is the one entry that carries
+                  both, because both are the point of it: the account that sent
+                  the invitation, and the address it went to. Never a link, a
+                  code, a token or a key itself, only the fact that one was
+                  issued or used. Nothing in the app shows these to you; they
+                  are there for whoever runs this copy to look into a break-in
+                  or a burst of sign-in attempts, and section 6.2 says what that
+                  means for asking for a copy. The successful sign-ins among
+                  them are also counted into the day&rsquo;s total of accounts
+                  that signed in, below
+                </li>
+                <li>
+                  <strong>Connected apps&rsquo; tool calls:</strong> Each time
+                  an app connected to your account calls one of its tools, as
+                  section 4.13 describes, this copy records which tool, whether
+                  that worked, and when &mdash; never what it asked for or what
+                  it was given. Nothing in the app shows them to you; section 7
+                  says how long they are kept
                 </li>
                 <li>
                   <strong>Rate-limit counters:</strong> To stop sign-in, the
@@ -564,9 +577,10 @@ export default async function PrivacyPage() {
                   cannot be read back, the outcome, the identifier of the record
                   it made, and when. Nothing of the record itself is copied into
                   it. A tool of your own calling this copy with an API key, as
-                  section 4.11 describes, may send one too and leaves the same
-                  record. A browser sends none, so using this site adds none.
-                  Section 7 says how long they are kept
+                  section 4.11 describes, or an app you connected, as section
+                  4.13 does, may send one too and leaves the same record. A
+                  browser sends none, so using this site adds none. Section 7
+                  says how long they are kept
                 </li>
                 <li>
                   <strong>Replaced sites:</strong> When a dive site of yours is
@@ -581,10 +595,10 @@ export default async function PrivacyPage() {
                 What is kept in your browser is a separate matter, and section
                 10 lists all of it. No usage data about <em>you</em> is
                 collected: nothing here measures which pages you visit, which
-                dives you open, or how long you spend, and none of the eight
+                dives you open, or how long you spend, and none of the nine
                 above is compared or profiled. The security record names things
-                that happened to your account &mdash; not what you were doing in
-                the app.
+                that happened to your account, and the tool calls what an app
+                did on it &mdash; not what you were doing in the app.
               </p>
               <p className="text-foreground mb-4">
                 What is counted is a set of <strong>daily totals</strong>, each
@@ -707,11 +721,11 @@ export default async function PrivacyPage() {
                   drafts, sites, trips, gear, courses, certifications, contacts,
                   people, tags and check-in details, show them back to you,
                   answer a tool you gave an API key as it would answer you,
-                  within what that key allows, show you the current username of
-                  an account you linked a person to, show your check-in page to
-                  whoever holds a check-in link you made, and, where this copy
-                  is invite-only, show your name to whoever opens your invite
-                  link
+                  within what that key allows, and an app you connected, within
+                  what you approved, show you the current username of an account
+                  you linked a person to, show your check-in page to whoever
+                  holds a check-in link you made, and, where this copy is
+                  invite-only, show your name to whoever opens your invite link
                 </li>
                 <li>
                   <strong>Account Management:</strong> Sign you in, keep you
@@ -753,14 +767,16 @@ export default async function PrivacyPage() {
                   signed-in devices from section 2.2, so you can see them and
                   sign one out, and keep the record of account security events,
                   so whoever runs this copy can look into a break-in or a burst
-                  of sign-in attempts. Both expire on a schedule &mdash; section
+                  of sign-in attempts, and keep the record of a connected
+                  app&rsquo;s tool calls, so what an app did on your account can
+                  be looked into. All three expire on a schedule &mdash; section
                   7
                 </li>
                 <li>
                   <strong>Create things once:</strong> Keep the retry records
-                  from section 2.2, so that something the OpenDiving app, or a
-                  tool of yours, sends again after a lost reply is created once
-                  rather than twice
+                  from section 2.2, so that something the OpenDiving app, a tool
+                  of yours or an app you connected sends again after a lost
+                  reply is created once rather than twice
                 </li>
                 <li>
                   <strong>Follow a replaced site:</strong> Keep the identifier
@@ -770,10 +786,11 @@ export default async function PrivacyPage() {
                 </li>
                 <li>
                   <strong>Review a photo proposal:</strong> Show a photo a tool
-                  of yours proposes for a species, with your name and its note,
-                  to whoever runs this copy, tell the tool what became of it,
-                  and keep a declined file from being proposed for that species
-                  again. Section 4.12 says exactly what that shows and sends
+                  or an app of yours proposes for a species, with your name and
+                  its note, to whoever runs this copy, tell the tool what became
+                  of it, and keep a declined file from being proposed for that
+                  species again. Section 4.12 says exactly what that shows and
+                  sends
                 </li>
                 {commonsPrimary && (
                   <li>
@@ -838,9 +855,13 @@ export default async function PrivacyPage() {
                 reset or remove it, as section 4.8 says; an API key you make
                 lets whatever holds it read your account as you &mdash; and
                 change it, if you let it &mdash; until it expires or you revoke
-                it, as section 4.11 says; {!commonsPrimary && "and "}a photo a
-                tool of yours proposes for a species is shown, with your name
-                and its note, to whoever runs this copy, as section 4.12 says
+                it, as section 4.11 says; where this copy lets apps connect, an
+                app you connect reads your account as you &mdash; and changes
+                it, if you let it &mdash; until the connection ends, and what it
+                reads goes to the app, as section 4.13 says;{" "}
+                {!commonsPrimary && "and "}a photo a tool or an app of yours
+                proposes for a species is shown, with your name and its note, to
+                whoever runs this copy, as section 4.12 says
                 {commonsPrimary && (
                   <>
                     ; and a dive site or a change you propose is read by whoever
@@ -856,8 +877,8 @@ export default async function PrivacyPage() {
               </h3>
               <p className="text-foreground mb-4">
                 {commonsPrimary
-                  ? "What you enter stays in your account unless you propose it for OpenDiving Commons, or a tool of yours proposes a photo for a species. There are no groups, nothing one diver can post for another, and no shared logs,"
-                  : "What you enter stays in your account unless a tool of yours proposes a photo for a species. There are no groups, no comments and no shared logs,"}{" "}
+                  ? "What you enter stays in your account unless you propose it for OpenDiving Commons, or a tool or an app of yours proposes a photo for a species. There are no groups, nothing one diver can post for another, and no shared logs,"
+                  : "What you enter stays in your account unless a tool or an app of yours proposes a photo for a species. There are no groups, no comments and no shared logs,"}{" "}
                 and the people you record are your own notes about them rather
                 than a connection between two accounts.{" "}
                 {commonsPrimary ? (
@@ -895,9 +916,10 @@ export default async function PrivacyPage() {
                 recorded to an account here shows you that account&rsquo;s
                 current username, and tells the account nothing. Section 4.10
                 sets out what that discloses. The fourth is about what you
-                entered, and only a tool of yours can make it: a photo it
-                proposes for a species is shown to whoever runs this copy, with
-                your name and its note. Section 4.12 sets out what that shows.
+                entered, and only a tool or an app of yours can make it: a photo
+                it proposes for a species is shown to whoever runs this copy,
+                with your name and its note. Section 4.12 sets out what that
+                shows.
                 {commonsPrimary && (
                   <>
                     {" "}
@@ -1182,9 +1204,9 @@ export default async function PrivacyPage() {
                 logbook, never when you view a dive, a species or your species
                 list you have already saved. If you never open the species
                 picker, never import a file naming marine life and never have a
-                tool propose a photo for a species, nothing is sent at all. A
-                photo proposal is the one case in which Wikimedia Commons is
-                sent a name you chose rather than one worked out here, and
+                tool or an app propose a photo for a species, nothing is sent at
+                all. A photo proposal is the one case in which Wikimedia Commons
+                is sent a name you chose rather than one worked out here, and
                 section 4.12 says when. The photographs on those pages come from
                 this copy of OpenDiving like every other image on the site.
               </p>
@@ -1579,10 +1601,106 @@ export default async function PrivacyPage() {
                 goes with your account like the rest.
               </p>
 
+              {/* Unconditional, though `/config` says whether MCP is on - see "The numbering
+                  in §4 is load-bearing, and conditional sections sit last" in DECISIONS.md. */}
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                4.13 Connecting an App
+              </h3>
+              <p className="text-foreground mb-4">
+                Where whoever runs this copy has switched it on, an app &mdash;
+                an AI assistant, say &mdash; can connect to your account through
+                the Model Context Protocol and act on it as you, within the
+                permissions you give it. Settings, under MCP, shows the address
+                an app connects to, and the last paragraph of this section says
+                what stays if connections are switched off again. A connection
+                shows nothing of yours to anybody on this copy but in one case,
+                a photo it proposes, which section 4.12 describes; what it does
+                is hand what the app reads to the app, and this section is the
+                whole of it.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>How one is made:</strong> the app sends you to this
+                copy, and you approve it in a browser you are signed in on. The
+                page names the app, the address it will send you back to and the
+                permissions it asked for, and you choose which of those to
+                grant. Nothing an app holds can approve a connection, its own or
+                another&rsquo;s, and nor can an API key. Where an app names
+                itself by a web address, this server fetches that address to
+                read the app&rsquo;s name and where it sends you back, carrying
+                nothing of yours, and reads it again once its copy is an hour
+                old.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What a connection can do:</strong> what you approved.
+                Reading, adding and changing, and deleting are separate
+                permissions for each part of your logbook &mdash; dives, dive
+                drafts, sites, trips, gear, people, contacts, courses,
+                certifications, tags, check-in details and dive form presets
+                &mdash; and your profile, your preferences, your files,
+                exporting your logbook and importing one are permissions of
+                their own. One given the permission for it can also propose a
+                photo for a species, which shows something of yours to whoever
+                runs this copy, as section 4.12 describes for a key. No
+                connection can make, list or revoke API keys, passkeys,
+                signed-in devices or connections, make a check-in link, invite
+                anyone or make an invite link,
+                {commonsPrimary && " propose for OpenDiving Commons,"} change
+                the email address you sign in with, or delete your account, and
+                none reaches anything only whoever runs this copy can.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>Where what it reads goes:</strong> to the app, and on
+                from there to wherever the app sends it &mdash; for an AI
+                assistant, usually the company that runs the model &mdash; under
+                that app&rsquo;s own privacy policy, which this copy neither
+                controls nor can see. This copy answers each request the app
+                makes within those permissions and sends it nothing unasked.
+                Ending the connection stops it reading more; it cannot reach
+                what the app already has.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>For how long:</strong> until you revoke it in Settings,
+                under MCP, which stops it on its very next request; until the
+                app ends it itself; or until one of its spent tokens is sent a
+                second time, which this copy takes as a sign that the token was
+                copied, and ends the connection. A connection the app leaves
+                unused for 30 days stops working, though it stays listed until
+                you revoke it. Each way, the app has to ask you again. Signing
+                out, or signing other devices out, leaves every connection
+                working. Asking to delete your account stops all of them.
+                Connecting an app and ending a connection send no email.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>What this copy keeps:</strong> the connection &mdash;
+                which app, the permissions you granted, when you approved it,
+                when it was last used, to the minute, and when it ended;
+                fingerprints of the tokens the app holds rather than the tokens
+                themselves, each deleted within the hour after it runs out, at
+                most 30 days after it was issued; the tool calls in section 2.2;
+                and the files the app uploads, or that this copy makes for it to
+                download, such as an export, each private to that connection and
+                deleted within two hours, sooner if the app discards it or the
+                connection ends. The app&rsquo;s own description of itself
+                &mdash; its name and where it sends you back &mdash; is the
+                app&rsquo;s rather than yours, and goes once no connection names
+                it. Approving a connection, ending one and a token sent twice
+                are account security events in section 2.2. Section 7 says how
+                long each is kept.
+              </p>
+              <p className="text-foreground mb-4">
+                <strong>If this copy switches connections off:</strong> no app
+                can use a connection made while they were on, and Settings stops
+                showing them, so none can be revoked there either. What this
+                copy keeps stays as section 7 says, and deleting your account
+                still removes it; a copy of it is asked for as section 6.2 says.
+                Switched back on, a connection nobody ended works again if its
+                token has not run out.
+              </p>
+
               {googleClientId && (
                 <>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
-                    4.13 Signing In with Google
+                    4.14 Signing In with Google
                   </h3>
                   <p className="text-foreground mb-4">
                     This copy of OpenDiving offers &ldquo;Continue with
@@ -1646,7 +1764,7 @@ export default async function PrivacyPage() {
               {diveConditions && (
                 <>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
-                    4.{googleClientId ? 14 : 13} Weather at Your Dives
+                    4.{googleClientId ? 15 : 14} Weather at Your Dives
                   </h3>
                   <p className="text-foreground mb-4">
                     This copy of OpenDiving fills in the weather for the dives
@@ -1837,7 +1955,10 @@ export default async function PrivacyPage() {
                   email, with a passkey, or &mdash; where an instance offers it
                   &mdash; with Google. A tool of your own uses an API key
                   instead, which signs nothing in and is shown to you once
-                  &mdash; section 4.11
+                  &mdash; section 4.11. Where this copy lets apps connect, an
+                  app you connect holds tokens of its own, which only you can
+                  approve, from a browser you are signed in on &mdash; section
+                  4.13
                 </li>
                 <li>
                   <strong>Single-use sessions:</strong> The cookie that keeps
@@ -1906,6 +2027,11 @@ export default async function PrivacyPage() {
                   do and when it was last used, and revoke it
                 </li>
                 <li>
+                  Where this copy lets apps connect, see the apps connected to
+                  your account, what each may do and when it was last used, and
+                  revoke it
+                </li>
+                <li>
                   Where this copy is invite-only, invite someone, make, reset or
                   remove your invite link, see the invitations you have sent and
                   who joined through your link, and take back one that has not
@@ -1938,9 +2064,12 @@ export default async function PrivacyPage() {
                 section 4.9; where this copy is invite-only, your invite link,
                 which Remove on the Invitations card switches off at once
                 &mdash; section 4.8; an API key you made, which Revoke on the
-                API keys card switches off at once &mdash; section 4.11;{" "}
+                API keys card switches off at once &mdash; section 4.11; where
+                this copy lets apps connect, a connected app, which Revoke under
+                MCP switches off at once &mdash; section 4.13;{" "}
                 {!commonsPrimary && "and "}a photo proposal that waits, which
-                only a tool can withdraw, through the API &mdash; section 4.12
+                only a tool or a connected app can withdraw, through the API
+                &mdash; section 4.12
                 {commonsPrimary && (
                   <>
                     ; and a proposal that waits, which Withdraw on the site or
@@ -1992,10 +2121,11 @@ export default async function PrivacyPage() {
                 {outsideTheButtons} things sit outside those buttons, and naming
                 them is better than letting that sentence read wider than it is.
                 The email address you sign in with, your username, the list of
-                signed-in devices and your API keys are in Settings but are not
-                part of the export: they are your account on this copy rather
-                than your logbook, and the username only names the file you
-                download.
+                signed-in devices, your API keys and your connected apps are in
+                Settings, the last where this copy lets apps connect, but are
+                not part of the export: they are your account on this copy
+                rather than your logbook, and the username only names the file
+                you download.
                 {mapTiles && (
                   <>
                     {" "}
@@ -2006,12 +2136,12 @@ export default async function PrivacyPage() {
                     for 30 days after.
                   </>
                 )}{" "}
-                And four records in section 2.2 are in neither, the account
-                security events, the retry records, the identifiers of replaced
-                sites and the list of this month&rsquo;s active accounts:
-                nothing in the app shows them to you and no button copies them,
-                so a copy of any of them has to be asked for like the rights
-                below.
+                And five records in section 2.2 are in neither, the account
+                security events, the connected apps&rsquo; tool calls, the retry
+                records, the identifiers of replaced sites and the list of this
+                month&rsquo;s active accounts: nothing in the app shows them to
+                you and no button copies them, so a copy of any of them has to
+                be asked for like the rights below.
                 {commonsPrimary && (
                   <>
                     {" "}
@@ -2021,11 +2151,11 @@ export default async function PrivacyPage() {
                     {proposingSection} says.
                   </>
                 )}{" "}
-                Nor is a photo proposal: a tool of yours can list each one and
-                what became of it through the API, and a copy of the rest has to
-                be asked for in the same way, as section 4.12 says. The last
-                two, that request, and anything else go to whoever runs this
-                copy &mdash; section 13 says how to reach them.
+                Nor is a photo proposal: a tool or an app of yours can list each
+                one and what became of it through the API, and a copy of the
+                rest has to be asked for in the same way, as section 4.12 says.
+                The last two, that request, and anything else go to whoever runs
+                this copy &mdash; section 13 says how to reach them.
               </p>
 
               <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -2161,7 +2291,7 @@ export default async function PrivacyPage() {
                 older dives would be the wrong product.
               </p>
               <p className="text-foreground mb-4">
-                Four of the records in section 2.2 expire on their own, whether
+                Five of the records in section 2.2 expire on their own, whether
                 or not you delete anything, because none is anything you
                 entered. A <strong>signed-in device&rsquo;s session</strong> is
                 deleted after it stops being able to sign you in: one that went
@@ -2176,12 +2306,13 @@ export default async function PrivacyPage() {
                 existed, after 7 days. That shorter one is deliberately the same
                 short life the sign-in link&rsquo;s own record already has: an
                 address someone typed into this copy and never came back to
-                should not outlive it here. A <strong>retry record</strong> is
-                deleted by an hourly sweep once it is as old as the longest an
-                OpenDiving app&rsquo;s session can sit unused &mdash; about
-                three months, the window section 10.1 describes &mdash; so that
-                something the app sends again days after a lost reply still
-                finds it. The{" "}
+                should not outlive it here. A connected app&rsquo;s{" "}
+                <strong>tool calls</strong> go in an hourly sweep 90 days after
+                each was made. A <strong>retry record</strong> is deleted by an
+                hourly sweep once it is as old as the longest an OpenDiving
+                app&rsquo;s session can sit unused &mdash; about three months,
+                the window section 10.1 describes &mdash; so that something the
+                app sends again days after a lost reply still finds it. The{" "}
                 <strong>list of this month&rsquo;s active accounts</strong> is
                 emptied of a month within the first hour of the next, once that
                 month&rsquo;s total is written, so no account is on it for
@@ -2226,6 +2357,13 @@ export default async function PrivacyPage() {
                 expired or not, until you revoke it or your account goes; an
                 expired one stays on the API keys card, marked, so that removing
                 it is yours to do.
+              </p>
+              <p className="text-foreground mb-4">
+                A <strong>connected app</strong> is not swept either. Its
+                connection is kept, ended or not, until your account goes; an
+                ended one leaves Settings and stays marked with when it ended.
+                Its tokens and files go sooner, as section 4.13 says, and an
+                approval the app never came back for is deleted within the hour.
               </p>
               <p className="text-foreground mb-4">
                 The <strong>identifier of a replaced site</strong> has no expiry
@@ -2324,15 +2462,16 @@ export default async function PrivacyPage() {
                   shows no username
                 </li>
                 <li>
-                  Your sessions, your API keys, your retry records, your place
-                  on the list of this month&rsquo;s active accounts and your
-                  account security events go with it. The entries made before
-                  the account existed have nothing linking them to it, so they
-                  are found by the email address instead &mdash; the same way
-                  the sign-in records already are. The one gap that cannot
-                  close: entries left under an address you later moved off are
-                  not named by the deletion, and expire on their own 7-day
-                  schedule instead
+                  Your sessions, your API keys, your connected apps with their
+                  tool calls and files, your retry records, your place on the
+                  list of this month&rsquo;s active accounts and your account
+                  security events go with it. The entries made before the
+                  account existed have nothing linking them to it, so they are
+                  found by the email address instead &mdash; the same way the
+                  sign-in records already are. The one gap that cannot close:
+                  entries left under an address you later moved off are not
+                  named by the deletion, and expire on their own 7-day schedule
+                  instead
                 </li>
               </ul>
               <p className="text-foreground mb-4">
@@ -2359,17 +2498,19 @@ export default async function PrivacyPage() {
                 {commonsPrimary ? (
                   <>
                     There is no network of servers behind it, and nothing of
-                    your account leaves it. What does is the OpenDiving Commons
-                    records section 4.{proposingSection} describes, which anyone
-                    anywhere can fetch and which are copied to a public
-                    repository on GitHub, a service run from the United States.
-                    Otherwise one copy of OpenDiving
+                    your account leaves it on its own. What does is the
+                    OpenDiving Commons records section 4.{proposingSection}{" "}
+                    describes, which anyone anywhere can fetch and which are
+                    copied to a public repository on GitHub, a service run from
+                    the United States. Otherwise one copy of OpenDiving
                   </>
                 ) : (
                   "There is no network of servers behind it and no transfer between countries built into the software: one copy of OpenDiving"
                 )}{" "}
                 is one database and one files volume, wherever the person
-                running it chose to put them.
+                running it chose to put them. Where this copy lets apps connect,
+                what an app you connect reads leaves with the app, for wherever
+                it runs, as section 4.13 says.
                 {mapTiles && (
                   <>
                     {" "}
@@ -2674,7 +2815,7 @@ export default async function PrivacyPage() {
                   site, and Google sets nothing in your browser under this
                   address. Signing in with Google takes you to Google, where
                   whatever it stores is its own on its own address &mdash;
-                  section 4.13 has the detail.
+                  section 4.14 has the detail.
                 </p>
               )}
               <p className="text-foreground mb-4">
