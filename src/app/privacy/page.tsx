@@ -315,12 +315,13 @@ export default async function PrivacyPage() {
                   copy keeps them, which may be until you delete them. A dive
                   the OpenDiving app downloads from a dive computer over
                   Bluetooth keeps the computer&rsquo;s original download the
-                  same way, on the dive it becomes. A file from a computer with
-                  a wrist sensor or a heart-rate strap switched on carries your
-                  heart rate, which is read into the dive log above. The account
-                  also keeps the order you put your dive computers in, by their
-                  serial numbers, which decides whose recording a dive shows by
-                  default when more than one of them recorded it
+                  same way, on the dive it becomes, and is an import applied as
+                  it is uploaded. A file from a computer with a wrist sensor or
+                  a heart-rate strap switched on carries your heart rate, which
+                  is read into the dive log above. The account also keeps the
+                  order you put your dive computers in, by their serial numbers,
+                  which decides whose recording a dive shows by default when
+                  more than one of them recorded it
                 </li>
                 <li>
                   <strong>Equipment Data:</strong> Diving equipment details and
@@ -390,6 +391,32 @@ export default async function PrivacyPage() {
                 once, when the account is made, and never again afterwards. That
                 only happens on instances with Google sign-in turned on; section
                 4.13 describes it if this one does.
+              </p>
+              <p className="text-foreground mb-4">
+                Dives can arrive without a tap, too. Once you pair a dive
+                computer with the OpenDiving app on a phone, the app downloads
+                that computer&rsquo;s new dives over Bluetooth by itself each
+                time it connects, even with the phone locked, and sends them to
+                this copy, which imports them into your logbook without a review
+                &mdash; unless you switch <em>Download automatically</em> off
+                for that computer. The downloaded dives are kept on the phone
+                until this copy has them, and the app remembers which of them it
+                has sent, so it sends none twice. Where the phone has no
+                internet, the app leaves iOS a request for this copy&rsquo;s
+                health check, which names no account and carries no dive, and
+                which iOS sends once there is a connection, so that the app
+                learns when it can send them. A file you share to the app is
+                uploaded as it arrives and waits for your review, as on this
+                site.
+              </p>
+              <p className="text-foreground mb-4">
+                If you allow it notifications, which its Dive Computers screen
+                asks for, the app tells you when the dives are in your logbook,
+                or why they still wait. Each notification is made on the phone,
+                from this copy&rsquo;s answer to the upload or from what the
+                phone knows of why the dives wait; no server sends one, so this
+                copy keeps no record of them and does not know whether you
+                allowed them.
               </p>
               <p className="text-foreground mb-4">
                 Two more addresses can reach this copy before any account
@@ -2112,6 +2139,12 @@ export default async function PrivacyPage() {
                 in the app. Each has its own switch in Settings, under
                 Notifications, and turning one off stops that kind and leaves
                 the other two as they are.
+              </p>
+              <p className="text-foreground mb-4">
+                The OpenDiving app&rsquo;s notifications of downloaded dives are
+                not on this list: the phone makes them, as section 2.1
+                describes, and they are allowed or refused in the phone&rsquo;s
+                own settings.
               </p>
             </section>
 

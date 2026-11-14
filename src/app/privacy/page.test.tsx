@@ -1888,3 +1888,59 @@ describe("the site finder's location and searches", () => {
     );
   });
 });
+
+// The app downloads from a paired computer on its own and posts what it did as a
+// notification of the phone's own making: what reaches this copy, what stays on
+// the phone, and that no server sends a notification.
+describe("the app's downloads from a paired dive computer", () => {
+  it("says what is downloaded by itself, kept on the phone and sent", async () => {
+    await renderPage({ google: false });
+
+    const paragraph = screen
+      .getByText(/Dives can arrive without a tap, too/)
+      .closest("p")!;
+    const text = (paragraph.textContent ?? "").replace(/\s+/g, " ");
+    expect(text).toMatch(
+      /downloads that computer’s new dives over Bluetooth by itself each time it connects, even with the phone locked/,
+    );
+    expect(text).toMatch(
+      /imports them into your logbook without a review — unless you switch Download automatically off for that computer/,
+    );
+    expect(text).toMatch(
+      /kept on the phone until this copy has them, and the app remembers which of them it has sent/,
+    );
+    expect(text).toMatch(
+      /health check, which names no account and carries no dive/,
+    );
+    expect(text).toMatch(
+      /A file you share to the app is uploaded as it arrives and waits for your review/,
+    );
+  });
+
+  it("says the phone makes the notifications and no server sends one", async () => {
+    await renderPage({ google: false });
+
+    const paragraph = screen
+      .getByText(/which its Dive Computers screen asks for/)
+      .closest("p")!;
+    const text = (paragraph.textContent ?? "").replace(/\s+/g, " ");
+    expect(text).toMatch(/Each notification is made on the phone/);
+    expect(text).toMatch(/no server sends one/);
+    expect(
+      screen.getByText(
+        /notifications of downloaded dives are not on this list/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("counts a Bluetooth download among the imports applied as uploaded", async () => {
+    await renderPage({ google: false });
+
+    const item = listAfterHeading(/2\.1 Information You Provide Directly/).find(
+      (entry) => entry.startsWith("Dive-Computer Files"),
+    );
+    expect(item).toMatch(
+      /keeps the computer’s original download the same way, on the dive it becomes, and is an import applied as it is uploaded/,
+    );
+  });
+});

@@ -157,8 +157,11 @@ Roadmap items, roughly in priority order — contributions welcome:
   the dive form, both through the DiveJSON converter (a Shearwater Cloud database of several dives
   goes through the Import page, the form taking one dive), and a new format is a reader there, for
   both, rather than a change here. The iOS app downloads from Shearwater and Suunto Ocean computers
-  over Bluetooth, through [libdivecomputer](https://www.libdivecomputer.org/), and the logbook
-  import takes what it brings, keeping each dive's original download beside it.
+  over Bluetooth, through [libdivecomputer](https://www.libdivecomputer.org/) — by itself once a
+  computer is paired, each time it connects, even with the phone locked — keeps the dives on the
+  phone until the server has them, and tells you with a notification the phone makes, which no
+  server sends. The logbook import applies what it brings without a review, keeping each dive's
+  original download beside it.
 - **Statistics** — depth/time records, dives per year, sites map.
 - **Sharing** — public link to a dive or trip.
 - **iOS companion app** — in development, not yet installable
