@@ -72,10 +72,10 @@
   // closed there, and not a difference this file means to keep.
   "minimumReleaseAge": "3 days",
 
-  // Rebase only on a conflict, not every time `main` moves. A Monday batch gets merged one PR
-  // at a time, each rebased by hand just before its merge, so rebasing the rest after every
-  // merge reruns CI across the whole batch for nothing. The rebase checkbox in a PR's body
-  // still asks for one on demand.
+  // Rebase only on a conflict, not every time `main` moves. The merge queue tests each PR
+  // squashed onto `main` as it then stands, so a branch never needs to be current, and
+  // rebasing the batch after every merge reruns CI across it for nothing. The rebase checkbox
+  // in a PR's body still asks for one on demand.
   "rebaseWhen": "conflicted",
 
   // Load-bearing, and the default only by luck. This repository pins in two styles on
@@ -126,6 +126,7 @@
     "minimumReleaseAge": null,
     "semanticCommitType": "fix",
     "labels": ["dependencies", "security"],
+    "automerge": false,
 
     // Because the instinct on a security bump is that merging it shipped it, and here it
     // did not. Self-hosters run the published image, which installs from the
@@ -143,6 +144,16 @@
   "osvVulnerabilityAlerts": true,
 
   "packageRules": [
+    {
+      // Routine minor, patch and digest bumps join the merge queue on their own once the
+      // required checks pass. A merge here reaches opendiving.app within minutes, so those
+      // checks are the whole gate: majors, 0.x packages, lockfile maintenance and
+      // vulnerability fixes still wait for a person. First, so a later rule that holds
+      // something back overrides it.
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true,
+    },
     {
       // A Node version is a coordinated change across five files, and a bot reaches three of
       // them: `.nvmrc` (nvm manager), `package.json`'s `engines.node` (npm), and the
@@ -179,6 +190,7 @@
       "matchPackageNames": ["node"],
       "groupName": "Node runtime",
       "dependencyDashboardApproval": true,
+      "automerge": false,
       "allowedVersions": "<25",
     },
     {

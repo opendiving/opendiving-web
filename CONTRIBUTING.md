@@ -434,7 +434,9 @@ absorbed. Both are a gate on the diff; neither says anything about what is alrea
 Trivy version `vulnerability-scan.yml` installs. Routine updates arrive in one batch on Monday
 morning, and only for versions published at least three days earlier; a vulnerability-driven one
 ignores both, and is titled `fix(deps):`, so it lands in the Fixes section of the release notes
-rather than among the chores.
+rather than among the chores. Minor, patch and digest bumps of packages past 0.x join the merge
+queue on their own once the required checks pass — which needs the repository's "Allow auto-merge"
+setting on; majors, lockfile maintenance and vulnerability fixes wait for a person.
 
 > **Renovate is running, and the
 > [Dependency Dashboard](https://github.com/opendiving/opendiving-web/issues/190) issue is where it
