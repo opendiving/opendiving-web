@@ -6,12 +6,15 @@ import QRCode from "qrcode";
 import { QrCode } from "./qr-code";
 import { qrLayout, type QrLayout } from "./qr-layout";
 
-// The flagship's longest link: an invite, its token 43 base64url characters.
+// The flagship's two links: an invite with its 32 hex characters, and the longer check-in link
+// with its 43 base64url ones.
 const INVITE =
-  "https://opendiving.app/join?via=q7Zr2LmW-xk9fT3bQaVhN0pYs_Ue4gRjD8cLwKz5oM1";
+  "https://opendiving.app/join?via=dd61596d15ae703e0aa5a28b92586efd";
+const CHECKIN =
+  "https://opendiving.app/checkin/q7Zr2LmW-xk9fT3bQaVhN0pYs_Ue4gRjD8cLwKz5oM1";
 // Long enough to reach version 7, whose centre alignment pattern leaves no room for the mark.
 const LONG =
-  "https://logbook.a-rather-long-diving-club-name.example/join?via=q7Zr2LmW-xk9fT3bQaVhN0pYs_Ue4gRjD8cLwKz5oM1";
+  "https://dives.example-club.org/checkin/q7Zr2LmW-xk9fT3bQaVhN0pYs_Ue4gRjD8cLwKz5oM1";
 
 // Lays the layout back onto pixels the way the SVG draws it - patterns whole, data modules where
 // drawn - and asks an independent decoder to read it.
@@ -52,22 +55,25 @@ function decode(layout: QrLayout) {
 }
 
 function dataModules(value: string) {
-  const { modules } = QRCode.create(value, { errorCorrectionLevel: "M" });
+  const { modules } = QRCode.create(value, { errorCorrectionLevel: "Q" });
   return modules;
 }
 
 describe("qrLayout", () => {
-  it("still decodes with the mark's modules left out", () => {
-    const layout = qrLayout(INVITE);
-    expect(layout.mark).not.toBeNull();
-    expect(decode(layout)).toBe(INVITE);
-  });
+  it.each([INVITE, CHECKIN])(
+    "still decodes %s with the mark's modules left out",
+    (link) => {
+      const layout = qrLayout(link);
+      expect(layout.mark).not.toBeNull();
+      expect(decode(layout)).toBe(link);
+    },
+  );
 
   // The mark gives up only what it covers: every dark module away from its bubbles is drawn, and
   // what it does take stays a small share of the symbol.
   it("clears only the modules around the bubbles", () => {
-    const layout = qrLayout(INVITE);
-    const modules = dataModules(INVITE);
+    const layout = qrLayout(CHECKIN);
+    const modules = dataModules(CHECKIN);
     const middle = layout.size / 2;
     let cleared = 0;
     for (let row = 0; row < layout.size; row++) {

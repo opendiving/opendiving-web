@@ -198,7 +198,7 @@ export function InviteLinkBlock() {
       className="flex flex-col gap-4 rounded-md border p-4 sm:flex-row"
     >
       {/* The card's width on a phone, up to a cap that keeps every module of the
-          largest symbol this address makes - 45 modules with its margin - at
+          largest symbol this address makes - 49 modules with its margin - at
           five pixels or more. */}
       <QrCode
         value={url}

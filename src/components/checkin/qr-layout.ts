@@ -46,10 +46,11 @@ function alignmentCentres(version: number, size: number): [number, number][] {
 }
 
 export function qrLayout(value: string): QrLayout {
-  // "M" keeps the flagship's invite and check-in links at version 5, small enough for a phone
-  // to read across a desk, and still recovers the modules the mark leaves out.
+  // "Q" recovers about 25% damage, enough to give the mark its modules and keep a margin for a
+  // smudged screen, and still keeps the flagship's invite and check-in links at version 6 or
+  // below, where the mark has room.
   const { modules, version } = QRCode.create(value, {
-    errorCorrectionLevel: "M",
+    errorCorrectionLevel: "Q",
   });
   const size = modules.size;
   const finders: [number, number][] = [
