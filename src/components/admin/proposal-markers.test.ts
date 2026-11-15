@@ -3,6 +3,7 @@ import {
   openStreetMapPinHref,
   pinMoveMetres,
   reviewMarkers,
+  webSearchHref,
 } from "./proposal-markers";
 import type { AdminDiveSiteProposal } from "@/lib/api/admin";
 
@@ -111,6 +112,20 @@ describe("openStreetMapPinHref", () => {
   it("marks the pin and opens on it", () => {
     expect(openStreetMapPinHref(PIN)).toBe(
       "https://www.openstreetmap.org/?mlat=27.5&mlon=34.25#map=17/27.5/34.25",
+    );
+  });
+});
+
+describe("webSearchHref", () => {
+  it("searches for the name and the place", () => {
+    expect(
+      webSearchHref({ name: "Coral Garden", location_name: "Dahab, Egypt" }),
+    ).toBe("https://www.google.com/search?q=Coral%20Garden%20Dahab%2C%20Egypt");
+  });
+
+  it("searches for the name alone where there is no place", () => {
+    expect(webSearchHref({ name: "Coral Garden", location_name: null })).toBe(
+      "https://www.google.com/search?q=Coral%20Garden",
     );
   });
 });

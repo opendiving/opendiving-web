@@ -58,3 +58,12 @@ export function reviewMarkers(
 export function openStreetMapPinHref({ latitude, longitude }: GeoPoint) {
   return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;
 }
+
+/** A web search for the proposed site by name and place, to check it is a real one. */
+export function webSearchHref({
+  name,
+  location_name,
+}: Pick<DiveSiteSharedMembers, "name" | "location_name">) {
+  const query = [name, location_name].filter(Boolean).join(" ");
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}

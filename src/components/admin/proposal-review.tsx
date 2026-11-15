@@ -15,6 +15,7 @@ import {
   openStreetMapPinHref,
   pinMoveMetres,
   reviewMarkers,
+  webSearchHref,
 } from "@/components/admin/proposal-markers";
 import { ProposalMatches } from "@/components/admin/proposal-matches";
 import { ProposalMembers } from "@/components/admin/proposal-members";
@@ -108,21 +109,18 @@ export function ProposalReview({
                     The pin moves {formatDistance(moved, units)}.
                   </p>
                 )}
-                <a
-                  href={openStreetMapPinHref(markers[0])}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm underline hover:text-foreground"
-                >
+                <ExternalLinkLine href={openStreetMapPinHref(markers[0])}>
                   Open the pin on OpenStreetMap
-                  <ExternalLink aria-hidden className="h-3 w-3" />
-                </a>
+                </ExternalLinkLine>
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
                 This proposal has no pin to show.
               </p>
             )}
+            <ExternalLinkLine href={webSearchHref(proposal.proposed)}>
+              Search for the site on Google
+            </ExternalLinkLine>
           </div>
 
           <div className="min-w-0 space-y-6">
@@ -169,5 +167,25 @@ export function ProposalReview({
         <AcceptIntoDialog {...decisionProps} target={decision.target} />
       )}
     </div>
+  );
+}
+
+function ExternalLinkLine({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex w-fit items-center gap-1 text-sm underline hover:text-foreground"
+    >
+      {children}
+      <ExternalLink aria-hidden className="h-3 w-3" />
+    </a>
   );
 }
