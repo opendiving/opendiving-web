@@ -41,6 +41,14 @@ vi.mock("@/lib/api/admin", async (importOriginal) => ({
     getDiveSiteProposals: vi.fn(),
     acceptDiveSiteProposal: vi.fn(),
     declineDiveSiteProposal: vi.fn(),
+    // The review's history card; its own tests cover what it shows.
+    getDiveSiteHistory: vi.fn(async () => ({
+      data: [],
+      total_count: 0,
+      has_more: false,
+      page: 1,
+      items_per_page: 100,
+    })),
   },
 }));
 
