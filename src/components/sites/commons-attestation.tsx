@@ -14,23 +14,31 @@ const CC0_DEED_URL = "https://creativecommons.org/publicdomain/zero/1.0/";
 // The API's limit on a proposal's message.
 const MAX_MESSAGE_LENGTH = 2000;
 
+// The tick here and the switch in Your proposals say the same thing.
+export const SHOW_PROPOSER_LABEL = "Show my name to other divers";
+
 interface CommonsAttestationProps {
   kind: DiveSiteProposalKind;
   ticked: boolean;
   onTickedChange: (ticked: boolean) => void;
   message: string;
   onMessageChange: (message: string) => void;
+  showProposer: boolean;
+  onShowProposerChange: (showProposer: boolean) => void;
 }
 
-// What every proposal ends on: an optional word for the reviewer, then the proposer's
-// own tick on the words the API stores, which is what dedicates the record. The deed
-// is linked at the tick, outside its label, so following it does not tick the box.
+// What every proposal ends on: an optional word for the reviewer, whether other divers
+// see the proposer's name in the site's history, then the proposer's own tick on the
+// words the API stores, which is what dedicates the record. The deed is linked at the
+// tick, outside its label, so following it does not tick the box.
 export function CommonsAttestation({
   kind,
   ticked,
   onTickedChange,
   message,
   onMessageChange,
+  showProposer,
+  onShowProposerChange,
 }: CommonsAttestationProps) {
   const id = useId();
   return (
@@ -45,6 +53,22 @@ export function CommonsAttestation({
           placeholder="Optional. Only the reviewer reads this."
           className="min-h-[60px]"
         />
+      </div>
+      <div className="space-y-1 text-sm">
+        <label className="flex items-start gap-2">
+          <Checkbox
+            className="mt-0.5"
+            checked={showProposer}
+            onChange={(event) => onShowProposerChange(event.target.checked)}
+          />
+          <span>{SHOW_PROPOSER_LABEL}</span>
+        </label>
+        <p className="pl-6 text-muted-foreground">
+          Divers signed in here will see your name in the site&rsquo;s history,
+          beside what you proposed. If a reviewer corrects it, the correction is
+          listed apart, under the reviewer&rsquo;s name. You can change this
+          later in <em>Your proposals</em>.
+        </p>
       </div>
       <div className="space-y-1 text-sm">
         <label className="flex items-start gap-2">

@@ -40,6 +40,7 @@ function ProposeChangeForm({
 }) {
   const [ticked, setTicked] = useState(false);
   const [message, setMessage] = useState("");
+  const [showProposer, setShowProposer] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const send = async (members: DiveSiteSharedMembers) => {
@@ -55,6 +56,7 @@ function ProposeChangeForm({
           attestation: COMMONS_ATTESTATIONS.change,
           message,
           members: changed,
+          ...(showProposer && { show_proposer: true }),
         }),
       );
     } catch (failure) {
@@ -82,6 +84,8 @@ function ProposeChangeForm({
         onTickedChange={setTicked}
         message={message}
         onMessageChange={setMessage}
+        showProposer={showProposer}
+        onShowProposerChange={setShowProposer}
       />
     </SharedMembersForm>
   );
@@ -104,7 +108,9 @@ export function ProposeChangeDialog({
           <DialogDescription>
             Everyone goes on seeing this site as it is until a reviewer accepts
             the change. An accepted change is public and stays, whatever becomes
-            of your account, and it is published without your name.
+            of your account, and it is published without your name. Other divers
+            see your name beside it in the site&rsquo;s history only if you tick{" "}
+            <em>Show my name to other divers</em>.
           </DialogDescription>
         </DialogHeader>
         <ProposeChangeForm

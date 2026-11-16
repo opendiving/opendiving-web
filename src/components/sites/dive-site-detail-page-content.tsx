@@ -30,6 +30,7 @@ import { CommonsSiteDialog } from "@/components/sites/commons-site-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { DiveSiteInfoCard } from "@/components/sites/dive-site-info-card";
 import { DiveSiteSpeciesCard } from "@/components/sites/dive-site-species-card";
+import { SiteHistoryCard } from "@/components/sites/site-history-card";
 import { DiveSiteHero } from "@/components/sites/dive-site-hero";
 import { DiveSiteInfoDialog } from "@/components/sites/dive-site-info-dialog";
 import { ProposeChangeDialog } from "@/components/sites/propose-change-dialog";
@@ -290,6 +291,13 @@ export function DiveSiteDetailPageContent() {
               siteUuid={diveSite.uuid}
               speciesCount={diveSite.species_count ?? 0}
             />
+
+            {inCommons && config?.commons_primary === true && (
+              <SiteHistoryCard
+                siteUuid={diveSite.uuid}
+                asReviewer={user?.is_superuser === true}
+              />
+            )}
           </div>
         </div>
       </div>

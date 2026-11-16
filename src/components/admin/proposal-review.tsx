@@ -26,6 +26,7 @@ import {
   proposalAge,
   proposalSiteName,
 } from "@/components/admin/proposal-queue-frame";
+import { SiteHistoryCard } from "@/components/sites/site-history-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
@@ -145,6 +146,11 @@ export function ProposalReview({
             />
 
             <ProposalMembers proposal={proposal} />
+
+            {/* A new site has no record yet, so no history. */}
+            {proposal.kind === "change" && (
+              <SiteHistoryCard siteUuid={proposal.site_uuid} asReviewer />
+            )}
 
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => setDecision({ kind: "accept" })}>

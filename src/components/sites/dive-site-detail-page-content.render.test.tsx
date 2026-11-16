@@ -10,6 +10,7 @@ import type { DiveSite } from "@/lib/api/dive-sites";
 const loaded = vi.hoisted(() => ({
   site: null as unknown,
   primary: false,
+  superuser: false,
   replace: vi.fn(),
 }));
 
@@ -18,7 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/useAuthGuard", () => ({
   useAuthGuard: () => ({
-    user: { uuid: "user-1" },
+    user: { uuid: "user-1", is_superuser: loaded.superuser },
     isAuthenticated: true,
     isLoading: false,
   }),
@@ -53,6 +54,11 @@ vi.mock("@/components/dives/recent-dives-card", () => ({
 }));
 vi.mock("@/components/sites/dive-site-species-card", () => ({
   DiveSiteSpeciesCard: () => null,
+}));
+vi.mock("@/components/sites/site-history-card", () => ({
+  SiteHistoryCard: ({ asReviewer }: { asReviewer: boolean }) => (
+    <div>{asReviewer ? "The reviewer's history" : "The history"}</div>
+  ),
 }));
 vi.mock("@/components/sites/dive-site-dialog", () => ({
   DiveSiteDialog: ({
@@ -114,6 +120,7 @@ const items = async () => {
 beforeEach(() => {
   loaded.site = null;
   loaded.primary = false;
+  loaded.superuser = false;
 });
 
 describe("DiveSiteDetailPageContent", () => {
@@ -304,6 +311,28 @@ describe("DiveSiteDetailPageContent", () => {
     expect(screen.getByText("Pin is on land")).toBeInTheDocument();
     await openMenu();
     expect(await items()).toContain("Propose for OpenDiving Commons");
+  });
+
+  it.each([
+    ["a Commons record where the Commons is edited", COMMONS, true, true],
+    ["a Commons record on a copy", COMMONS, false, false],
+    ["a diver's own site", OWN, true, false],
+  ])("shows the history on %s: %s", (_label, site, primary, shown) => {
+    loaded.site = site;
+    loaded.primary = primary;
+    render(<DiveSiteDetailPageContent />);
+
+    expect(screen.queryByText("The history") !== null).toBe(shown);
+    expect(screen.queryByText("The reviewer's history")).toBeNull();
+  });
+
+  it("feeds a superuser's history from the admin read", () => {
+    loaded.site = COMMONS;
+    loaded.primary = true;
+    loaded.superuser = true;
+    render(<DiveSiteDetailPageContent />);
+
+    expect(screen.getByText("The reviewer's history")).toBeInTheDocument();
   });
 
   it("offers replacing a copy on every instance, and goes to the record", async () => {

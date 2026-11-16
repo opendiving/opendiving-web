@@ -18,6 +18,8 @@ vi.mock("@/hooks/useAuthGuard", () => ({
     isLoading: false,
   }),
 }));
+const toast = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ui/use-toast", () => ({ useToast: () => ({ toast }) }));
 vi.mock("@/hooks/useInstanceConfig", () => ({
   useInstanceConfig: () => instance.state,
 }));
@@ -29,12 +31,14 @@ vi.mock("@/lib/api/dive-sites", async (importOriginal) => ({
   diveSitesAPI: {
     getDiveSiteProposals: vi.fn(),
     withdrawDiveSiteProposal: vi.fn(),
+    updateDiveSiteProposal: vi.fn(),
   },
 }));
 
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const getProposals = vi.mocked(diveSitesAPI.getDiveSiteProposals);
 const withdraw = vi.mocked(diveSitesAPI.withdrawDiveSiteProposal);
+const update = vi.mocked(diveSitesAPI.updateDiveSiteProposal);
 
 const proposal = (over: Partial<DiveSiteProposal>): DiveSiteProposal => ({
   uuid: "proposal-1",
@@ -44,6 +48,7 @@ const proposal = (over: Partial<DiveSiteProposal>): DiveSiteProposal => ({
   site: { uuid: "site-1", name: "Walk Reef" },
   created_at: "2026-01-02T00:00:00Z",
   decided_at: null,
+  show_proposer: false,
   ...over,
 });
 
@@ -64,6 +69,8 @@ beforeEach(() => {
   getProposals.mockReset();
   withdraw.mockReset();
   withdraw.mockResolvedValue(undefined);
+  update.mockReset();
+  toast.mockReset();
 });
 
 describe("SiteProposalsPageContent", () => {
@@ -111,6 +118,63 @@ describe("SiteProposalsPageContent", () => {
     expect(
       screen.queryByRole("button", { name: "Withdraw" }),
     ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["waiting", true],
+    ["accepted", true],
+    ["declined", false],
+    ["withdrawn", false],
+  ] as const)(
+    "puts the name switch on a %s proposal: %s",
+    async (status, hasSwitch) => {
+      answer([proposal({ status, show_proposer: true })]);
+      render(<SiteProposalsPageContent />);
+
+      await screen.findByRole("link", { name: "Walk Reef" });
+      const toggle = screen.queryByRole("switch", {
+        name: "Show my name to other divers",
+      });
+      if (hasSwitch) {
+        expect(toggle).toBeChecked();
+      } else {
+        expect(toggle).not.toBeInTheDocument();
+      }
+    },
+  );
+
+  it("sends the switch's flip and shows the answer", async () => {
+    answer([proposal({ status: "accepted" })]);
+    update.mockResolvedValue(
+      proposal({ status: "accepted", show_proposer: true }),
+    );
+    render(<SiteProposalsPageContent />);
+
+    const toggle = await screen.findByRole("switch", {
+      name: "Show my name to other divers",
+    });
+    await userEvent.click(toggle);
+
+    expect(update).toHaveBeenCalledWith("proposal-1", { show_proposer: true });
+    await waitFor(() => expect(toggle).toBeChecked());
+  });
+
+  it("puts the switch back and says so when the flip is refused", async () => {
+    answer([proposal({ show_proposer: true })]);
+    update.mockRejectedValue(new Error("refused"));
+    render(<SiteProposalsPageContent />);
+
+    const toggle = await screen.findByRole("switch", {
+      name: "Show my name to other divers",
+    });
+    await userEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive" }),
+      ),
+    );
+    expect(toggle).toBeChecked();
   });
 
   it("asks for nothing on a copy, where the routes do not exist", async () => {

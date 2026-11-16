@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { Landmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Label } from "@/components/ui/label";
 import {
   ListCardHeader,
   useIsEmptyList,
@@ -24,8 +25,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { useToast } from "@/components/ui/use-toast";
+import { SHOW_PROPOSER_LABEL } from "@/components/sites/commons-attestation";
 import { WAITING_FOR_REVIEW } from "@/components/sites/site-commons-notices";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import {
@@ -59,6 +62,37 @@ const STATUS_LABELS: Record<DiveSiteProposalStatus, string> = {
   withdrawn: "Withdrawn",
 };
 
+// Only a waiting or an accepted proposal can put a name in a site's history.
+const CAN_SHOW_PROPOSER = new Set<DiveSiteProposalStatus>([
+  "waiting",
+  "accepted",
+]);
+
+function ShowProposerSwitch({
+  proposal,
+  disabled,
+  onChange,
+}: {
+  proposal: DiveSiteProposal;
+  disabled: boolean;
+  onChange: (proposal: DiveSiteProposal, showProposer: boolean) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="mt-1 flex items-center gap-2">
+      <Switch
+        id={id}
+        checked={proposal.show_proposer}
+        disabled={disabled}
+        onCheckedChange={(next) => onChange(proposal, next)}
+      />
+      <Label htmlFor={id} className="font-normal">
+        {SHOW_PROPOSER_LABEL}
+      </Label>
+    </div>
+  );
+}
+
 interface SiteProposalsFrameProps {
   isLoading: boolean;
   totalCount: number;
@@ -69,6 +103,11 @@ interface SiteProposalsFrameProps {
   onLoadMore?: () => void;
   withdrawingId?: string | null;
   onWithdraw?: (proposal: DiveSiteProposal) => void;
+  choosingId?: string | null;
+  onShowProposerChange?: (
+    proposal: DiveSiteProposal,
+    showProposer: boolean,
+  ) => void;
 }
 
 // Everything /sites/proposals draws before the list exists: the defaults are the
@@ -83,6 +122,8 @@ function SiteProposalsFrame({
   onLoadMore = noop,
   withdrawingId = null,
   onWithdraw = noop,
+  choosingId = null,
+  onShowProposerChange = noop,
 }: SiteProposalsFrameProps) {
   const withReturnTo = useWithReturnTo();
   const isEmptyList = useIsEmptyList({
@@ -171,6 +212,13 @@ function SiteProposalsFrame({
                               Withdraw
                             </Button>
                           )}
+                          {CAN_SHOW_PROPOSER.has(proposal.status) && (
+                            <ShowProposerSwitch
+                              proposal={proposal}
+                              disabled={choosingId === proposal.uuid}
+                              onChange={onShowProposerChange}
+                            />
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
@@ -203,6 +251,7 @@ export function SiteProposalsPageContent() {
   const { config, isLoading: isConfigLoading } = useInstanceConfig();
   const { toast } = useToast();
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
+  const [choosingId, setChoosingId] = useState<string | null>(null);
   const isPrimary = config?.commons_primary === true;
 
   const fetchProposals = useCallback(
@@ -243,6 +292,34 @@ export function SiteProposalsPageContent() {
     }
   };
 
+  // The row shows the new choice while it saves, then the answer; a refusal puts
+  // it back.
+  const changeShowProposer = async (
+    proposal: DiveSiteProposal,
+    showProposer: boolean,
+  ) => {
+    setChoosingId(proposal.uuid);
+    applySaved({ ...proposal, show_proposer: showProposer });
+    try {
+      applySaved(
+        await diveSitesAPI.updateDiveSiteProposal(proposal.uuid, {
+          show_proposer: showProposer,
+        }),
+      );
+    } catch (error) {
+      applySaved(proposal);
+      toast({
+        title: getApiErrorMessage(
+          error,
+          "Failed to change whether your name is shown. Please try again.",
+        ),
+        variant: "destructive",
+      });
+    } finally {
+      setChoosingId(null);
+    }
+  };
+
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
   }
@@ -274,6 +351,10 @@ export function SiteProposalsPageContent() {
       onLoadMore={loadMore}
       withdrawingId={withdrawingId}
       onWithdraw={(proposal) => void withdraw(proposal)}
+      choosingId={choosingId}
+      onShowProposerChange={(proposal, showProposer) =>
+        void changeShowProposer(proposal, showProposer)
+      }
     />
   );
 }

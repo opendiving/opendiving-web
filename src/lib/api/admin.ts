@@ -1,6 +1,7 @@
 import { apiClient, PaginatedResponse } from "./client";
 import type {
   DiveSiteCommonsMatch,
+  DiveSiteHistoryEntry,
   DiveSiteProposalKind,
   DiveSiteSharedMembers,
 } from "./dive-sites";
@@ -224,6 +225,19 @@ export interface AdminDiveSiteProposal {
   proposed: DiveSiteSharedMembers;
   changed: string[];
   matches: DiveSiteCommonsMatch[];
+}
+
+/**
+ * An entry of a record's history as a reviewer reads it. `made_by` on a diver's entry
+ * is their name whatever they chose. `corrected` is a boolean on a diver's entry and
+ * null on a reviewer's correction, where `show_proposer` and `reviewed_by` are null
+ * too. On a diver's entry `show_proposer` is null once the proposal is gone, and a
+ * name is null once its account is.
+ */
+export interface AdminDiveSiteHistoryEntry extends DiveSiteHistoryEntry {
+  show_proposer: boolean | null;
+  reviewed_by: string | null;
+  corrected: boolean | null;
 }
 
 /**
@@ -460,6 +474,20 @@ export const adminAPI = {
     body: DiveSiteProposalAccept,
   ): Promise<void> {
     await apiClient.post(`/admin/dive-site-proposal/${uuid}/accept`, body);
+  },
+
+  /** A page of a site's history as a reviewer reads it, newest first. */
+  async getDiveSiteHistory(
+    siteUuid: string,
+    page: number = 1,
+    items_per_page: number = 10,
+  ): Promise<PaginatedResponse<AdminDiveSiteHistoryEntry>> {
+    const response = await apiClient.get<
+      PaginatedResponse<AdminDiveSiteHistoryEntry>
+    >(`/admin/dive-site/${siteUuid}/history`, {
+      params: { page, items_per_page },
+    });
+    return response.data;
   },
 
   /** Declines a waiting proposal with a reason, which the proposer reads. */

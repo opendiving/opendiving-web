@@ -223,6 +223,7 @@ describe("ProposeSiteDialog", () => {
       site: { uuid: SITE.uuid, name: SITE.name },
       created_at: "2026-01-02T00:00:00Z",
       decided_at: null,
+      show_proposer: false,
     });
     const { onProposed, onOpenChange } = open();
     await reviewed();
@@ -255,6 +256,44 @@ describe("ProposeSiteDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("sends the name's choice only when ticked, unticked by default", async () => {
+    proposeDiveSite.mockResolvedValue({
+      uuid: "proposal-1",
+      kind: "new_site",
+      status: "waiting",
+      reason: null,
+      site: { uuid: SITE.uuid, name: SITE.name },
+      created_at: "2026-01-02T00:00:00Z",
+      decided_at: null,
+      show_proposer: true,
+    });
+    open();
+    await reviewed();
+
+    const show = screen.getByRole("checkbox", {
+      name: "Show my name to other divers",
+    });
+    expect(show).not.toBeChecked();
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      /listed apart, under the reviewer’s name/,
+    );
+    await userEvent.click(show);
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: COMMONS_ATTESTATIONS.new_site }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send proposal" }),
+    );
+
+    await waitFor(() =>
+      expect(proposeDiveSite).toHaveBeenCalledWith(SITE.uuid, {
+        attestation: COMMONS_ATTESTATIONS.new_site,
+        message: "",
+        show_proposer: true,
+      }),
+    );
+  });
+
   it("shows the API's refusal and stays open", async () => {
     proposeDiveSite.mockRejectedValue({
       isAxiosError: true,
@@ -262,7 +301,9 @@ describe("ProposeSiteDialog", () => {
     });
     const { onProposed } = open();
     await reviewed();
-    await userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: COMMONS_ATTESTATIONS.new_site }),
+    );
     await userEvent.click(
       screen.getByRole("button", { name: "Send proposal" }),
     );

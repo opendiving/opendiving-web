@@ -299,6 +299,8 @@ export interface DiveSiteProposal {
   site: { uuid: string; name: string };
   created_at: string;
   decided_at: string | null;
+  /** Whether other divers read the proposer's name beside it in the site's history. */
+  show_proposer: boolean;
 }
 
 /** A proposal as a site's read carries it. */
@@ -315,6 +317,28 @@ export interface DiveSiteProposalCreate {
   attestation: string;
   message?: string;
   members?: Partial<DiveSiteSharedMembers>;
+  /** Sent only when ticked, so a proposal without it has the body it always had. */
+  show_proposer?: true;
+}
+
+/** One shared member an entry changed, its values as the site's read serialises them. */
+export interface DiveSiteHistoryDetail {
+  field: string;
+  old: unknown;
+  new: unknown;
+}
+
+/**
+ * One accepted change to a Commons record, newest first. `made_by` is the display
+ * name of who made it, null where none is shown; `details` is empty when added. A pin
+ * that moved names both `latitude` and `longitude`.
+ */
+export interface DiveSiteHistoryEntry {
+  uuid: string;
+  kind: "added" | "changed";
+  created_at: string;
+  made_by: string | null;
+  details: DiveSiteHistoryDetail[];
 }
 
 /**
@@ -732,6 +756,38 @@ export const diveSitesAPI = {
       `/dive-site-proposals`,
       { params: { page, items_per_page } },
     );
+    return response.data;
+  },
+
+  /**
+   * Turn on or off whether other divers read the diver's name beside what a proposal
+   * of theirs changes in the site's history. A declined or withdrawn one is a 409.
+   */
+  async updateDiveSiteProposal(
+    proposalUuid: string,
+    body: { show_proposer: boolean },
+  ): Promise<DiveSiteProposal> {
+    const response = await apiClient.patch<DiveSiteProposal>(
+      `/dive-site-proposal/${proposalUuid}`,
+      body,
+    );
+    return response.data;
+  },
+
+  /**
+   * A page of a Commons record's history, newest first. Empty for the diver's own
+   * site; a 404 where this instance does not edit the Commons.
+   */
+  async getDiveSiteHistory(
+    diveSiteUuid: string,
+    page: number = 1,
+    items_per_page: number = 10,
+  ): Promise<PaginatedResponse<DiveSiteHistoryEntry>> {
+    const response = await apiClient.get<
+      PaginatedResponse<DiveSiteHistoryEntry>
+    >(`/dive-site/${diveSiteUuid}/history`, {
+      params: { page, items_per_page },
+    });
     return response.data;
   },
 

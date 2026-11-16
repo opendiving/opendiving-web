@@ -209,6 +209,7 @@ function ReviewStep({
   const units = useUnits();
   const [ticked, setTicked] = useState(false);
   const [message, setMessage] = useState("");
+  const [showProposer, setShowProposer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const members = publishedMembers(site);
@@ -222,6 +223,7 @@ function ReviewStep({
         await diveSitesAPI.proposeDiveSite(site.uuid, {
           attestation: COMMONS_ATTESTATIONS.new_site,
           message,
+          ...(showProposer && { show_proposer: true }),
         }),
       );
     } catch (failure) {
@@ -283,7 +285,8 @@ function ReviewStep({
         <h3 className="font-semibold">What would not</h3>
         <p>
           Your notes and your tags stay private, and so do your dives. Who
-          proposed the site is never published.
+          proposed the site is never published, and no other diver sees your
+          name unless you tick <em>Show my name to other divers</em> below.
         </p>
         <p>
           A reviewer reads the above with your name, and may correct it before
@@ -298,6 +301,8 @@ function ReviewStep({
         onTickedChange={setTicked}
         message={message}
         onMessageChange={setMessage}
+        showProposer={showProposer}
+        onShowProposerChange={setShowProposer}
       />
       <FormApiError error={error} />
       <DialogFooter>

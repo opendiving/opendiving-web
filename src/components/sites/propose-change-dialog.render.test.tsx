@@ -57,6 +57,7 @@ beforeEach(() => {
     site: { uuid: RECORD.uuid, name: RECORD.name },
     created_at: "2026-01-02T00:00:00Z",
     decided_at: null,
+    show_proposer: false,
   });
 });
 
@@ -85,6 +86,29 @@ describe("ProposeChangeDialog", () => {
       }),
     );
     await waitFor(() => expect(onProposed).toHaveBeenCalled());
+  });
+
+  it("shows the name only when ticked, and sends the choice only then", async () => {
+    open();
+
+    const show = screen.getByRole("checkbox", {
+      name: "Show my name to other divers",
+    });
+    expect(show).not.toBeChecked();
+    const name = screen.getByLabelText("Name");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Kapal Polisi");
+    await userEvent.click(show);
+    await tickAndSend();
+
+    await waitFor(() =>
+      expect(proposeDiveSite).toHaveBeenCalledWith(RECORD.uuid, {
+        attestation: COMMONS_ATTESTATIONS.change,
+        message: "",
+        members: { name: "Kapal Polisi" },
+        show_proposer: true,
+      }),
+    );
   });
 
   it("says a change that changes nothing does, without asking the API", async () => {
