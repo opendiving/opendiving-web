@@ -264,10 +264,10 @@ export default async function TermsPage() {
                 dive is part of your own log. The people you record are private
                 records of yours, not connections between accounts.{" "}
                 {commonsPrimary
-                  ? "An account on this copy gives its holder no view of what you enter, apart from an administrator's, which reads what you propose for OpenDiving Commons and a photo a tool of yours proposes for a species."
+                  ? "An account on this copy gives its holder no view of what you enter, apart from an administrator's, which reads what you propose for OpenDiving Commons and a photo a tool of yours proposes for a species, and apart from your name beside a change of yours in a Commons site's history, where you choose to show it."
                   : "An account on this copy gives its holder no view of what you enter, apart from an administrator's, which reads a photo a tool of yours proposes for a species."}{" "}
                 This copy shows one person to another in{" "}
-                {commonsPrimary ? "five" : "four"} cases only: an invitation,
+                {commonsPrimary ? "six" : "four"} cases only: an invitation,
                 which is about your name rather than about anything you entered;
                 a check-in link you make, which shows your check-in page to
                 whoever holds it, account or not; a person you link to an
@@ -277,7 +277,7 @@ export default async function TermsPage() {
                 a species, which shows the file, its note and your name to
                 whoever reviews it
                 {commonsPrimary &&
-                  "; and a proposal for OpenDiving Commons, which shows what you proposed and your name to whoever reviews it, and publishes what is accepted, without your name"}
+                  "; a proposal for OpenDiving Commons, which shows what you proposed and your name to whoever reviews it, and publishes what is accepted, without your name; and your name beside what a proposal of yours changed in a Commons site's history, which every account here sees only where you choose it"}
                 . Section 5 says exactly what each is, and what follows from the
                 rest.
               </p>
@@ -451,13 +451,13 @@ export default async function TermsPage() {
                 &mdash; to store your entries, show them back to you, and
                 include them in exports you ask for.{" "}
                 {commonsPrimary
-                  ? "Nothing you enter is published, shared with other users, or shown to anyone else by this software, except through a check-in link you make, a photo proposal a tool of yours sends, or a proposal you send for OpenDiving Commons."
+                  ? "Nothing you enter is published, shared with other users, or shown to anyone else by this software, except through a check-in link you make, a photo proposal a tool of yours sends, or a proposal you send for OpenDiving Commons, with your name in the site's history where you choose to show it."
                   : "Your entries are not published, shared with other users, or shown to anyone else by this software, except through a check-in link you make or a photo proposal a tool of yours sends."}{" "}
                 Printing your check-in summary and handing it to a dive shop is
                 you showing your own entries to someone, not this copy showing
                 them, and the permission above is unchanged by it.{" "}
                 {commonsPrimary
-                  ? "The next five paragraphs are the five things"
+                  ? "The next six paragraphs are the six things"
                   : "The next four paragraphs are the four things"}{" "}
                 this copy does show one person to another: an invitation, which
                 is not an entry; a check-in link, which is; a person linked to
@@ -465,7 +465,7 @@ export default async function TermsPage() {
                 anything of yours; {!commonsPrimary && "and "}a photo proposal,
                 which is an entry shown to whoever reviews it alone
                 {commonsPrimary &&
-                  "; and a proposal for OpenDiving Commons, which is an entry, and the one thing here that can end up public"}
+                  "; a proposal for OpenDiving Commons, which is an entry, and the one thing here that can end up public; and your name in a Commons site's history, which is not an entry, and which you choose for each proposal"}
                 .
               </p>
               <p className="text-foreground mb-4">
@@ -555,15 +555,38 @@ export default async function TermsPage() {
                   </a>
                   , which gives up your rights in it, for everyone, as far as
                   the law allows. What is accepted is public, never says who
-                  proposed it, and stays if you delete your account; a change
-                  accepted into a record from another source leaves that record
-                  under its source&rsquo;s licence. What is declined or
-                  withdrawn publishes nothing, and a decline always comes with a
-                  reason. Anyone can report a Commons record to the operator of
-                  this copy, by the way section 13 gives, and a report is
-                  answered by changing the record; a record cannot yet be
-                  removed. The privacy policy&rsquo;s section headed{" "}
+                  proposed it in the pool or its public copies, and stays if you
+                  delete your account; a change accepted into a record from
+                  another source leaves that record under its source&rsquo;s
+                  licence. What is declined or withdrawn publishes nothing, and
+                  a decline always comes with a reason. Anyone can report a
+                  Commons record to the operator of this copy, by the way
+                  section 13 gives, and a report is answered by changing the
+                  record; a record cannot yet be removed. The privacy
+                  policy&rsquo;s section headed{" "}
                   <em>Proposing for OpenDiving Commons</em> sets out the same in
+                  its own register.
+                </p>
+              )}
+              {commonsPrimary && (
+                <p className="text-foreground mb-4">
+                  Where you choose, for a proposal of yours, to show your name
+                  to other divers, you grant the operator the further permission
+                  that act needs, and only that: to show the name on your
+                  account, as it is and as you change it, to every account on
+                  this copy, beside what that proposal changed in the
+                  site&rsquo;s history, for as long as the choice is on and your
+                  account stands &mdash; never your address. You can turn it off
+                  and on again in <em>Your proposals</em>. Whoever reviews
+                  proposals sees your name beside your entries either way, and
+                  each entry keeps which administrator accepted it, which
+                  administrators alone are shown. What a reviewer corrects in
+                  what you proposed is listed apart, as the reviewer&rsquo;s own
+                  change, under that administrator&rsquo;s name, to every
+                  account here. Your name never reaches the public copies of the
+                  Commons, and once your account goes the entry stays and names
+                  nobody. The privacy policy&rsquo;s section headed{" "}
+                  <em>A Commons Site&rsquo;s History</em> sets out the same in
                   its own register.
                 </p>
               )}
@@ -575,7 +598,7 @@ export default async function TermsPage() {
                 arrives with a permission of its own written here and a section
                 of its own on the privacy page, rather than leaning on this one.{" "}
                 {commonsPrimary
-                  ? "The invitation, check-in link, linking, photo proposal and Commons proposal grants above are that rule being kept, not exceptions to it."
+                  ? "The invitation, check-in link, linking, photo proposal, Commons proposal and Commons history grants above are that rule being kept, not exceptions to it."
                   : "The invitation, check-in link, linking and photo proposal grants above are that rule being kept, not exceptions to it."}
               </p>
             </section>

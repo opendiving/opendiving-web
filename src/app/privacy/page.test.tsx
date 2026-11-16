@@ -1553,8 +1553,10 @@ describe("proposing for OpenDiving Commons", () => {
     "Proposals for OpenDiving Commons:",
     "Keep OpenDiving Commons:",
     "What Is Public Here",
-    "There are five exceptions",
+    "There are six exceptions",
     "proposing for OpenDiving Commons,",
+    "A Commons Site’s History",
+    "Show my name to other divers",
     "and on proposals for OpenDiving Commons",
     "public repository on GitHub",
     "a change you propose",
@@ -1641,8 +1643,19 @@ describe("proposing for OpenDiving Commons", () => {
       expect(heading.tagName).toBe("H3");
       // A sentence pointing at it agrees.
       expect(
-        screen.getByText(/one of the five places in the software/),
+        screen.getByText(/one of the six places in the software/),
       ).toHaveTextContent(`OpenDiving Commons, in section ${number}`);
+      // The history follows it.
+      const [major, minor] = number.split(".");
+      const history = `${major}.${Number(minor) + 1}`;
+      expect(
+        screen.getByText(
+          new RegExp(`^${history.replace(".", "\\.")} A Commons Site`),
+        ).tagName,
+      ).toBe("H3");
+      expect(
+        screen.getByText(/one of the six places in the software/),
+      ).toHaveTextContent(`history, in section ${history}`);
     },
   );
 
@@ -1670,11 +1683,60 @@ describe("proposing for OpenDiving Commons", () => {
     await renderPage({ google: false, commonsPrimary: true });
 
     expect(
-      screen.getByText(/one of the five places in the software/),
+      screen.getByText(/one of the six places in the software/),
     ).toHaveTextContent(/section 4\.14/);
-    expect(screen.getByText(/There are five exceptions\./)).toHaveTextContent(
-      /Section 4\.14/,
+    expect(screen.getByText(/There are six exceptions\./)).toHaveTextContent(
+      /Section 4\.14 sets out what that shows and publishes\. The sixth is your name alone.*Section 4\.15/,
     );
+  });
+
+  it("gives the history a section of its own, saying whose name it shows and what stays", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    const section = sectionText(/^4\.15 A Commons Site’s History/);
+    expect(section).toMatch(/Every account here can read it/);
+    expect(section).toMatch(/the sixth place in the software/);
+    expect(section).toMatch(
+      /only if you chose it for that proposal with Show my name to other divers, which is off unless you tick it/,
+    );
+    expect(section).toMatch(/as it is when the page is read/);
+    expect(section).toMatch(/never your address/);
+    expect(section).toMatch(
+      /the correction is listed apart, above your change, as the reviewer’s own change, under the name on that administrator’s account, to every account here/,
+    );
+    expect(section).toMatch(/same switch in Your proposals/);
+    expect(section).toMatch(/Switching it off takes your name off that entry/);
+    expect(section).toMatch(/A declined or withdrawn proposal makes no entry/);
+    expect(section).toMatch(
+      /sees your name beside your entries whatever you chose/,
+    );
+    expect(section).toMatch(
+      /which administrator accepted it, which only administrators are shown/,
+    );
+    expect(section).toMatch(/goes with it when your account goes/);
+    expect(section).toMatch(/from then on names nobody/);
+    expect(section).toMatch(
+      /the public repository on GitHub and other copies of the Commons never carry a name/,
+    );
+  });
+
+  it("names the history wherever the proposing section's promises are", async () => {
+    await renderPage({ google: false, commonsPrimary: true });
+
+    const text = pageText();
+    expect(sectionText(/4\.14 Proposing for OpenDiving Commons/)).toMatch(
+      /Who proposed it is never published: no name, no address and no account goes with it\. Divers with an account here see your name beside it only where you choose that, as section 4\.15 says/,
+    );
+    expect(text).toMatch(
+      /your name is shown beside what it changed in the site’s history to every account here, as section 4\.15 says/,
+    );
+    expect(text).toMatch(
+      /Your name beside one in the site’s history does have one, in your list of proposals — section 4\.15/,
+    );
+    expect(text).toMatch(/So is each entry in its history, which names nobody/);
+    expect(
+      listAfterHeading(/2\.1 Information You Provide Directly/).join(" "),
+    ).toMatch(/whether other divers may see your name beside it/);
   });
 
   it("lists it in §2.1 and §3, and keeps §3's close true", async () => {

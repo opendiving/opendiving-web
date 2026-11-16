@@ -58,6 +58,8 @@ export default async function PrivacyPage() {
   // `commonsPrimary`, and on every other copy reads as it always has.
   const proposingSection =
     14 + (googleClientId ? 1 : 0) + (diveConditions ? 1 : 0);
+  // A record's history follows proposing, being made only by an accepted proposal.
+  const historySection = proposingSection + 1;
 
   // Eleven things every copy has, the map tiles and the proposals where it has them.
   const outsideTheButtons = ["Eleven", "Twelve", "Thirteen"][
@@ -361,9 +363,12 @@ export default async function PrivacyPage() {
                     <strong>Proposals for OpenDiving Commons:</strong> A dive
                     site of yours, or a change to a Commons site, that you
                     propose: its shared facts, which follow your edits while a
-                    new site waits, the words you ticked and when, and any
-                    message you add for the reviewer. Who reads that, and what
-                    is published, is section 4.{proposingSection}
+                    new site waits, the words you ticked and when, any message
+                    you add for the reviewer, and whether other divers may see
+                    your name beside it in the site&rsquo;s history. Who reads
+                    that, and what is published, is section 4.
+                    {proposingSection}, and what the history shows is section 4.
+                    {historySection}
                   </li>
                 )}
                 <li>
@@ -797,9 +802,11 @@ export default async function PrivacyPage() {
                     <strong>Keep OpenDiving Commons:</strong> Show what you
                     propose for OpenDiving Commons to whoever reviews it, tell
                     you what became of it, publish what is accepted, without
-                    your name, and keep the proposal as the evidence of what you
-                    affirmed. Section 4.{proposingSection} says exactly what
-                    that shows and publishes
+                    your name, keep a history of what each accepted proposal
+                    changed, showing your name beside it only where you chose
+                    to, and keep the proposal as the evidence of what you
+                    affirmed. Sections 4.{proposingSection} and 4.
+                    {historySection} say exactly what that shows and publishes
                   </li>
                 )}
                 <li>
@@ -864,9 +871,12 @@ export default async function PrivacyPage() {
                 whoever runs this copy, as section 4.12 says
                 {commonsPrimary && (
                   <>
-                    ; and a dive site or a change you propose is read by whoever
+                    ; a dive site or a change you propose is read by whoever
                     reviews it and, once accepted, is public for good, as{" "}
-                    section 4.{proposingSection} says
+                    section 4.{proposingSection} says; and, where you choose it
+                    for a proposal, your name is shown beside what it changed in
+                    the site&rsquo;s history to every account here, as section
+                    4.{historySection} says
                   </>
                 )}
                 .
@@ -901,7 +911,7 @@ export default async function PrivacyPage() {
                 its identifier.
               </p>
               <p className="text-foreground mb-4">
-                There are {commonsPrimary ? "five" : "four"} exceptions. The
+                There are {commonsPrimary ? "six" : "four"} exceptions. The
                 first is not about anything you entered: inviting somebody shows
                 them your name, and shows you whether they went on to register;
                 and, where this copy is invite-only, an invite link you make
@@ -928,6 +938,10 @@ export default async function PrivacyPage() {
                     OpenDiving Commons is shown to whoever reviews it, with your
                     name, and what is accepted is public, without it. Section 4.
                     {proposingSection} sets out what that shows and publishes.
+                    The sixth is your name alone, and you choose it for each
+                    proposal: where you do, every account here sees it beside
+                    what that proposal changed in the site&rsquo;s history.
+                    Section 4.{historySection} sets out what that shows.
                   </>
                 )}
               </p>
@@ -950,7 +964,7 @@ export default async function PrivacyPage() {
                 and dives you add to it are yours alone: they are kept apart
                 from the record, and no other account can see them
                 {commonsPrimary
-                  ? ". Nor can another account see that you use the site, apart from whoever reviews a change you propose to it."
+                  ? ". Nor can another account see that you use the site, apart from whoever reviews a change you propose to it, and every account here where you choose to have your name shown beside that change in the site's history."
                   : ", or that you use the site at all."}{" "}
                 Removing a Commons site from your sites deletes your notes and
                 tags on it and takes it off your dives, which stay in your log,
@@ -1257,14 +1271,15 @@ export default async function PrivacyPage() {
                 account on it or only people who have been invited
                 {joinLinks && <> or who follow one of its join links</>}. Where
                 it is invitations, this is one of the{" "}
-                {commonsPrimary ? "five" : "four"} places in the software where
+                {commonsPrimary ? "six" : "four"} places in the software where
                 something about one person is shown to another &mdash; the
                 others are a check-in link, in section 4.9, linking a person to
                 an account, in section 4.10,{" "}
                 {commonsPrimary ? (
                   <>
-                    a photo proposal, in section 4.12, and a proposal for
-                    OpenDiving Commons, in section 4.{proposingSection}
+                    a photo proposal, in section 4.12, a proposal for OpenDiving
+                    Commons, in section 4.{proposingSection}, and a name in a
+                    Commons site&rsquo;s history, in section 4.{historySection}
                   </>
                 ) : (
                   "and a photo proposal, in section 4.12"
@@ -1844,8 +1859,10 @@ export default async function PrivacyPage() {
                     until you tick the words it shows you and send it. This is
                     the fifth place in the software where something about one
                     person is shown to another, the third that shows what you
-                    entered, and the only one that publishes anything, and this
-                    section is the whole of it.
+                    entered, and the only one that publishes anything. This
+                    section is the whole of it but the name you may choose to
+                    show in the site&rsquo;s history, which section 4.
+                    {historySection} sets out.
                   </p>
                   <p className="text-foreground mb-4">
                     <strong>What a reviewer is shown:</strong> whoever runs this
@@ -1860,7 +1877,8 @@ export default async function PrivacyPage() {
                     follows the site&rsquo;s edits while it waits, so an edit
                     you make meanwhile is what is in front of them. Never your
                     notes, your tags or your dives, and no other diver is shown
-                    any of it.
+                    any of it, apart from your name beside an accepted change in
+                    the site&rsquo;s history where you choose that.
                   </p>
                   <p className="text-foreground mb-4">
                     <strong>What is published:</strong> if a reviewer accepts,
@@ -1871,13 +1889,15 @@ export default async function PrivacyPage() {
                     created the site, to the millisecond. A change publishes the
                     new values on the record it changes. Who proposed it is
                     never published: no name, no address and no account goes
-                    with it. A site of yours that is accepted stops being yours,
-                    and every account here can use it; your notes, tags and
-                    dives on it stay yours, as section 4.2 says. Where the
-                    Commons already has the site, the reviewer may accept yours
-                    into that record instead: your dives, notes and tags move to
-                    the record and your own site is removed, though its
-                    identifier is kept with your account, pointing at the
+                    with it. Divers with an account here see your name beside it
+                    only where you choose that, as section 4.
+                    {historySection} says. A site of yours that is accepted
+                    stops being yours, and every account here can use it; your
+                    notes, tags and dives on it stay yours, as section 4.2 says.
+                    Where the Commons already has the site, the reviewer may
+                    accept yours into that record instead: your dives, notes and
+                    tags move to the record and your own site is removed, though
+                    its identifier is kept with your account, pointing at the
                     record, until your account goes.
                   </p>
                   <p className="text-foreground mb-4">
@@ -1917,13 +1937,14 @@ export default async function PrivacyPage() {
                   <p className="text-foreground mb-4">
                     <strong>What this copy keeps privately:</strong> the
                     proposal &mdash; what you asked for, the words you ticked
-                    and when, your message, whether it waits or was accepted,
-                    declined or withdrawn, and any reason. It is tied to your
-                    account and is never published. It is kept so that it can be
-                    reviewed and answered, so that you can see what became of
-                    it, and as the evidence that you made the dedication. It
-                    goes when your account goes, whatever became of it, and
-                    section 7 has the rest of how long it stays.
+                    and when, your message, whether other divers may see your
+                    name beside it in the site&rsquo;s history, whether it waits
+                    or was accepted, declined or withdrawn, and any reason. It
+                    is tied to your account and is never published. It is kept
+                    so that it can be reviewed and answered, so that you can see
+                    what became of it, and as the evidence that you made the
+                    dedication. It goes when your account goes, whatever became
+                    of it, and section 7 has the rest of how long it stays.
                   </p>
                   <p className="text-foreground mb-4">
                     <strong>What happens to it:</strong> while it waits,
@@ -1948,7 +1969,8 @@ export default async function PrivacyPage() {
                     this copy, as section 13 says. An accepted record is a
                     different matter, because it carries nothing that names you
                     and it is no longer yours to withdraw: deleting the proposal
-                    behind it leaves it public.
+                    behind it leaves it public, and takes your name off its
+                    history.
                   </p>
                   <p className="text-foreground mb-4">
                     <strong>Reporting a record:</strong> anyone, with an account
@@ -1958,6 +1980,58 @@ export default async function PrivacyPage() {
                     the way section 13 gives. A report is answered by changing
                     the record, a reviewer coarsening the pin or changing the
                     name. A record cannot yet be removed.
+                  </p>
+
+                  <h3 className="text-xl font-semibold text-foreground mb-3">
+                    4.{historySection} A Commons Site&rsquo;s History
+                  </h3>
+                  <p className="text-foreground mb-4">
+                    A Commons record edited on this copy keeps a history: each
+                    accepted proposal that adds the record or changes it leaves
+                    an entry with the date and, for a change, each fact&rsquo;s
+                    value before and after. Every account here can read it on
+                    the site&rsquo;s page. This is the sixth place in the
+                    software where something about one person is shown to
+                    another, and this section is the whole of it.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>Whose name it shows:</strong> yours, beside what a
+                    proposal of yours changed, only if you chose it for that
+                    proposal with <em>Show my name to other divers</em>, which
+                    is off unless you tick it. The name shown is the one on your
+                    account as it is when the page is read, so a rename shows
+                    there too; never your address. Where a reviewer corrects
+                    what you proposed before accepting it, the correction is
+                    listed apart, above your change, as the reviewer&rsquo;s own
+                    change, under the name on that administrator&rsquo;s
+                    account, to every account here.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>Changing your mind:</strong> the choice is made one
+                    proposal at a time, as you send it, and can be changed for a
+                    proposal that waits or was accepted with the same switch in{" "}
+                    <em>Your proposals</em> on the Sites page. Switching it off
+                    takes your name off that entry the next time anyone reads
+                    the page, and switching it on puts it back. A declined or
+                    withdrawn proposal makes no entry, and has no switch.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>What a reviewer is shown:</strong> whoever reviews
+                    proposals sees your name beside your entries whatever you
+                    chose, and whether you chose to show it, on the review and
+                    on the site&rsquo;s page. Each entry also keeps which
+                    administrator accepted it, which only administrators are
+                    shown.
+                  </p>
+                  <p className="text-foreground mb-4">
+                    <strong>What stays and what goes:</strong> the choice is
+                    part of the proposal, and goes with it when your account
+                    goes; your name leaves the history as soon as you ask to
+                    delete the account. The entry stays, with its date and its
+                    values, and from then on names nobody. The same holds for a
+                    reviewer whose account goes. The history is kept on this
+                    copy alone: the public repository on GitHub and other copies
+                    of the Commons never carry a name, or the history.
                   </p>
                 </>
               )}
@@ -2098,7 +2172,9 @@ export default async function PrivacyPage() {
                     ; and a proposal that waits, which Withdraw on the site or
                     in your list of proposals takes back at once &mdash; section
                     4.{proposingSection}. A proposal already accepted has no
-                    switch: it is public, and it stays
+                    switch: it is public, and it stays. Your name beside one in
+                    the site&rsquo;s history does have one, in your list of
+                    proposals &mdash; section 4.{historySection}
                   </>
                 )}
                 .
@@ -2411,7 +2487,10 @@ export default async function PrivacyPage() {
                   <strong>record accepted into the Commons</strong> is kept for
                   as long as the Commons is, whatever becomes of your account:
                   it belongs to no account, and section 4.{proposingSection}{" "}
-                  says what it carries.
+                  says what it carries. So is each{" "}
+                  <strong>entry in its history</strong>, which names nobody once
+                  the proposal behind it has gone with its account, as section
+                  4.{historySection} says.
                 </p>
               )}
               {mapTiles && (
@@ -2499,7 +2578,7 @@ export default async function PrivacyPage() {
               </ul>
               <p className="text-foreground mb-4">
                 {commonsPrimary
-                  ? "Apart from the daily totals above and the records accepted into OpenDiving Commons, neither of which names you, nothing is kept for"
+                  ? "Apart from the daily totals above and the records accepted into OpenDiving Commons with their history, none of which names you once you have asked to delete your account, nothing is kept for"
                   : "Apart from the daily totals above, which name nobody, nothing is held back for"}{" "}
                 &ldquo;legitimate business purposes&rdquo;; there is no business
                 here to have them. Two honest caveats remain, and both belong to

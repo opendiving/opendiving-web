@@ -4386,23 +4386,24 @@ passes. A shorter list is not a stronger guarantee.
 This file pins privacy sections by number and by quoted content — §4.4 map tiles, §4.5 geocoder,
 §4.6 species cache, §4.7 Legal Requirements, §4.8 invitations, §4.9 check-in links, §4.10 linking a
 person, §4.11 API keys, §4.12 photo proposals, §4.13 connecting an app, §4.14 Google sign-in, then
-the weather and proposing for the Commons — so a reword at the right number falsifies a pin
-silently. A stale privacy page is worse than a vague one.
+the weather, proposing for the Commons and a Commons site's history — so a reword at the right
+number falsifies a pin silently. A stale privacy page is worse than a vague one.
 
 Conditional sections sit last. §4.14 exists only when `GOOGLE_CLIENT_ID` is set, so its absence
 leaves no gap. The weather service's section follows it, present only where `/config` says the
 instance fetches dive conditions, and numbered 4.15 or 4.14 by whether Google's is there. Proposing
 for OpenDiving Commons comes after both, present only where `/config` says the instance is the
-Commons' primary, its number computed from which of the two precede it, 4.14 to 4.16; the terms name
-it by its heading, since that page reads neither. The invitations disclosure is unconditional —
-`REGISTRATION_MODE` flips with a restart, and a section that came and went would change under a
-reader for no stated reason — so it holds a fixed number and hedges in prose ("where this copy is
-invite-only"); the check-in links, linking, API keys and photo proposals sections are unconditional
-because every copy offers them. §4.8's join-link paragraph alone comes and goes, with `join_links`:
-a copy without join links says nothing of them. `page.test.tsx` asserts §4.8 to §4.13 always present
-and §4.14 present only when configured. `git grep '4\.14'` misses the page's and
-`lib/google-oauth.test.ts`'s regex literals; use `git grep -n -E '4\\?\.(9|1[0-6])|4\.\{'`, which
-also finds the weather heading's computed number.
+Commons' primary, its number computed from which of the two precede it, 4.14 to 4.16, and a Commons
+site's history follows it, one number on; the terms name both by their headings, since that page
+reads neither. The invitations disclosure is unconditional — `REGISTRATION_MODE` flips with a
+restart, and a section that came and went would change under a reader for no stated reason — so it
+holds a fixed number and hedges in prose ("where this copy is invite-only"); the check-in links,
+linking, API keys and photo proposals sections are unconditional because every copy offers them.
+§4.8's join-link paragraph alone comes and goes, with `join_links`: a copy without join links says
+nothing of them. `page.test.tsx` asserts §4.8 to §4.13 always present and §4.14 present only when
+configured. `git grep '4\.14'` misses the page's and `lib/google-oauth.test.ts`'s regex literals;
+use `git grep -n -E '4\\?\.(9|1[0-7])|4\.\{'`, which also finds the weather heading's computed
+number.
 
 §4.13 is unconditional too, and nothing on the page reads `mcp_enabled`. Switching MCP off unmounts
 the routes that show and revoke a connection and hides the web's MCP settings, but the connections,

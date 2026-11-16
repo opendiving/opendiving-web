@@ -426,8 +426,9 @@ describe("proposing for OpenDiving Commons", () => {
     "Proposing for OpenDiving Commons",
     "OpenDiving Commons",
     "CC0",
-    "five cases only",
-    "The next five paragraphs",
+    "six cases only",
+    "The next six paragraphs",
+    "A Commons Site’s History",
     "a report about a Commons record",
   ];
 
@@ -483,17 +484,39 @@ describe("proposing for OpenDiving Commons", () => {
     ).toBeInTheDocument();
   });
 
-  it("counts the proposal in §2 and §5, and the closing rule names it", async () => {
+  it("counts the proposal and the history in §2 and §5, and the closing rule names both", async () => {
     await renderPage(false, false, true);
 
-    expect(screen.getByText(/in five cases only/)).toHaveTextContent(
-      /a proposal for OpenDiving Commons/,
+    expect(screen.getByText(/in six cases only/)).toHaveTextContent(
+      /a proposal for OpenDiving Commons.*and your name beside what a proposal of yours changed in a Commons site's history/,
     );
-    expect(screen.getByText(/The next five paragraphs/)).toHaveTextContent(
-      /and a proposal for OpenDiving Commons/,
+    expect(screen.getByText(/The next six paragraphs/)).toHaveTextContent(
+      /a proposal for OpenDiving Commons.*and your name in a Commons site's history/,
     );
     expect(pageText()).toContain(
-      "The invitation, check-in link, linking, photo proposal and Commons proposal grants above are that rule being kept",
+      "The invitation, check-in link, linking, photo proposal, Commons proposal and Commons history grants above are that rule being kept",
     );
+  });
+
+  it("gives the history a grant of its own in §5, naming the privacy section by its heading", async () => {
+    await renderPage(false, false, true);
+
+    const grant = screen.getByText(/Where you choose, for a proposal of yours/);
+    expect(grant).toHaveTextContent(/further permission that act needs/);
+    expect(grant).toHaveTextContent(/as it is and as you change it/);
+    expect(grant).toHaveTextContent(/never your address/);
+    expect(grant).toHaveTextContent(
+      /turn it off and on again in Your proposals/,
+    );
+    expect(grant).toHaveTextContent(
+      /sees your name beside your entries either way/,
+    );
+    expect(grant).toHaveTextContent(/administrators alone are shown/);
+    expect(grant).toHaveTextContent(
+      /listed apart, as the reviewer’s own change/,
+    );
+    expect(grant).toHaveTextContent(/never reaches the public copies/);
+    expect(grant).toHaveTextContent(/the entry stays and names nobody/);
+    expect(grant).toHaveTextContent(/A Commons Site’s History/);
   });
 });

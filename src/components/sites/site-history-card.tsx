@@ -187,11 +187,15 @@ export function SiteHistoryCard({
   siteUuid,
   asReviewer,
 }: SiteHistoryCardProps) {
-  const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
+  // Kept with the read it answers, so another site's list is never drawn here.
+  const key = `${asReviewer}:${siteUuid}`;
+  const [read, setRead] = useState<{
+    key: string;
+    entries: HistoryEntry[];
+  } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    setEntries(null);
     fetchAllPages<HistoryEntry>(
       (page, perPage) =>
         asReviewer
@@ -203,15 +207,16 @@ export function SiteHistoryCard({
         keyOf: (entry) => entry.uuid,
       },
     )
-      .then(setEntries)
+      .then((entries) => setRead({ key, entries }))
       .catch((error) => {
         if (isAbortError(error) || controller.signal.aborted) return;
         console.error("Failed to read the site's history:", error);
       });
     return () => controller.abort();
-  }, [siteUuid, asReviewer]);
+  }, [key, siteUuid, asReviewer]);
 
-  if (!entries?.length) return null;
+  const entries = read?.key === key ? read.entries : [];
+  if (entries.length === 0) return null;
 
   return (
     <Card>
