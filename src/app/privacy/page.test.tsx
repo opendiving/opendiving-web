@@ -1229,6 +1229,9 @@ const OPERATOR_ONLY = [
   "komoot",
   "AES-256",
   "Article 8",
+  "Backblaze",
+  "Data Privacy Framework",
+  "2023/1795",
 ];
 
 describe("the operator block", () => {
@@ -1316,8 +1319,15 @@ describe("the operator block", () => {
     expect(block).toHaveTextContent(/Cloudflare R2/);
     expect(block).toHaveTextContent(/EU jurisdiction/);
     expect(block).toHaveTextContent(/Resend/);
-    // The one thing about Resend that is a transfer rather than a region.
+    // The one thing about Resend that is a transfer rather than a region, and what
+    // covers it.
     expect(block).toHaveTextContent(/stored in the United States regardless/);
+    expect(block).toHaveTextContent(
+      /under which Resend is certified, and should that decision fall, by the standard contractual clauses/,
+    );
+    expect(
+      block.querySelector('a[href="https://resend.com/legal/dpa"]'),
+    ).not.toBeNull();
     expect(block).toHaveTextContent(/OpenFreeMap/);
     expect(block).toHaveTextContent(/Nominatim names a spot/);
     expect(block).toHaveTextContent(/Photon, run by komoot GmbH in Germany/);
@@ -1325,6 +1335,50 @@ describe("the operator block", () => {
     expect(block).toHaveTextContent(
       /their statement reported rather than a promise/,
     );
+  });
+
+  // The off-site backup: where it is, that the vendor cannot read it, how long each
+  // copy lives, what covers the transfer, and where it is rehearsed. Each is a claim a
+  // reader can hold this copy to, so each is pinned by its own words.
+  it("says what the encrypted backup outside the EU holds, for how long, and under what", async () => {
+    await renderPage({ google: false, projectOperated: true });
+
+    const block = screen
+      .getByRole("heading", { name: /Who Runs This Copy/ })
+      .closest("section")!;
+
+    expect(block).toHaveTextContent(
+      /An encrypted backup is, with Backblaze, in the United States/,
+    );
+    expect(block).toHaveTextContent(/such as an export staged for an app/);
+    expect(block).toHaveTextContent(
+      /encrypted on Render in Frankfurt before it leaves/,
+    );
+    expect(block).toHaveTextContent(/Backblaze stores what it cannot read/);
+    expect(block).toHaveTextContent(
+      /The database is copied every hour, and each copy is destroyed within fifteen days of being made/,
+    );
+    expect(block).toHaveTextContent(
+      /destroyed within fifteen days of the file being deleted here, the files §4\.13 says go within two hours included/,
+    );
+    expect(block).toHaveTextContent(
+      /Implementing Decision \(EU\) 2023\/1795\), under which Backblaze is certified/,
+    );
+    expect(block).toHaveTextContent(
+      /Decision \(EU\) 2021\/914, Module 2\) in Backblaze’s data processing addendum/,
+    );
+    expect(
+      block.querySelector(
+        'a[href*="backblazeb2.com"][href$="Backblaze-DPA-Module-2-C2P-with-Transfer-Terms.docx.pdf"]',
+      ),
+    ).not.toBeNull();
+    expect(block).toHaveTextContent(
+      /rehearsed inside the EU at least once every seven months/,
+    );
+    expect(block).toHaveTextContent(
+      /what a rehearsal decrypts is deleted when it ends/,
+    );
+    expect(block).toHaveTextContent(/Render, Cloudflare, Resend and Backblaze/);
   });
 
   // The two numbers §7 and §9 turn on. Both are arithmetic a reader can check, and both
@@ -1338,7 +1392,10 @@ describe("the operator block", () => {
 
     expect(block).toHaveTextContent(/14-day grace period/);
     expect(block).toHaveTextContent(/3 days/);
-    expect(block).toHaveTextContent(/Seventeen days at the outside/);
+    expect(block).toHaveTextContent(
+      /destroys its copies of it within fifteen days/,
+    );
+    expect(block).toHaveTextContent(/gone from every backup inside 29 days/);
     expect(block).toHaveTextContent(/minimum age on this copy/);
     expect(block).toHaveTextContent(/Sixteen/);
   });
@@ -1611,22 +1668,32 @@ describe("proposing for OpenDiving Commons", () => {
     },
   );
 
-  it("corrects the operator block's second-site sentence where both apply", async () => {
-    await renderPage({ google: false, projectOperated: true });
-    expect(pageText()).toContain(
-      "There is no second site and nothing is copied to one.",
-    );
+  // The off-site backup leaves a copy of every account, so no rendering may claim that
+  // nothing of one is copied or leaves; where the Commons is edited, §8 says it of the
+  // software instead.
+  it.each([
+    { projectOperated: false, commonsPrimary: false },
+    { projectOperated: true, commonsPrimary: false },
+    { projectOperated: false, commonsPrimary: true },
+    { projectOperated: true, commonsPrimary: true },
+  ])(
+    "claims nowhere that nothing of an account is copied or leaves: %j",
+    async (config) => {
+      await renderPage({ google: false, ...config });
 
-    cleanup();
-    await renderPage({
-      google: false,
-      projectOperated: true,
-      commonsPrimary: true,
-    });
-    expect(pageText()).not.toContain(
-      "There is no second site and nothing is copied to one.",
-    );
-  });
+      const text = pageText();
+      expect(text).not.toContain("nothing of your account is copied");
+      expect(text).not.toContain(
+        "nothing of your account leaves it on its own",
+      );
+      expect(text).not.toContain("There is no second site");
+      if (config.commonsPrimary) {
+        expect(text).toContain(
+          "the software sends nothing of your account anywhere on its own",
+        );
+      }
+    },
+  );
 
   it.each([
     [false, false, "4.14"],

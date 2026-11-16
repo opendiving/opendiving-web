@@ -90,20 +90,22 @@ export default async function PrivacyPage() {
             >
               <OperatorAnswer question="Where this copy runs — §4.3, §8">
                 On Render, in its Frankfurt region, in Germany. Every part of
-                this instance is there: the app, the API, the background worker,
+                this instance runs there: the app, the API, the background
+                worker,
                 {mapTiles && <> the map renderer §4.4 describes,</>} the
                 Postgres database and the short-lived counter store §2.2
-                describes.{" "}
-                {commonsPrimary ? (
+                describes. The one copy of your account kept anywhere else is
+                the encrypted backup the next answer but one describes.
+                {commonsPrimary && (
                   <>
-                    There is no second site, and nothing of your account is
-                    copied to one. The OpenDiving Commons records section 4.
-                    {proposingSection} describes are the exception that is not
-                    yours: they are public, and they are copied to a public
-                    repository on GitHub.
+                    {" "}
+                    The OpenDiving Commons records section 4.{
+                      proposingSection
+                    }{" "}
+                    describes are the exception that is not yours: they are
+                    public, and they are copied to a public repository on
+                    GitHub.
                   </>
-                ) : (
-                  "There is no second site and nothing is copied to one."
                 )}
               </OperatorAnswer>
               <OperatorAnswer question="Where uploaded files are kept — §4.3, §8">
@@ -119,7 +121,40 @@ export default async function PrivacyPage() {
                     So are the map tiles §4.4 says this copy draws, which are
                     drawn from the map alone and are nobody&rsquo;s.
                   </>
-                )}
+                )}{" "}
+                An encrypted copy of every one of them is also kept in the
+                backup the next answer describes.
+              </OperatorAnswer>
+              <OperatorAnswer question="Where the backup is kept — §5, §7, §8">
+                An encrypted backup is, with Backblaze, in the United States. It
+                holds the database and every file this copy stores: what you
+                upload, and what this copy makes, such as an export staged for
+                an app you connected. All of it is encrypted on Render in
+                Frankfurt before it leaves, with keys that are the
+                operator&rsquo;s and are never given to Backblaze, so Backblaze
+                stores what it cannot read. The database is copied every hour,
+                and each copy is destroyed within fifteen days of being made; a
+                file&rsquo;s copy is destroyed within fifteen days of the file
+                being deleted here, the files §4.13 says go within two hours
+                included. The transfer is covered by the European
+                Commission&rsquo;s adequacy decision for the EU-U.S. Data
+                Privacy Framework (Implementing Decision (EU) 2023/1795), under
+                which Backblaze is certified, and should that decision fall, by
+                the standard contractual clauses (Decision (EU) 2021/914, Module
+                2) in{" "}
+                <a
+                  href="https://f001.backblazeb2.com/file/backblaze-policies/Backblaze-DPA-Module-2-C2P-with-Transfer-Terms.docx.pdf"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline hover:text-muted-foreground"
+                >
+                  Backblaze&rsquo;s data processing addendum
+                </a>
+                . A restore from it is rehearsed inside the EU at least once
+                every seven months, on Render in Frankfurt with its files in
+                Cloudflare R2&rsquo;s EU jurisdiction, or on a machine the
+                operator holds in the EU, and what a rehearsal decrypts is
+                deleted when it ends.
               </OperatorAnswer>
               <OperatorAnswer question="How email is sent — §4.3, §6.3">
                 Through Resend, with delivery routed through its EU region.
@@ -127,7 +162,19 @@ export default async function PrivacyPage() {
                 including email metadata, logs and API records, is stored in the
                 United States regardless, so the record that a message went to
                 your address is held there even though the message itself is not
-                sent from there.
+                sent from there. That transfer is covered by the European
+                Commission&rsquo;s adequacy decision for the EU-U.S. Data
+                Privacy Framework, under which Resend is certified, and should
+                that decision fall, by the standard contractual clauses in{" "}
+                <a
+                  href="https://resend.com/legal/dpa"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline hover:text-muted-foreground"
+                >
+                  Resend&rsquo;s data processing addendum
+                </a>
+                .
               </OperatorAnswer>
               <OperatorAnswer question="Which basemap and which geocoder — §4.4, §4.5">
                 The basemap is OpenFreeMap, at{" "}
@@ -149,40 +196,51 @@ export default async function PrivacyPage() {
                   ? ", the worker and the map renderer"
                   : " and the worker"}{" "}
                 reach the database and each other over Render&rsquo;s private
-                network rather than across the internet.
+                network. The backup does cross the internet on its way to
+                Backblaze, and it is encrypted before it sets off.
               </OperatorAnswer>
               <OperatorAnswer question="Whether the disks are encrypted at rest — §5">
-                Both providers say so, and this is their statement reported
-                rather than a promise this page makes. Render&rsquo;s
+                Render and Cloudflare say so, and this is their statement
+                reported rather than a promise this page makes. Render&rsquo;s
                 documentation says its Postgres databases are encrypted at rest
                 with AES-256, and that this covers primary instances, replicas
                 and all backups. Cloudflare&rsquo;s says every object stored in
                 R2, its metadata included, is encrypted at rest with AES-256,
-                automatically and with nothing to configure.
+                automatically and with nothing to configure. The backup with
+                Backblaze rests on no statement of Backblaze&rsquo;s: it arrives
+                already encrypted, with keys Backblaze does not hold.
               </OperatorAnswer>
               <OperatorAnswer question="Who has administrative access — §5">
                 The operator named above, and the operations staff of the
-                providers named here — Render, Cloudflare and Resend — who can
-                reach the systems their own services run on, as any
-                provider&rsquo;s can. No other person holds an administrative
-                account on this copy.
+                providers named here — Render, Cloudflare, Resend and Backblaze
+                — who can reach the systems their own services run on, as any
+                provider&rsquo;s can; at Backblaze that is a backup they cannot
+                read. No other person holds an administrative account on this
+                copy.
               </OperatorAnswer>
               <OperatorAnswer question="What logs and backups exist, and for how long — §2.2, §5, §7">
                 Render keeps this instance&rsquo;s request logs — the server
                 logs §2.2 opens with — for 7 days. The database has
-                point-in-time recovery covering the last 3 days, which is the
+                point-in-time recovery on Render covering the last 3 days. And
+                there is the encrypted backup with Backblaze described above: a
+                copy of the database every hour, each destroyed within fifteen
+                days of being made, and a copy of every file, destroyed within
+                fifteen days of the file being deleted here. Those two are the
                 whole of what §7&rsquo;s &ldquo;a deletion cannot reach into a
                 backup already written&rdquo; caveat means here.
               </OperatorAnswer>
               <OperatorAnswer question="That deletion finishes inside the 30 days §7 promises — §7">
-                It does, with room to spare. Deleting an account starts a 14-day
-                grace period, after which the data is destroyed; the 3-day
-                recovery window above is the longest a copy of it can survive in
-                a backup after that. Seventeen days at the outside.
+                It does. Deleting an account starts a 14-day grace period, after
+                which the data is destroyed here; the backup with Backblaze
+                destroys its copies of it within fifteen days after that, and
+                the 3-day recovery window above ends sooner. A deleted account
+                is gone from every backup inside 29 days.
               </OperatorAnswer>
               <OperatorAnswer question="How long an import is kept — §2.1, §7">
-                The files of an import are held for 24 hours at most, and the
-                review and log of one you applied are kept for thirty days.
+                The files of an import are held here for 24 hours at most, and
+                the backup&rsquo;s encrypted copy of each is destroyed within
+                fifteen days of the file being deleted here. The review and log
+                of an import you applied are kept for thirty days.
               </OperatorAnswer>
               <OperatorAnswer question="How to check any of this against the source — §1, §5, §11, §12">
                 Those four sections invite you to read the code rather than
@@ -2599,12 +2657,13 @@ export default async function PrivacyPage() {
                 about its operator&rsquo;s deployment.{" "}
                 {commonsPrimary ? (
                   <>
-                    There is no network of servers behind it, and nothing of
-                    your account leaves it on its own. What does is the
-                    OpenDiving Commons records section 4.{proposingSection}{" "}
-                    describes, which anyone anywhere can fetch and which are
-                    copied to a public repository on GitHub, a service run from
-                    the United States. Otherwise one copy of OpenDiving
+                    There is no network of servers behind it, and the software
+                    sends nothing of your account anywhere on its own. What it
+                    does send is the OpenDiving Commons records section 4.
+                    {proposingSection} describes, which anyone anywhere can
+                    fetch and which are copied to a public repository on GitHub,
+                    a service run from the United States. Otherwise one copy of
+                    OpenDiving
                   </>
                 ) : (
                   "There is no network of servers behind it and no transfer between countries built into the software: one copy of OpenDiving"
@@ -2633,7 +2692,8 @@ export default async function PrivacyPage() {
                     {" "}
                     On this copy you need ask nobody:{" "}
                     <em>Who Runs This Copy</em> at the top of this page names
-                    the region the database and the files sit in.
+                    where the database and the files sit, and where their
+                    encrypted backup is kept.
                   </>
                 )}
               </p>
