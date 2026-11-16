@@ -1449,7 +1449,7 @@ export default async function PrivacyPage() {
                 the username the account has now shows beside the name you gave
                 them.{" "}
                 {commonsPrimary
-                  ? "This is the third of the five places"
+                  ? "This is the third of the six places"
                   : "This is the third of the four places"}{" "}
                 in the software where something about one person is shown to
                 another, and this section is the whole of it.

@@ -1557,6 +1557,7 @@ describe("proposing for OpenDiving Commons", () => {
     "proposing for OpenDiving Commons,",
     "A Commons Site’s History",
     "Show my name to other divers",
+    "This is the third of the six places",
     "and on proposals for OpenDiving Commons",
     "public repository on GitHub",
     "a change you propose",
