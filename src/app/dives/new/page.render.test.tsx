@@ -3309,10 +3309,14 @@ describe("the primary site's water, altitude and entry", () => {
   const boatName = () => screen.queryByLabelText(/^boat name$/i);
 
   const pickSite = async (name: string) => {
-    await userEvent.click(screen.getByRole("button", { name: /^dive site/i }));
+    const field = screen.getByRole("button", { name: /^dive site/i });
+    await userEvent.click(field);
     await userEvent.click(
       await screen.findByRole("button", { name: new RegExp(name) }),
     );
+    // The finder hands focus back to the field a beat after it closes. Until it
+    // has, a focus given elsewhere - the reorder handle's - is taken back.
+    await waitFor(() => expect(field).toHaveFocus());
   };
   const removeSite = (name: string) =>
     userEvent.click(screen.getByRole("button", { name: `Remove ${name}` }));
