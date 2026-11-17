@@ -125,6 +125,61 @@ export interface AdminStats {
 }
 
 /**
+ * The instance's own cap on a service: at most `requests` in any `window_seconds`.
+ * `per_day` is the most that admits in a UTC day, rounded down.
+ */
+export interface AdminExternalRequestLimit {
+  requests: number;
+  window_seconds: number;
+  per_day: number;
+}
+
+/**
+ * A service the instance can send requests to, with every kind of request it
+ * can send it, whether or not a range holds any. `limit` is null for a service
+ * the instance sets itself no cap on.
+ */
+export interface AdminExternalRequestProvider {
+  provider: string;
+  kinds: string[];
+  limit: AdminExternalRequestLimit | null;
+}
+
+/**
+ * The events of one day that share a service, a kind and an outcome.
+ *
+ * All three are slugs, and the vocabulary grows with the API, so a client shows
+ * one it does not know under the slug. `skipped` and `cache_hit` sent nothing
+ * and carry `0` in both durations; every other outcome is a request that went
+ * out. Durations are whole milliseconds.
+ */
+export interface AdminExternalRequestCount {
+  provider: string;
+  kind: string;
+  outcome: string;
+  count: number;
+  duration_ms_total: number;
+  duration_ms_max: number;
+}
+
+/** One UTC day of `GET /admin/external-requests`; empty `requests` for a quiet day. */
+export interface AdminExternalRequestsDay {
+  day: string;
+  requests: AdminExternalRequestCount[];
+}
+
+/**
+ * `GET /admin/external-requests`' answer: every day from `from` to `to`
+ * inclusive, in order, and every service the instance counts requests to.
+ */
+export interface AdminExternalRequests {
+  from: string;
+  to: string;
+  providers: AdminExternalRequestProvider[];
+  days: AdminExternalRequestsDay[];
+}
+
+/**
  * The narrowest stored photo the API's selection rule keeps, in pixels: the width
  * of the thumbnail it asks Commons for. Mirrors `COMMONS_THUMBNAIL_WIDTH`, which
  * the API publishes nowhere; only a pin holds a photo narrower than this.
@@ -331,6 +386,24 @@ export const adminAPI = {
     const response = await apiClient.get<AdminStats>("/admin/stats", {
       params: { from, to },
     });
+    return response.data;
+  },
+
+  /**
+   * What the instance asked of other services on every UTC day from `from` to
+   * `to`, both inclusive and written `YYYY-MM-DD`, counted by service, kind and
+   * outcome. The counts trail the requests by a few minutes.
+   *
+   * Refuses the ranges `getStats` does, with the same 422.
+   */
+  async getExternalRequests(
+    from: string,
+    to: string,
+  ): Promise<AdminExternalRequests> {
+    const response = await apiClient.get<AdminExternalRequests>(
+      "/admin/external-requests",
+      { params: { from, to } },
+    );
     return response.data;
   },
   /**

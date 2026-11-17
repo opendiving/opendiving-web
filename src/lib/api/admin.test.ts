@@ -109,6 +109,28 @@ describe("adminAPI.removeInviteRequests", () => {
   });
 });
 
+describe("adminAPI.getExternalRequests", () => {
+  it("asks for the range in the API's own parameter names and returns its answer", async () => {
+    const answer = {
+      from: "2026-11-01",
+      to: "2026-11-30",
+      providers: [{ provider: "google", kinds: ["avatar"], limit: null }],
+      days: [],
+    };
+    get.mockResolvedValue({ data: answer });
+
+    const response = await adminAPI.getExternalRequests(
+      "2026-11-01",
+      "2026-11-30",
+    );
+
+    expect(get).toHaveBeenCalledWith("/admin/external-requests", {
+      params: { from: "2026-11-01", to: "2026-11-30" },
+    });
+    expect(response).toEqual(answer);
+  });
+});
+
 describe("the species catalog routes", () => {
   const UUID = "01a073b4-2235-7b48-8ee7-68d0d99b9808";
   const row = { uuid: UUID, photo_curation: "pinned" };

@@ -53,6 +53,11 @@ describe("the admin section's landing", () => {
       "href",
       "/admin/species",
     );
+    expect(
+      screen.getByRole("link", {
+        name: /External Requests.*Requests this server sent to other services/,
+      }),
+    ).toHaveAttribute("href", "/admin/external-requests");
   });
 
   it("says on the species card how many species have a photo proposal waiting", async () => {

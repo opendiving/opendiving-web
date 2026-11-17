@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BarChart3, Inbox } from "lucide-react";
+import { BarChart3, Inbox, Send } from "lucide-react";
 import { AdminScreenCard } from "@/components/admin/admin-screen-card";
 import { ProposalScreenCard } from "@/components/admin/proposal-screen-card";
 import { SpeciesScreenCard } from "@/components/admin/species-screen-card";
@@ -24,6 +24,12 @@ const SCREENS = [
     title: "Stats",
     description:
       "Daily totals of accounts created, sign-ins and active accounts.",
+  },
+  {
+    href: "/admin/external-requests",
+    icon: Send,
+    title: "External Requests",
+    description: "Requests this server sent to other services.",
   },
 ];
 

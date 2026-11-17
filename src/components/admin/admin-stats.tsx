@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { adminAPI, type AdminStats } from "@/lib/api/admin";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { IconTooltip } from "@/components/ui/tooltip";
 import { ChartStat } from "@/components/dives/chart-stat";
 import { DailyBarChart } from "@/components/admin/daily-bar-chart";
+import { MonthStepper } from "@/components/admin/month-stepper";
 import {
   type StatsMonth,
   accountSeries,
@@ -25,7 +24,6 @@ import {
   dayLabel,
   monthLabel,
   monthRange,
-  stepMonth,
 } from "@/components/admin/daily-stats";
 import { HERO_BODY, IndexHero } from "@/components/ui/map-hero";
 import { countNoun } from "@/lib/format";
@@ -88,36 +86,7 @@ export function AdminStatsScreen() {
       />
 
       <div className={HERO_BODY}>
-        <div className="mb-4 flex items-center gap-1">
-          <IconTooltip label="Previous month">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => setMonth(stepMonth(month, -1))}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          </IconTooltip>
-          <span
-            className="w-40 text-center text-sm font-medium"
-            aria-live="polite"
-          >
-            {label}
-          </span>
-          {/* Nothing has happened after this month yet. */}
-          <IconTooltip label="Next month">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9"
-              disabled={month >= thisMonth}
-              onClick={() => setMonth(stepMonth(month, 1))}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </IconTooltip>
-        </div>
+        <MonthStepper month={month} thisMonth={thisMonth} onStep={setMonth} />
 
         {shown && "error" in shown ? (
           <Card>
