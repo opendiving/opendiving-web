@@ -250,7 +250,8 @@ export default async function TermsPage() {
                   for a day
                 </li>
                 <li>
-                  Note the species you saw, from public registers of marine life
+                  Note the species you saw, from public registers of aquatic
+                  life
                 </li>
               </ul>
               <p className="text-foreground mb-4">

@@ -108,7 +108,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: "Dives", href: "/dives", icon: DiveIcon, tier: "primary" },
   { label: "Dive Sites", href: "/sites", icon: DiveSiteIcon, tier: "primary" },
-  { label: "Marine Life", href: "/species", icon: Fish, tier: "primary" },
+  { label: "Aquatic Life", href: "/species", icon: Fish, tier: "primary" },
   { label: "Gear", href: "/gear", icon: Backpack, tier: "lg", ruled: true },
   {
     label: "Certifications",

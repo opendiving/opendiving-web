@@ -33,7 +33,7 @@ export const DIVE_SECTION_ICONS: Readonly<
   Environment: CloudSun,
   Tanks: TwinTankIcon,
   Gear: Backpack,
-  "Marine life": Fish,
+  "Aquatic life": Fish,
   Notes: FileText,
 };
 

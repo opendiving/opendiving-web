@@ -76,7 +76,7 @@ describe("collectionLabel", () => {
       "Trips",
       "Courses",
       "Dive sites",
-      "Marine life",
+      "Aquatic life",
       "Gear",
       "Gear sets",
       "Service schedules",

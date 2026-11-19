@@ -17,7 +17,7 @@ const CARD_SECTIONS: readonly DiveCardSection[] = [
   "Environment",
   "Tanks",
   "Gear",
-  "Marine life",
+  "Aquatic life",
   "People",
   "Notes",
 ];

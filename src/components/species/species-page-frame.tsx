@@ -76,7 +76,7 @@ export function SpeciesPageFrame({
   return (
     <div>
       <IndexHero
-        title="Marine Life"
+        title="Aquatic Life"
         description="Everything you have logged seeing, and when you saw it"
       />
 

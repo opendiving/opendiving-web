@@ -75,7 +75,7 @@ one.
   material once, and a dive's tank links it. Plus **service schedules** (annual service, visual
   inspection, hydro test…) by months, dives or hours of diving, with due-soon reminders under the
   notifications bell and by email.
-- **Marine life** — record what you saw against a real species catalog, resolved live against the
+- **Aquatic life** — record what you saw against a real species catalog, resolved live against the
   World Register of Marine Species and Wikidata so a name you half-remember still finds the animal,
   with how many you counted or a band — few, many, abundant — and a note on each. Your **life list**
   collects every species you have ever logged, with a photograph fetched from Wikimedia Commons and

@@ -61,7 +61,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileJson,
     title: "DiveJSON",
     description:
-      "Your whole logbook in one file: every dive with every recording that made it — each one's device, its files and its full sample profile — plus cylinders, sites, trips, courses, marine life, gear with its service history, your c-card records, your contacts, the people you dive with and your tags. Everything in the account except your dive drafts and the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is the one that comes back with nothing lost.",
+      "Your whole logbook in one file: every dive with every recording that made it — each one's device, its files and its full sample profile — plus cylinders, sites, trips, courses, aquatic life, gear with its service history, your c-card records, your contacts, the people you dive with and your tags. Everything in the account except your dive drafts and the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is the one that comes back with nothing lost.",
   },
   {
     format: "uddf",

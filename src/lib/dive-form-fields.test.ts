@@ -126,7 +126,7 @@ describe("diveFormFieldGroup", () => {
     expect(diveFormFieldGroup("submerged_time")).toBe("Dive info");
     expect(diveFormFieldGroup("entry_type")).toBe("Location");
     expect(diveFormFieldGroup("mixtures")).toBe("Tanks");
-    expect(diveFormFieldGroup("sightings")).toBe("Marine life");
+    expect(diveFormFieldGroup("sightings")).toBe("Aquatic life");
   });
 
   it("names none for a field the form does not render", () => {

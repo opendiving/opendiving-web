@@ -50,7 +50,7 @@ import { InfoRow } from "@/components/ui/info-row";
  */
 export function SpeciesDetailPageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  const back = useReturnTo({ href: "/species", label: "Back to marine life" });
+  const back = useReturnTo({ href: "/species", label: "Back to aquatic life" });
 
   const { resource: species, isLoading: isLoadingSpecies } =
     useResource<Species>(speciesAPI.getSpecies, {
@@ -60,7 +60,7 @@ export function SpeciesDetailPageContent() {
     });
   useDocumentTitle(
     species ? speciesDisplayName(species) : undefined,
-    "Marine Life",
+    "Aquatic Life",
   );
   // In parallel with the catalog row rather than after it: the route's id is
   // the species' uuid either way.

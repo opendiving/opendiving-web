@@ -172,9 +172,9 @@ export function DiveDetailMain({ dive, onEdit }: DiveDetailMainProps) {
       {sightings.length > 0 && (
         <Card>
           <DiveCardHeader
-            group="Marine life"
+            group="Aquatic life"
             title="Species Spotted"
-            onEdit={onEdit && (() => onEdit("Marine life"))}
+            onEdit={onEdit && (() => onEdit("Aquatic life"))}
           />
           <CardContent className={CARD_SECTION_CONTENT}>
             <ul className={SPECIES_CARD_GRID}>

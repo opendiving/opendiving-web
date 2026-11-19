@@ -68,7 +68,7 @@ describe("a map hero's details", () => {
     render(
       <MapHero
         backHref="/species"
-        backLabel="Back to marine life"
+        backLabel="Back to aquatic life"
         icon={Fish}
         title={title}
         figures={[

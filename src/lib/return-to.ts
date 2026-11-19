@@ -33,7 +33,7 @@ const SECTIONS: Record<string, { index: string; item: string }> = {
   courses: { index: "courses", item: "course" },
   contacts: { index: "contacts", item: "contact" },
   people: { index: "people", item: "person" },
-  species: { index: "marine life", item: "species" },
+  species: { index: "aquatic life", item: "species" },
   checkin: { index: "check-in", item: "check-in" },
   import: { index: "import", item: "import" },
   settings: { index: "settings", item: "settings" },

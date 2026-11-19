@@ -31,7 +31,7 @@ const COLLECTION_LABELS: Record<string, string> = {
   trips: "Trips",
   courses: "Courses",
   sites: "Dive sites",
-  species: "Marine life",
+  species: "Aquatic life",
   gear: "Gear",
   gear_sets: "Gear sets",
   gear_service_schedules: "Service schedules",

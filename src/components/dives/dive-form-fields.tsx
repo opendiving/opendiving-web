@@ -858,7 +858,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           can't name ends up. */}
       {isVisible("sightings") &&
         section(
-          "Marine life",
+          "Aquatic life",
           <FormField
             control={control}
             name={"sightings" as Path<TFieldValues>}

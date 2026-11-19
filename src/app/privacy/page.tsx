@@ -1240,7 +1240,7 @@ export default async function PrivacyPage() {
               </p>
               <p className="text-foreground mb-4">
                 Importing a logbook does the same thing without a picker being
-                involved at all. A logbook file can name marine life this copy
+                involved at all. A logbook file can name aquatic life this copy
                 of OpenDiving has never seen, and those species are looked up
                 before the import is written &mdash; the same two registers, the
                 same request, carrying the species&rsquo; number and nothing
@@ -1275,7 +1275,7 @@ export default async function PrivacyPage() {
                 All of this happens only as you fill a dive in or import a
                 logbook, never when you view a dive, a species or your species
                 list you have already saved. If you never open the species
-                picker, never import a file naming marine life and never have a
+                picker, never import a file naming aquatic life and never have a
                 tool or an app propose a photo for a species, nothing is sent at
                 all. A photo proposal is the one case in which Wikimedia Commons
                 is sent a name you chose rather than one worked out here, and

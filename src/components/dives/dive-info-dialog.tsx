@@ -34,7 +34,7 @@ const label = (
 ) => (value ? labelOrFallback(labels, value) : null);
 
 // The dive's own fields in the dive form's sections and order: one value per
-// field. Training, People and Marine life link other records, as do the links
+// field. Training, People and Aquatic life link other records, as do the links
 // inside Location and Gear, and Tanks is a list of cylinders the page's own card
 // draws - so none of them is here.
 export function diveInfoSections(

@@ -542,7 +542,7 @@ describe.each([
     const nothingSent = screen.getByText(
       /If you never open the species picker/i,
     ).textContent!;
-    expect(nothingSent).toMatch(/never import a file naming marine life/i);
+    expect(nothingSent).toMatch(/never import a file naming aquatic life/i);
     expect(nothingSent).toMatch(/nothing is sent\s+at\s+all/i);
   });
 

@@ -244,7 +244,7 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>• Nitrox and trimix mixes, with MOD, END and EAD</li>
                   <li>• Several dive sites on one dive, in order</li>
-                  <li>• Marine life, against a real species catalog</li>
+                  <li>• Aquatic life, against a real species catalog</li>
                   <li>• SAC and RMV derived per tank</li>
                 </ul>
               </CardContent>
