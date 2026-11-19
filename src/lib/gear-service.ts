@@ -274,7 +274,6 @@ const SERVICE_PRESETS: Partial<Record<string, ServiceSchedulePreset[]>> = {
   regulator: [{ kind: "service", interval_months: 12, interval_dives: 100 }],
   bcd: [{ kind: "service", interval_months: 12 }],
   wing: [{ kind: "service", interval_months: 12 }],
-  vest: [{ kind: "service", interval_months: 12 }],
   // A cylinder needs both, on different clocks - the case a single interval per item
   // could never have expressed.
   cylinder: [

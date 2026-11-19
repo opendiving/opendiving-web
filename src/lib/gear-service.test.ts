@@ -479,6 +479,10 @@ describe("defaultSchedulesForGearType", () => {
   it("suggests nothing for gear with no convention, or no type", () => {
     expect(defaultSchedulesForGearType("mask")).toEqual([]);
     expect(defaultSchedulesForGearType("backplate")).toEqual([]);
+    expect(defaultSchedulesForGearType("vest")).toEqual([]);
+    expect(defaultSchedulesForGearType("undergarment")).toEqual([]);
+    expect(defaultSchedulesForGearType("tech_shorts")).toEqual([]);
+    expect(defaultSchedulesForGearType("slate")).toEqual([]);
     // No maker states a general hours figure for these, so there is no preset.
     expect(defaultSchedulesForGearType("rebreather")).toEqual([]);
     expect(defaultSchedulesForGearType("scooter")).toEqual([]);
