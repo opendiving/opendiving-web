@@ -34,12 +34,19 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { FormApiError } from "@/components/ui/form-api-error";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import {
+  customPropertiesUpdate,
+  type CustomProperty,
+} from "@/lib/custom-properties";
+import { customPropertiesField } from "@/lib/validations/custom-properties";
 import { FactsLine } from "@/components/ui/icon-fact";
 import { Textarea } from "@/components/ui/textarea";
 
 const commonsSiteFormSchema = z.object({
   notes: notesField().optional(),
   tags: tagsField().optional(),
+  custom_properties: customPropertiesField(),
 });
 
 type CommonsSiteFormInput = z.input<typeof commonsSiteFormSchema>;
@@ -84,8 +91,8 @@ function CommonsSiteSummary({ site }: { site: DiveSite }) {
 }
 
 /**
- * What a diver writes on a Commons record, which is all they can: their notes and
- * their tags. A record they have not saved takes neither until they save it, so
+ * What a diver writes on a Commons record, which is all they can: their notes,
+ * their tags and their custom properties. A record they have not saved takes neither until they save it, so
  * for one of those this is the save, and the two can go in one request.
  */
 export function CommonsSiteDialog({
@@ -100,27 +107,46 @@ export function CommonsSiteDialog({
   );
   const form = useForm<CommonsSiteFormInput>({
     resolver: zodResolver(commonsSiteFormSchema),
-    defaultValues: { notes: "", tags: [] },
+    defaultValues: { notes: "", tags: [], custom_properties: [] },
   });
 
   const { reset } = form;
   useEffectOnChange(() => {
     if (!open) return;
-    reset({ notes: site?.notes ?? "", tags: site?.tags ?? [] });
+    reset({
+      notes: site?.notes ?? "",
+      tags: site?.tags ?? [],
+      custom_properties: site?.custom_properties ?? [],
+    });
   }, [open, site, reset]);
 
   const isSaved = !!site?.saved;
 
-  const onSubmit = async ({ notes = "", tags = [] }: CommonsSiteFormInput) => {
+  const onSubmit = async ({
+    notes = "",
+    tags = [],
+    custom_properties: rows,
+  }: CommonsSiteFormInput) => {
     if (!site) return;
     setApiError(null);
     try {
+      const custom_properties: CustomProperty[] | undefined =
+        customPropertiesUpdate(
+          site.saved ? site.custom_properties : undefined,
+          rows,
+        );
       if (site.saved) {
-        const update = { notes, tags };
+        const update = { notes, tags, custom_properties };
         await diveSitesAPI.updateDiveSite(site.uuid, update);
         onSaved(await readBack(site, update));
       } else {
-        onSaved(await diveSitesAPI.saveDiveSite(site.uuid, { notes, tags }));
+        onSaved(
+          await diveSitesAPI.saveDiveSite(site.uuid, {
+            notes,
+            tags,
+            custom_properties,
+          }),
+        );
       }
       onOpenChange(false);
     } catch (error) {
@@ -188,6 +214,8 @@ export function CommonsSiteDialog({
                 </FormItem>
               )}
             />
+
+            <CustomPropertiesField />
 
             <FormApiError error={apiError} />
 

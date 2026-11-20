@@ -16,6 +16,7 @@ const valid: ContactInput = {
   website: "",
   address: EMPTY_CONTACT_ADDRESS,
   notes: "",
+  custom_properties: [],
 };
 
 const errorPaths = (input: ContactInput) => {

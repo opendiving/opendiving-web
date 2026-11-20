@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { maxLength, optionalDateField } from "./fields";
+import { customPropertiesField } from "./custom-properties";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
@@ -17,6 +18,7 @@ export const certificationSchema = z
     expires_on: optionalDateField().optional(),
     instructor_number: maxLength("Instructor number", 64).optional(),
     notes: notesField().optional(),
+    custom_properties: customPropertiesField().optional(),
     // Nullable rather than `""`-empty, unlike the text fields above: these are
     // pickers, and `null` is how one says "none" as against a field nobody
     // touched. Same shape as the dive form's `trip_uuid`/`course_uuid`.

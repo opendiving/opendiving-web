@@ -32,6 +32,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import { customPropertiesUpdate } from "@/lib/custom-properties";
 import {
   TripPartsField,
   tripPartErrors,
@@ -75,6 +77,7 @@ export function TripDialog({
       parts: [],
       people: [],
       notes: "",
+      custom_properties: [],
     },
   });
 
@@ -125,6 +128,7 @@ export function TripDialog({
         : [emptyTripPart()],
       people: trip?.people ?? [],
       notes: trip?.notes ?? "",
+      custom_properties: trip?.custom_properties ?? [],
     });
   }, [open, trip, reset]);
 
@@ -137,6 +141,10 @@ export function TripDialog({
       const parts = normalizeTripParts(data.parts);
       // Sent on every save for the same reason: the API replaces the list.
       const people = data.people ?? [];
+      const custom_properties = customPropertiesUpdate(
+        trip?.custom_properties,
+        data.custom_properties,
+      );
 
       if (trip) {
         // The API answers a PATCH with just a status message, so the updated
@@ -146,6 +154,7 @@ export function TripDialog({
           parts,
           people,
           notes: data.notes,
+          custom_properties,
         });
         onSaved({
           ...trip,
@@ -153,6 +162,7 @@ export function TripDialog({
           parts,
           people,
           notes: data.notes,
+          custom_properties: custom_properties ?? trip.custom_properties,
         });
       } else {
         const created = await tripsAPI.createTrip({
@@ -160,6 +170,7 @@ export function TripDialog({
           parts,
           people,
           notes: data.notes || undefined,
+          custom_properties,
         });
         onSaved(created);
       }
@@ -310,6 +321,8 @@ export function TripDialog({
                 </FormItem>
               )}
             />
+
+            <CustomPropertiesField />
 
             <FormApiError error={apiError} />
 

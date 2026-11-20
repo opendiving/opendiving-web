@@ -175,7 +175,7 @@ function DiveSectionForm({
     setIsSubmitting(true);
     setApiError(null);
     try {
-      await divesAPI.updateDive(dive.uuid, buildDiveUpdate(data));
+      await divesAPI.updateDive(dive.uuid, buildDiveUpdate(data, dive));
       toast({ title: "Success", description: "Dive updated successfully!" });
       onSaved();
     } catch (error) {

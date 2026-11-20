@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { maxLengthMessage, optionalEmailField, phoneField } from "./fields";
+import { customPropertiesField } from "./custom-properties";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 
@@ -29,6 +30,7 @@ export const personSchema = z
     email: optionalEmailField(),
     phone: phoneField(),
     notes: notesField(),
+    custom_properties: customPropertiesField(),
   })
   .refine(
     (data) =>

@@ -5,6 +5,7 @@ import type {
   PaginatedResponse,
   SearchFilters,
 } from "./client";
+import type { CustomProperty } from "@/lib/custom-properties";
 
 /**
  * What a person was on one occasion - a dive, a trip, a course. Mirrors the API's
@@ -63,6 +64,9 @@ export interface PersonReference {
  * instructor.
  */
 export interface Person {
+  // The diver's own key-value pairs, in their order (`lib/custom-properties.ts`).
+  // Optional because a response cached before they existed carries none.
+  custom_properties?: CustomProperty[];
   uuid: string;
   name: string;
   email?: string | null;
@@ -81,6 +85,8 @@ export interface Person {
 }
 
 export interface PersonCreate {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   name: string;
   email?: string | null;
   phone?: string | null;

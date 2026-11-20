@@ -11,6 +11,7 @@ import type {
 } from "./client";
 import type { CertificationAgency } from "./certifications";
 import type { PersonReference } from "./people";
+import type { CustomProperty } from "@/lib/custom-properties";
 
 /**
  * How far a course got. Mirrors the API's `CourseStatus` enum - a closed
@@ -51,6 +52,9 @@ export const DEFAULT_COURSE_STATUS: CourseStatus = "completed";
  * certification-first with no course to hang them on.
  */
 export interface Course {
+  // The diver's own key-value pairs, in their order (`lib/custom-properties.ts`).
+  // Optional because a response cached before they existed carries none.
+  custom_properties?: CustomProperty[];
   uuid: string;
   name: string;
   // Optional, unlike a certification's: a course run by a private instructor
@@ -79,6 +83,8 @@ export interface Course {
 }
 
 export interface CourseCreate {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   name: string;
   agency?: CertificationAgency | null;
   agency_other?: string | null;

@@ -24,6 +24,7 @@ import {
   type UnitSystem,
 } from "@/lib/units";
 import {
+  customPropertiesSections,
   RecordInfoDialog,
   type RecordInfoSection,
 } from "@/components/ui/record-info-dialog";
@@ -126,6 +127,7 @@ export function diveInfoSections(
         { label: "Notes", value: dive.notes, wide: true },
       ],
     },
+    ...customPropertiesSections(dive.custom_properties),
   ];
 }
 

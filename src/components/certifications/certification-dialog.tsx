@@ -48,6 +48,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import { customPropertiesUpdate } from "@/lib/custom-properties";
 import { useToast } from "@/components/ui/use-toast";
 import { CertificationCardFiles } from "./certification-card-files";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
@@ -151,6 +153,7 @@ export function CertificationDialog({
       instructor_number: "",
       contact_uuid: null,
       notes: "",
+      custom_properties: [],
       course_uuid: null,
     },
   });
@@ -214,6 +217,7 @@ export function CertificationDialog({
       certified_on: certification?.certified_on ?? "",
       expires_on: certification?.expires_on ?? "",
       notes: certification?.notes ?? "",
+      custom_properties: certification?.custom_properties ?? [],
       course_uuid: certification?.course_uuid ?? seed?.uuid ?? null,
     });
     // Same deliberate reset-on-open pattern as `gear-item-dialog.tsx`; clearing a
@@ -337,6 +341,10 @@ export function CertificationDialog({
         expires_on: data.expires_on || null,
         instructor_number: data.instructor_number || null,
         notes: data.notes || "",
+        custom_properties: customPropertiesUpdate(
+          certification?.custom_properties,
+          data.custom_properties,
+        ),
         // The picker's own empty state is already `null` rather than `""`, so
         // this needs no mapping - but it is sent on every save either way, which
         // is what makes clearing it clear the link. There is no
@@ -513,6 +521,8 @@ export function CertificationDialog({
                 </FormItem>
               )}
             />
+
+            <CustomPropertiesField />
 
             <FormApiError error={apiError} />
 

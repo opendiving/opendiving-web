@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { optionalDateField } from "./fields";
+import { customPropertiesField } from "./custom-properties";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 import { locationSchema } from "./location";
@@ -64,6 +65,7 @@ export const tripFormSchema = z.object({
   // Who came along, in the diver's order.
   people: z.array(personReferenceSchema).optional(),
   notes: notesField().optional(),
+  custom_properties: customPropertiesField().optional(),
 });
 
 /**

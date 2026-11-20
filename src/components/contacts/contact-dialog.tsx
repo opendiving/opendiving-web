@@ -48,6 +48,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import { customPropertiesUpdate } from "@/lib/custom-properties";
 import { ContactPositionField } from "@/components/contacts/contact-position-field";
 
 interface ContactDialogProps {
@@ -109,6 +111,7 @@ export function ContactDialog({
       latitude: "",
       longitude: "",
       notes: "",
+      custom_properties: [],
     },
   });
 
@@ -139,6 +142,7 @@ export function ContactDialog({
       latitude: formatCoordinateForForm(contact?.latitude),
       longitude: formatCoordinateForForm(contact?.longitude),
       notes: contact?.notes ?? "",
+      custom_properties: contact?.custom_properties ?? [],
     });
     // Same deliberate reset-on-open pattern as `course-dialog.tsx`.
   }, [open, contact, initialName, initialRolesKey, reset]);
@@ -159,6 +163,10 @@ export function ContactDialog({
         latitude: parseFormCoordinate(data.latitude),
         longitude: parseFormCoordinate(data.longitude),
         notes: data.notes,
+        custom_properties: customPropertiesUpdate(
+          contact?.custom_properties,
+          data.custom_properties,
+        ),
       };
 
       if (contact) {
@@ -389,6 +397,8 @@ export function ContactDialog({
                 </FormItem>
               )}
             />
+
+            <CustomPropertiesField />
 
             <FormApiError error={apiError} />
 

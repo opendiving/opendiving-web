@@ -120,6 +120,9 @@ export function buildDiveDraftValues(data: DiveCreateInput): DiveDraftValues {
       ? data.people.filter((person) => !!person.person_uuid)
       : undefined,
     tags: data.tags?.length ? data.tags : undefined,
+    custom_properties: data.custom_properties?.length
+      ? data.custom_properties
+      : undefined,
   });
 }
 
@@ -193,6 +196,7 @@ export function draftToFormValues(
     sightings,
     tags: values.tags ?? [],
     mixtures,
+    custom_properties: values.custom_properties ?? [],
   };
 }
 

@@ -83,6 +83,52 @@ const save = () =>
   );
 
 describe("PersonDialog", () => {
+  it("adds, edits and removes custom properties, sending them in order", async () => {
+    const onSaved = open({
+      ...EXISTING,
+      custom_properties: [{ key: "Agency", value: "PADI" }],
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add property" }));
+    await userEvent.type(screen.getByLabelText("Key of property 2"), " Size ");
+    await userEvent.type(screen.getByLabelText("Value of Size"), " M ");
+    await userEvent.click(screen.getByRole("button", { name: "Add property" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove property 3" }),
+    );
+    await save();
+
+    await waitFor(() => expect(updatePerson).toHaveBeenCalled());
+    expect(updatePerson.mock.calls[0][1].custom_properties).toEqual([
+      { key: "Agency", value: "PADI" },
+      { key: "Size", value: "M" },
+    ]);
+    expect(onSaved).toHaveBeenCalled();
+  });
+
+  it("keeps a half-filled property in the form and says what is missing", async () => {
+    open(EXISTING);
+
+    await userEvent.click(screen.getByRole("button", { name: "Add property" }));
+    await userEvent.type(screen.getByLabelText("Key of property 1"), "Size");
+    await save();
+
+    expect(await screen.findByText("Give this key a value")).toBeVisible();
+    expect(updatePerson).not.toHaveBeenCalled();
+  });
+
+  it("leaves the properties of a person read without them alone", async () => {
+    // `EXISTING` carries no `custom_properties`, as a response cached before
+    // they existed does.
+    open(EXISTING);
+
+    await save();
+
+    await waitFor(() => expect(updatePerson).toHaveBeenCalled());
+    // `undefined`, which the request's JSON leaves out.
+    expect(updatePerson.mock.calls[0][1].custom_properties).toBeUndefined();
+  });
+
   it("creates a person from a name alone, sending null for what was left empty", async () => {
     const onSaved = open();
 

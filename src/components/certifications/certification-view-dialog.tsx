@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  customPropertiesSections,
+  RecordInfoSections,
+} from "@/components/ui/record-info-dialog";
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { coursesAPI, Course } from "@/lib/api/courses";
@@ -288,6 +292,15 @@ export function CertificationViewDialog({
                 {certification.notes}
               </p>
             </div>
+          )}
+
+          {/* Last and only where there are any, as on the Info dialogs. */}
+          {(certification.custom_properties?.length ?? 0) > 0 && (
+            <RecordInfoSections
+              sections={customPropertiesSections(
+                certification.custom_properties,
+              )}
+            />
           )}
         </div>
       </DialogContent>

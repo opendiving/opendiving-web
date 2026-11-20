@@ -36,6 +36,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import { customPropertiesUpdate } from "@/lib/custom-properties";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { PeopleMultiSelect } from "@/components/people/people-multi-select";
 import { TrainingFields } from "./training-fields";
@@ -88,6 +90,7 @@ export function CourseDialog({
       contact_uuid: null,
       people: [],
       notes: "",
+      custom_properties: [],
     },
   });
 
@@ -117,6 +120,7 @@ export function CourseDialog({
       contact_uuid: course?.contact_uuid ?? null,
       people: others,
       notes: course?.notes ?? "",
+      custom_properties: course?.custom_properties ?? [],
     });
     // Same deliberate reset-on-open pattern as `certification-dialog.tsx`;
     // clearing a stale value when the dialog reopens is exactly the "sync to a
@@ -172,6 +176,10 @@ export function CourseDialog({
         // it, so a cleared instructor is simply one no longer on it.
         people: joinCourseInstructor(data.instructor_uuid, data.people ?? []),
         notes: data.notes || "",
+        custom_properties: customPropertiesUpdate(
+          course?.custom_properties,
+          data.custom_properties,
+        ),
       };
 
       if (course) {
@@ -312,6 +320,8 @@ export function CourseDialog({
                 </FormItem>
               )}
             />
+
+            <CustomPropertiesField />
 
             <FormApiError error={apiError} />
 

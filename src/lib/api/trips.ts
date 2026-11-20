@@ -8,6 +8,7 @@ import type {
 import type { Dive } from "./dives";
 import type { Location } from "./location";
 import type { PersonReference } from "./people";
+import type { CustomProperty } from "@/lib/custom-properties";
 
 /**
  * One stretch of a trip: an optional date range and an optional place.
@@ -44,6 +45,9 @@ export interface TripPartInput {
 }
 
 export interface Trip {
+  // The diver's own key-value pairs, in their order (`lib/custom-properties.ts`).
+  // Optional because a response cached before they existed carries none.
+  custom_properties?: CustomProperty[];
   uuid: string;
   name: string;
   // Ordered as the diver arranged them, not by date: a part with no dates has no
@@ -78,6 +82,8 @@ export interface Trip {
  * `tripSpan` in `lib/trip-parts.ts` - so nothing here carries `start_date`.
  */
 export interface TripCreate {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   name: string;
   parts?: TripPartInput[];
   people?: PersonReference[];
@@ -85,6 +91,8 @@ export interface TripCreate {
 }
 
 export interface TripUpdate {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   name?: string;
   // Omitted leaves the trip's parts untouched; any array - `[]` included -
   // replaces them wholesale.

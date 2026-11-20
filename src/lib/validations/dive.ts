@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { POSTGRES_INTEGER_MAX, maxLength } from "./fields";
+import { customPropertiesField } from "./custom-properties";
+import {
+  customPropertiesUpdate,
+  normalizeCustomProperties,
+} from "@/lib/custom-properties";
 import { notesField } from "./notes";
 import { personReferenceSchema } from "./person";
 import {
@@ -565,6 +570,7 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
     sightings: dive.sightings?.map(toSightingInput) ?? [],
     tags: dive.tags ?? [],
     notes: dive.notes || "",
+    custom_properties: dive.custom_properties ?? [],
     // Converted field by field rather than spread: every optional field arrives
     // as an explicit `null` when the mixture doesn't record it, and `null`
     // satisfies none of their unions in `diveMixtureSchema`. See
@@ -669,6 +675,7 @@ export function emptyDiveFormValues() {
     tags: [],
     notes: "",
     mixtures: [],
+    custom_properties: [],
   } satisfies Omit<DiveCreateInput, "dive_number" | "start_time">;
 }
 
@@ -684,6 +691,7 @@ export const diveCreateSchema = z.object({
   tags: tagsField().default([]),
   notes: notesField().default(""),
   mixtures: z.array(diveMixtureSchema).default([]),
+  custom_properties: customPropertiesField().default([]),
 });
 
 export const diveUpdateSchema = z.object({
@@ -698,6 +706,7 @@ export const diveUpdateSchema = z.object({
   tags: tagsField().optional(),
   notes: notesField().optional(),
   mixtures: z.array(diveMixtureSchema).optional(),
+  custom_properties: customPropertiesField().optional(),
 });
 
 export type DiveCreateInput = z.input<typeof diveCreateSchema>;
@@ -731,7 +740,13 @@ export function boatNameOrNull(value: string): string | null {
 // and the API takes seconds. Done here rather than in the schema because
 // `z.transform()` on a field feeding a `z.input<>`-derived form type breaks
 // `useForm()`'s binding - see CONTRIBUTING.md.
-export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
+//
+// `stored` is the dive the form was seeded from, which decides whether an empty
+// list of custom properties is sent - see `customPropertiesUpdate`.
+export function buildDiveUpdate(
+  data: DiveUpdateInput,
+  stored?: Pick<Dive, "custom_properties">,
+): DiveUpdate {
   const update: DiveUpdate = {};
 
   if (data.dive_number !== undefined) update.dive_number = data.dive_number;
@@ -793,6 +808,12 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
   if (data.mixtures !== undefined) {
     update.mixtures = normalizeMixtures(data.mixtures);
   }
+  if (data.custom_properties !== undefined) {
+    const properties = stored
+      ? customPropertiesUpdate(stored.custom_properties, data.custom_properties)
+      : normalizeCustomProperties(data.custom_properties);
+    if (properties) update.custom_properties = properties;
+  }
 
   return update;
 }
@@ -819,5 +840,6 @@ export function buildDiveCreate(data: DiveCreateInput): DiveCreate {
     entry_type: data.entry_type === "" ? undefined : data.entry_type,
     boat_name: boatNameOrNull(data.boat_name ?? "") ?? undefined,
     mixtures: normalizeMixtures(data.mixtures ?? []),
+    custom_properties: normalizeCustomProperties(data.custom_properties ?? []),
   };
 }

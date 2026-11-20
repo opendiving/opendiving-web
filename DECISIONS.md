@@ -7150,3 +7150,15 @@ until its opening rule's reads have settled, and a finder still resting there se
 
 _Rejected:_ re-running the list as the map moves, a request per pan that the geocoder shares; and
 the cards' map backdrops on the rows, a second map of what the map beside them already shows.
+
+## Custom properties are edited in each record's form and read in its Info dialog
+
+Every record a diver owns carries `custom_properties`, the API's ordered `{key, value}` list. Each
+record's form edits them with `CustomPropertiesField`, a row per property under the form's other
+fields, and the detail page's Info dialog lists them after the record's fields
+(`customPropertiesSections`). Gear items, courses and people gained an Info dialog for it; contacts
+and gear sets, which have no detail page, show them in their edit dialog, and a certification in its
+view dialog. A read type marks the member optional, as `Trip.people`, since a cached response
+predates it, and an edit seeded from such a read sends nothing unless the diver added a property
+(`customPropertiesUpdate`): `[]` would clear what another client wrote. On the dive form the field
+is `custom_properties` in the API's hideable vocabulary, hidden by Basic.

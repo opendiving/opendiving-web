@@ -37,6 +37,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import { customPropertiesUpdate } from "@/lib/custom-properties";
 
 interface PersonDialogProps {
   open: boolean;
@@ -77,6 +79,7 @@ export function PersonDialog({
       email: "",
       phone: "",
       notes: "",
+      custom_properties: [],
     },
   });
 
@@ -91,6 +94,7 @@ export function PersonDialog({
       email: person?.email ?? "",
       phone: person?.phone ?? "",
       notes: person?.notes ?? "",
+      custom_properties: person?.custom_properties ?? [],
     });
     // Same deliberate reset-on-open pattern as `contact-dialog.tsx`.
   }, [open, person, initialName, reset]);
@@ -108,6 +112,10 @@ export function PersonDialog({
         email: data.email.trim() || null,
         phone: data.phone.trim() || null,
         notes: data.notes,
+        custom_properties: customPropertiesUpdate(
+          person?.custom_properties,
+          data.custom_properties,
+        ),
       };
 
       if (person) {
@@ -262,6 +270,8 @@ export function PersonDialog({
                 </FormItem>
               )}
             />
+
+            <CustomPropertiesField />
 
             <FormApiError error={apiError} />
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { GearItemInfoDialog } from "@/components/gear/gear-item-info-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -138,6 +139,7 @@ export function GearItemDetailPageContent() {
         back={back}
         actions={
           <>
+            <GearItemInfoDialog gearItem={gearItem} />
             <Button
               variant="ghost"
               size="sm"

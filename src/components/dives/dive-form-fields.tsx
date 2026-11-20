@@ -87,6 +87,7 @@ import type {
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveFormSection } from "@/components/dives/dive-form-section";
 import { FetchedSource } from "@/components/dives/autofilled-marks";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
 
 // Freediving and snorkeling stay in the vocabulary, which a stored dive can hold,
 // but the form does not offer them yet.
@@ -885,8 +886,12 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         )}
 
       {/* The diver's own word on the dive: how it rated, what it is filed
-          under, and the notes - the order the dive page reads them in. */}
-      {(isVisible("rating") || isVisible("tags") || isVisible("notes")) &&
+          under, the notes and the custom properties - the order the dive page
+          reads them in. */}
+      {(isVisible("rating") ||
+        isVisible("tags") ||
+        isVisible("notes") ||
+        isVisible("custom_properties")) &&
         section(
           "Notes",
           <>
@@ -954,6 +959,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 )}
               />
             )}
+
+            {isVisible("custom_properties") && <CustomPropertiesField />}
           </>,
         )}
     </>
