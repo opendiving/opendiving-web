@@ -95,7 +95,7 @@ export function SetupChecklistCard({ totalDives }: SetupChecklistCardProps) {
     },
     {
       key: "certification",
-      label: "Store your c-cards",
+      label: "Store your certification cards",
       description: "Photos of your certifications, on hand at the dive shop",
       href: "/certifications",
       done: certificationCount > 0,
