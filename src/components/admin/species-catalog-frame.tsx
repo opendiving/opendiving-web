@@ -126,6 +126,8 @@ export function SpeciesCatalogFrame({
   return (
     <div>
       <IndexHero
+        backHref="/admin"
+        backLabel="Back to admin"
         title="Species"
         description="Every species in this instance's catalog, and the photo each one shows."
       />

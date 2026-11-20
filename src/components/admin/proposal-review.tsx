@@ -76,6 +76,8 @@ export function ProposalReview({
   return (
     <div>
       <IndexHero
+        backHref="/admin"
+        backLabel="Back to admin"
         title={PROPOSAL_QUEUE_TITLE}
         description={PROPOSAL_QUEUE_DESCRIPTION}
       />

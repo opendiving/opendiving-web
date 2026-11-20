@@ -77,6 +77,8 @@ export function InviteQueueFrame({
   return (
     <div>
       <IndexHero
+        backHref="/admin"
+        backLabel="Back to admin"
         title="Invite Queue"
         description="Addresses that have asked for an invitation to this instance."
       />

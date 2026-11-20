@@ -41,6 +41,22 @@ describe("IndexHero", () => {
       "tabindex",
     );
   });
+
+  // A page under a section's landing goes back to it; one reached from the
+  // navigation has nowhere to go back to.
+  it("draws the way back only when given one", () => {
+    const { unmount } = render(
+      <IndexHero title="Stats" backHref="/admin" backLabel="Back to admin" />,
+    );
+    expect(screen.getByRole("link", { name: "Back to admin" })).toHaveAttribute(
+      "href",
+      "/admin",
+    );
+    unmount();
+
+    render(<IndexHero title="Admin" />);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
 });
 
 describe("page information", () => {

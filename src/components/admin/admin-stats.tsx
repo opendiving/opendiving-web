@@ -81,6 +81,8 @@ export function AdminStatsScreen() {
   return (
     <div>
       <IndexHero
+        backHref="/admin"
+        backLabel="Back to admin"
         title="Stats"
         description="Daily totals of accounts created, sign-ins and active accounts. Days are UTC."
       />

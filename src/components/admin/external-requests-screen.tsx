@@ -87,6 +87,8 @@ export function ExternalRequestsScreen() {
   return (
     <div>
       <IndexHero
+        backHref="/admin"
+        backLabel="Back to admin"
         title="External Requests"
         description="Requests this server sent to other services, and those it answered without sending. Days are UTC, and the counts trail by a few minutes."
       />
