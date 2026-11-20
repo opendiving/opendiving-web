@@ -78,7 +78,7 @@ export function SiteRow({
   onPoint,
   isCurrent,
 }: SiteRowProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const facts = diveSiteFacts(site, units);
   const pin =
     site.latitude != null && site.longitude != null
@@ -153,7 +153,7 @@ export interface PlaceRowProps {
 // "No sites nearby" is said rather than hidden, since that is where a diver would
 // add one.
 export function PlaceRow({ place, onPick }: PlaceRowProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const title = place.name || place.location;
   const nearby =
     place.sites_nearby === 0

@@ -55,7 +55,7 @@ interface CommonsSiteDialogProps {
 // The record as it stands for every account, on show and out of reach: a diver's
 // own form is `DiveSiteDialog`, and none of these is theirs to write.
 function CommonsSiteSummary({ site }: { site: DiveSite }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const facts = diveSiteFacts(site, units);
   const coordinates = formatCoordinates(site.latitude, site.longitude);
   const otherNames = site.other_names ?? [];

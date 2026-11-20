@@ -54,10 +54,8 @@ import {
   displayNumber,
   formatDepth,
   formatGasVolume,
-  toDisplayUnits,
-  unitLabel,
   unitWord,
-  type UnitSystem,
+  type UnitSelection,
 } from "@/lib/units";
 
 // Hand-rolled SVG rather than a charting library, for two reasons. The app ships
@@ -129,7 +127,7 @@ export interface GasUseChartProps {
 const readStoredMarks = () => readStoredSeries(GAS_USE_SERIES_KEY);
 
 export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
-  const units = useUnits();
+  const { preferences: units, toDisplayUnits } = useUnits();
   const withReturnTo = useWithReturnTo();
   const [chartRef, width] = useChartWidth(CHART_WIDTH);
   // Index into `points` of the dive under the cursor, keyboard focus or finger.
@@ -216,7 +214,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // Converted once, here, and everything below - the domain, the axis ticks, the
   // bins, the baseline - is then in the diver's own units, so `niceDomain` picks
   // round cuft/min rather than round L/min rescaled.
-  const displayRmv = (rmv: number) => toDisplayUnits(rmv, "rmv", units);
+  const displayRmv = (rmv: number) => toDisplayUnits(rmv, "rmv");
   const rmvs = points.map((point) => displayRmv(point.gas_use.rmv));
 
   // Derived from the *whole* series, deliberately, and then windowed. The y axis
@@ -323,12 +321,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
         <p className="text-sm text-muted-foreground">
           Everything is hidden. Pick a series below to plot it.
         </p>
-        <GasUseLegend
-          marks={marks}
-          unit={unit}
-          onToggle={toggle}
-          units={units}
-        />
+        <GasUseLegend marks={marks} unit={unit} onToggle={toggle} />
       </div>
     );
   }
@@ -541,7 +534,6 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             cx={x(times[hoveredIndex])}
             cy={y(clamp(displayRmv(hoveredPoint.gas_use.rmv)))}
             chartWidth={width}
-            units={units}
             openHref={
               readout.pinned
                 ? withReturnTo(`/dives/${hoveredPoint.dive_uuid}`)
@@ -551,7 +543,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
         )}
       </div>
 
-      <GasUseLegend marks={marks} unit={unit} onToggle={toggle} units={units} />
+      <GasUseLegend marks={marks} unit={unit} onToggle={toggle} />
     </div>
   );
 }
@@ -569,15 +561,14 @@ function GasUseLegend({
   marks,
   unit,
   onToggle,
-  units,
 }: {
   marks: readonly GasUseMark[];
   // The bin the trend mark summarizes by *at this scope* - named whether or not
   // the mark is drawn, since the legend describes what the toggle turns on.
   unit: BinUnit;
   onToggle: (mark: GasUseMark) => void;
-  units: UnitSystem;
 }) {
+  const { unitLabel } = useUnits();
   return (
     <div
       className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs touch:gap-y-0"
@@ -592,7 +583,7 @@ function GasUseLegend({
             marks.includes("dives") && "text-teal",
           )}
         />
-        Dive ({unitLabel("rmv", units)})
+        Dive ({unitLabel("rmv")})
       </MarkToggle>
       <MarkToggle mark="trend" marks={marks} onToggle={onToggle}>
         {/* The box and its median tick are one mark, so they get one swatch -
@@ -669,7 +660,7 @@ function MarkToggle({
 function describeSeries(
   dives: number,
   medianRmv: number,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string {
   // Metric in, and through the same formatter the visible "Median" stat uses, so
   // the two cannot disagree: one decimal in L/min, two in cuft/min. Spelled out
@@ -688,23 +679,22 @@ function GasUseTooltip({
   cx,
   cy,
   chartWidth,
-  units,
   openHref,
 }: {
   point: DiveGasUsePoint;
   cx: number;
   cy: number;
   chartWidth: number;
-  units: UnitSystem;
   // Where the dive opens, for a card a finger pinned: there is no cursor on the
   // dot to click it with, so the card carries the link.
   openHref?: string;
 }) {
+  const { preferences: units, displayNumber, unitLabel } = useUnits();
   return (
     <ChartHoverCard cx={cx} cy={cy} chartWidth={chartWidth}>
       <div className="text-sm font-semibold">
-        {displayNumber(point.gas_use.rmv, "rmv", units)}{" "}
-        <span className="font-normal">{unitLabel("rmv", units)}</span>
+        {displayNumber(point.gas_use.rmv, "rmv")}{" "}
+        <span className="font-normal">{unitLabel("rmv")}</span>
       </div>
       <div className="mt-0.5 text-xs text-tooltip-foreground/70">
         Dive #{point.dive_number} &middot;{" "}
@@ -756,7 +746,10 @@ function GasUseTooltip({
 // quietly wrong beside the other. What replaces them is the one thing a diver
 // needs to read the dot correctly: this rate is per cylinder, and the detail
 // page is where the cylinders are.
-function describePointBasis(point: DiveGasUsePoint, units: UnitSystem): string {
+function describePointBasis(
+  point: DiveGasUsePoint,
+  units: UnitSelection,
+): string {
   const tanks = point.gas_use.tanks?.length ?? 0;
   if (isPerTankPoint(point)) {
     return `Per tank across ${tanks} ${tanks === 1 ? "cylinder" : "cylinders"} - see the dive for the split`;
@@ -782,7 +775,7 @@ function isPerTankPoint(point: DiveGasUsePoint): boolean {
 
 // The accessible name of a dot's link, since the visual tooltip is `aria-hidden`
 // decoration.
-function describePoint(point: DiveGasUsePoint, units: UnitSystem): string {
+function describePoint(point: DiveGasUsePoint, units: UnitSelection): string {
   const date = formatDiveDateTime(point.start_time, {
     year: "numeric",
     month: "short",

@@ -11,12 +11,13 @@ import {
   formatDurationHoursMinutes,
 } from "@/lib/date-time";
 import {
+  unitSystemFor,
   toDisplayUnits,
   unitLabel,
   unitSeparator,
   unitWord,
   type Dimension,
-  type UnitSystem,
+  type UnitSelection,
 } from "@/lib/units";
 
 // All of the dive profile chart's arithmetic, kept out of the component per the
@@ -457,7 +458,7 @@ const MIN_TEMPERATURE_SPAN_C = 2;
  */
 export function temperatureDomain(
   values: readonly number[],
-  units: UnitSystem,
+  units: UnitSelection,
 ): Domain {
   if (values.length === 0) return niceDomain([]);
 
@@ -479,7 +480,7 @@ export function temperatureDomain(
 // cost every row its width.
 export function axisUnitSuffix(
   axis: ProfileAxisKey,
-  units: UnitSystem,
+  units: UnitSelection,
 ): string {
   const key = PROFILE_CHANNEL_KEYS.find(
     (candidate) => CHANNEL_AXIS[candidate] === axis,
@@ -655,10 +656,11 @@ const CHANNEL_DIMENSION: Record<ProfileChannelKey, Dimension | InvariantUnit> =
  */
 export function displayChannel(
   channel: ProfileChannel,
-  units: UnitSystem,
+  units: UnitSelection,
 ): ProfileChannel {
   const entry = CHANNEL_DIMENSION[channel.key];
-  if (units === "metric" || typeof entry !== "string") return channel;
+  if (typeof entry !== "string" || unitSystemFor(entry, units) === "metric")
+    return channel;
 
   return {
     ...channel,
@@ -681,7 +683,7 @@ export function displayChannel(
 function toChannelDisplay(
   scaledValue: number,
   key: ProfileChannelKey,
-  units: UnitSystem,
+  units: UnitSelection,
 ): number {
   const entry = CHANNEL_DIMENSION[key];
   return typeof entry === "string"
@@ -690,7 +692,10 @@ function toChannelDisplay(
 }
 
 /** The spoken unit for a channel, for the chart's accessible description. */
-export function channelWord(key: ProfileChannelKey, units: UnitSystem): string {
+export function channelWord(
+  key: ProfileChannelKey,
+  units: UnitSelection,
+): string {
   const entry = CHANNEL_DIMENSION[key];
   return typeof entry === "string" ? unitWord(entry, units) : entry.word;
 }
@@ -816,7 +821,7 @@ const PROFILE_SERIES_KEYS = PROFILE_CHANNEL_KEYS.filter(
 export function toChannelSeries(
   profile: DiveProfile,
   key: ProfileSeriesKey,
-  units: UnitSystem,
+  units: UnitSelection,
 ): ChannelSeries | null {
   const recorded: DiveProfileSeries | null | undefined = profile[key];
   const after = SPURIOUS_ZERO_AFTER[key];
@@ -911,7 +916,7 @@ export function grainDecimals(
 // `gas_number` and named through `cylinderName`.
 export function toPressureSeries(
   profile: DiveProfile,
-  units: UnitSystem,
+  units: UnitSelection,
 ): (ChannelSeries & { gasNumber: number })[] {
   const channel = PROFILE_CHANNELS.pressure;
   return (profile.pressures ?? [])

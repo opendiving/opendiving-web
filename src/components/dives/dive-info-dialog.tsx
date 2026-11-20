@@ -21,7 +21,7 @@ import {
   formatTemperature,
   formatVisibility,
   formatWeight,
-  type UnitSystem,
+  type UnitSelection,
 } from "@/lib/units";
 import {
   RecordInfoDialog,
@@ -39,7 +39,7 @@ const label = (
 // draws - so none of them is here.
 export function diveInfoSections(
   dive: Dive,
-  units: UnitSystem,
+  units: UnitSelection,
 ): RecordInfoSection[] {
   const measure = <T,>(
     value: T | null | undefined,
@@ -130,7 +130,7 @@ export function diveInfoSections(
 }
 
 export function DiveInfoDialog({ dive }: { dive: Dive }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   return (
     <RecordInfoDialog
       title="Dive information"

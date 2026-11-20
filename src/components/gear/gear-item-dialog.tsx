@@ -44,7 +44,6 @@ import { VolumeCombobox } from "@/components/dives/volume-combobox";
 import type { PresetVessel, VolumeOption } from "@/lib/cylinder-presets";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { useUnits } from "@/hooks/useUnits";
-import { unitLabel } from "@/lib/units";
 
 interface GearItemDialogProps {
   open: boolean;
@@ -349,7 +348,7 @@ export function GearItemDialog({
 // A cylinder's three facts. Its own component so only a dialog showing them reads the
 // diver's units, which the pressure box converts.
 function CylinderFactFields() {
-  const units = useUnits();
+  const { unitLabel, unitSystemFor } = useUnits();
   const { control, getValues, setValue } = useFormContext<GearItemInput>();
   // What the last preset pick wrote, which the next pick replaces - a diver
   // correcting AL80 to HP100 means steel. Anything else a field holds, typed or
@@ -404,14 +403,12 @@ function CylinderFactFields() {
           name="working_pressure"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                Working pressure ({unitLabel("pressure", units)})
-              </FormLabel>
+              <FormLabel>Working pressure ({unitLabel("pressure")})</FormLabel>
               <FormControl
                 render={
                   <UnitNumberInput
                     dimension="pressure"
-                    units={units}
+                    units={unitSystemFor("pressure")}
                     min={0}
                     placeholderValue={232}
                     {...field}

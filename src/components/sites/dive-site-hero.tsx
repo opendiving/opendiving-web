@@ -10,7 +10,7 @@ import { diveSiteFacts } from "@/components/sites/dive-site-facts";
 import { MapHero, type MapHeroFigure } from "@/components/ui/map-hero";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDateOnly } from "@/lib/date-time";
-import { formatDepth } from "@/lib/units";
+
 import type { ReturnTarget } from "@/lib/return-to";
 
 /**
@@ -29,7 +29,7 @@ export function DiveSiteHero({
   back: ReturnTarget;
   actions?: ReactNode;
 }) {
-  const units = useUnits();
+  const { preferences: units, formatDepth } = useUnits();
   // The pin alone: the locality's centre is the town the geocoder resolved.
   const isPlaced = site.latitude != null && site.longitude != null;
   const facts = diveSiteFacts(site, units);
@@ -41,7 +41,7 @@ export function DiveSiteHero({
     figures.push({
       label: "Deepest",
       // Whole units, as the finder's rows and a trip's page round theirs.
-      value: formatDepth(site.max_dive_depth, units, { decimals: 0 }),
+      value: formatDepth(site.max_dive_depth, { decimals: 0 }),
     });
   }
   if (site.species_count) {

@@ -23,7 +23,6 @@ import { DiveProfileSilhouette } from "@/components/dives/dive-profile-silhouett
 import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
-import { formatDepth, formatTemperature } from "@/lib/units";
 import { cn } from "@/lib/utils";
 import { Edit } from "lucide-react";
 
@@ -71,14 +70,14 @@ export function DiveCard({
   addToTrip,
   importRow,
 }: DiveCardProps) {
-  const units = useUnits();
+  const { formatDepth, formatTemperature } = useUnits();
   // The dive's page and its edit form both return to the page the card is on.
   const withReturnTo = useWithReturnTo();
   const outline = dive.depth_outline;
   // Whole units, as the dive page's hero rounds them: the second decimal is not
   // what anyone reads a dive's depth for. `!= null`, since 0 m is a reading.
   const depth = (meters?: number) =>
-    meters != null ? formatDepth(meters, units, { decimals: 0 }) : "-";
+    meters != null ? formatDepth(meters, { decimals: 0 }) : "-";
   const figures: BackdropCardFigure[] = [
     {
       label: "Dive time",
@@ -90,7 +89,7 @@ export function DiveCard({
   if (dive.bottom_temperature != null) {
     figures.push({
       label: "Water temp",
-      value: formatTemperature(dive.bottom_temperature, units, {
+      value: formatTemperature(dive.bottom_temperature, {
         decimals: 0,
       }),
     });
