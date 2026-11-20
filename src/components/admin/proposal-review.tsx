@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 import {
   AcceptDialog,
@@ -76,18 +76,13 @@ export function ProposalReview({
   return (
     <div>
       <IndexHero
-        backHref="/admin"
-        backLabel="Back to admin"
+        onBack={onBack}
+        backLabel="Back to the queue"
         title={PROPOSAL_QUEUE_TITLE}
         description={PROPOSAL_QUEUE_DESCRIPTION}
       />
 
       <div className={HERO_BODY}>
-        <Button variant="ghost" size="sm" className="mb-4" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to the queue
-        </Button>
-
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <h2
             ref={heading}

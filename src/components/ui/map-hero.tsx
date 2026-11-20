@@ -530,10 +530,14 @@ export function IndexHero({
   actions,
   backHref,
   backLabel,
+  onBack,
   headingRef,
   className,
 }: Pick<MapHeroProps, "title" | "subtitle" | "actions"> &
   Partial<Pick<MapHeroProps, "icon" | "backHref" | "backLabel">> & {
+    // The way back from a view a page swaps in rather than a route of its own,
+    // in place of `backHref`.
+    onBack?: () => void;
     // What the page is for, behind the icon. `subtitle` is for what a reader
     // must see without asking, under the title.
     description?: ReactNode;
@@ -541,7 +545,14 @@ export function IndexHero({
     headingRef?: Ref<HTMLHeadingElement>;
     className?: string;
   }) {
-  const back = backHref && backLabel;
+  const back = !backLabel ? null : onBack ? (
+    <Button variant="ghost" size="sm" className={HERO_CONTROL} onClick={onBack}>
+      <ArrowLeft className="h-4 w-4 mr-2" />
+      {backLabel}
+    </Button>
+  ) : backHref ? (
+    <HeroBackLink backHref={backHref} backLabel={backLabel} />
+  ) : null;
   return (
     <div
       className={cn(
@@ -551,11 +562,7 @@ export function IndexHero({
         className,
       )}
     >
-      {back && (
-        <div className={cn(PLAIN_TOP_ROW, "print:hidden")}>
-          <HeroBackLink backHref={backHref} backLabel={backLabel} />
-        </div>
-      )}
+      {back && <div className={cn(PLAIN_TOP_ROW, "print:hidden")}>{back}</div>}
       <HeroDetails
         className={back ? PLAIN_DETAILS : undefined}
         icon={icon}

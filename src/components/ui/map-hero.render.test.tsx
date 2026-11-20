@@ -57,6 +57,23 @@ describe("IndexHero", () => {
     render(<IndexHero title="Admin" />);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
+
+  // A view swapped in on the same route goes back by the page's own hand.
+  it("draws a way back that calls the page rather than leaving it", async () => {
+    const onBack = vi.fn();
+    render(
+      <IndexHero
+        title="Proposals"
+        onBack={onBack}
+        backLabel="Back to the queue"
+      />,
+    );
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Back to the queue" }),
+    );
+    expect(onBack).toHaveBeenCalledOnce();
+  });
 });
 
 describe("page information", () => {
