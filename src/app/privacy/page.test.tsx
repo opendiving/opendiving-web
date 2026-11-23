@@ -2216,7 +2216,13 @@ describe("the app's downloads from a paired dive computer", () => {
       .closest("p")!;
     const text = (paragraph.textContent ?? "").replace(/\s+/g, " ");
     expect(text).toMatch(
-      /Before it downloads any of a computer’s dives, the app asks this copy which of them your logbook already has, sending the computer’s serial number and, for each dive the computer lists that the app would otherwise download, an identifier the app gives it and when the dive started\./,
+      /Before it downloads any of a computer’s dives, the app asks this copy which of them your logbook already has, and whether each of those keeps the computer’s original download, sending the computer’s serial number and, for each dive the computer lists, an identifier the app gives it and when the dive started\./,
+    );
+    expect(text).toMatch(
+      /A dive your logbook has without it, the app downloads and sends as well, so that the computer’s original download is kept on that dive/,
+    );
+    expect(text).toMatch(
+      /each dive it sent only for the computer’s original download, and does not send that dive again for that reason/,
     );
     expect(text).toMatch(
       /The question names dives you may then not download, and this copy answers it without keeping any of it\./,
@@ -2229,7 +2235,7 @@ describe("the app's downloads from a paired dive computer", () => {
       (entry) => entry.startsWith("Dive-Computer Files"),
     );
     expect(item).toMatch(
-      /the question it asks this copy first, about which of the computer’s dives your logbook already has, leaves nothing here/,
+      /the question it asks this copy first, about which of the computer’s dives your logbook already has and whether each keeps that original download, leaves nothing here/,
     );
   });
 
@@ -2256,7 +2262,7 @@ describe("the app's downloads from a paired dive computer", () => {
       (entry) => entry.startsWith("Dive-Computer Files"),
     );
     expect(item).toMatch(
-      /keeps the computer’s original download the same way, on the dive it becomes, and is an import applied as it is uploaded/,
+      /keeps the computer’s original download the same way, on the dive it becomes or on the one your logbook already has for it, and is an import applied as it is uploaded/,
     );
   });
 });

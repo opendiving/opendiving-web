@@ -90,9 +90,11 @@ const IMPORT_CONTAINER_LABELS: Record<"divejson" | "archive" | "zip", string> =
 /**
  * The `parser_key` of a file the API keeps but no reader of this build reads:
  * restored from an archive whose document named no format the API reads. The
- * iOS app's dive-computer downloads from before it tagged them with
- * `DIVE_COMPUTER_ORIGINAL_PARSER_KEY` are the files that arrive this way, which
- * is why the label names them; any other file under the key wears the same one.
+ * label names a dive-computer download because that is what arrives this way
+ * in practice: an iOS app download from before the app tagged them with
+ * `DIVE_COMPUTER_ORIGINAL_PARSER_KEY`, restored from an archive exported before
+ * the API labelled those it already held. Any other file under the key wears
+ * the same label.
  */
 export const UNREAD_FILE_PARSER_KEY = "divejson_import";
 

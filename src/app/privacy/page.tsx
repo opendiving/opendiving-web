@@ -375,15 +375,17 @@ export default async function PrivacyPage() {
                   copy keeps them, which may be until you delete them. A dive
                   the OpenDiving app downloads from a dive computer over
                   Bluetooth keeps the computer&rsquo;s original download the
-                  same way, on the dive it becomes, and is an import applied as
-                  it is uploaded; the question it asks this copy first, about
-                  which of the computer&rsquo;s dives your logbook already has,
-                  leaves nothing here. A file from a computer with a wrist
-                  sensor or a heart-rate strap switched on carries your heart
-                  rate, which is read into the dive log above. The account also
-                  keeps the order you put your dive computers in, by their
-                  serial numbers, which decides whose recording a dive shows by
-                  default when more than one of them recorded it
+                  same way, on the dive it becomes or on the one your logbook
+                  already has for it, and is an import applied as it is
+                  uploaded; the question it asks this copy first, about which of
+                  the computer&rsquo;s dives your logbook already has and
+                  whether each keeps that original download, leaves nothing
+                  here. A file from a computer with a wrist sensor or a
+                  heart-rate strap switched on carries your heart rate, which is
+                  read into the dive log above. The account also keeps the order
+                  you put your dive computers in, by their serial numbers, which
+                  decides whose recording a dive shows by default when more than
+                  one of them recorded it
                 </li>
                 <li>
                   <strong>Equipment Data:</strong> Diving equipment details and
@@ -465,28 +467,35 @@ export default async function PrivacyPage() {
                 time it connects, even with the phone locked, unless you switch{" "}
                 <em>Download automatically</em> off for that computer. Before it
                 downloads any of a computer&rsquo;s dives, the app asks this
-                copy which of them your logbook already has, sending the
+                copy which of them your logbook already has, and whether each of
+                those keeps the computer&rsquo;s original download, sending the
                 computer&rsquo;s serial number and, for each dive the computer
-                lists that the app would otherwise download, an identifier the
-                app gives it and when the dive started. The question names dives
-                you may then not download, and this copy answers it without
-                keeping any of it. The app leaves out the dives this copy says
-                your logbook has. Where the app asks you which of a
-                computer&rsquo;s dives to download, it downloads none until you
-                have chosen, and it remembers on the phone the dives you chose
-                not to download, so that a later download leaves them out too.
-                Every download, whether it started by itself or from the
+                lists, an identifier the app gives it and when the dive started.
+                The question names dives you may then not download, and this
+                copy answers it without keeping any of it. The app leaves out
+                the dives this copy says your logbook has with their original
+                download. A dive your logbook has without it, the app downloads
+                and sends as well, so that the computer&rsquo;s original
+                download is kept on that dive, which this copy fills in where it
+                lacks something the download holds. Where the app asks you which
+                of a computer&rsquo;s dives to download, it downloads none until
+                you have chosen, and it remembers on the phone the dives you
+                chose not to download, so that a later download leaves them out
+                too. Every download, whether it started by itself or from the
                 app&rsquo;s screen, is sent to this copy, which imports it into
                 your logbook without a review. The downloaded dives are kept on
                 the phone until this copy has them, and the app remembers which
                 of them it has sent, and which this copy said your logbook
-                already has, so it sends none twice. Where the phone has no
-                internet, the app leaves iOS a request for this copy&rsquo;s
-                health check, which names no account and carries no dive, and
-                which iOS sends once there is a connection, so that the app
-                learns when it can send them. A file you share to the app is
-                uploaded as it arrives and waits for your review, as on this
-                site.
+                already has, so it sends none twice. It also remembers on the
+                phone, for your account, each dive it sent only for the
+                computer&rsquo;s original download, and does not send that dive
+                again for that reason, whatever this copy answers later. Where
+                the phone has no internet, the app leaves iOS a request for this
+                copy&rsquo;s health check, which names no account and carries no
+                dive, and which iOS sends once there is a connection, so that
+                the app learns when it can send them. A file you share to the
+                app is uploaded as it arrives and waits for your review, as on
+                this site.
               </p>
               <p className="text-foreground mb-4">
                 If you allow it notifications, which its Dive Computers screen
