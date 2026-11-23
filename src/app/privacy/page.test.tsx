@@ -2192,7 +2192,10 @@ describe("the app's downloads from a paired dive computer", () => {
       /downloads that computer’s new dives over Bluetooth by itself each time it connects, even with the phone locked/,
     );
     expect(text).toMatch(
-      /even with the phone locked, unless you switch Download automatically off for that computer\. Every download, whether it started by itself or from the app’s screen, is sent to this copy, which imports it into your logbook without a review\./,
+      /even with the phone locked, unless you switch Download automatically off for that computer\./,
+    );
+    expect(text).toMatch(
+      /Every download, whether it started by itself or from the app’s screen, is sent to this copy, which imports it into your logbook without a review\./,
     );
     expect(text).toMatch(
       /kept on the phone until this copy has them, and the app remembers which of them it has sent/,
@@ -2202,6 +2205,31 @@ describe("the app's downloads from a paired dive computer", () => {
     );
     expect(text).toMatch(
       /A file you share to the app is uploaded as it arrives and waits for your review/,
+    );
+  });
+
+  it("says what the app asks before it downloads, and that this copy keeps none of it", async () => {
+    await renderPage({ google: false });
+
+    const paragraph = screen
+      .getByText(/Dives can arrive without a tap, too/)
+      .closest("p")!;
+    const text = (paragraph.textContent ?? "").replace(/\s+/g, " ");
+    expect(text).toMatch(
+      /Before it downloads any of a computer’s dives, the app asks this copy which of them your logbook already has, sending the computer’s serial number and, for each dive the computer lists that the app would otherwise download, an identifier the app gives it and when the dive started\./,
+    );
+    expect(text).toMatch(
+      /The question names dives you may then not download, and this copy answers it without keeping any of it\./,
+    );
+    expect(text).toMatch(
+      /it downloads none until you have chosen, and it remembers on the phone the dives you chose not to download/,
+    );
+
+    const item = listAfterHeading(/2\.1 Information You Provide Directly/).find(
+      (entry) => entry.startsWith("Dive-Computer Files"),
+    );
+    expect(item).toMatch(
+      /the question it asks this copy first, about which of the computer’s dives your logbook already has, leaves nothing here/,
     );
   });
 
