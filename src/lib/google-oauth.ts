@@ -64,8 +64,8 @@ export interface PendingGoogleAttempt {
   // the first tab would then sign in perfectly and land on the wrong page with
   // nothing anywhere reporting a problem.
   redirectTo: string | null;
-  // The join link or invite link this attempt started from, if it started on
-  // `/join`: the slug or token the API resolved, sent back with the code so the API
+  // The join link or connect link this attempt started from, if it started on
+  // one: the slug or token the API resolved, sent back with the code so the API
   // can admit the visitor by it. It rides here because this flow leaves the tab and `state` itself stays
   // an opaque nonce - this record is already the session-bound place the round
   // trip keeps what it needs.
@@ -137,7 +137,7 @@ function asAttempt(value: unknown): PendingGoogleAttempt | null {
     redirectTo: sanitizeRedirectPath(redirectTo),
     // Absent on an entry an older build wrote, and dropped rather than sent if it
     // is not a slug or token at all - the API would refuse the whole exchange over
-    // it. An invite-link token fits the slug's shape, so it passes.
+    // it. A connect-link token fits the slug's shape, so it passes.
     via: typeof via === "string" && JOIN_CHANNEL_SLUG.test(via) ? via : null,
     expiresAt,
   };
@@ -200,7 +200,7 @@ interface BeginGoogleSignIn {
   clientId: string;
   // Where the visitor was headed before they were asked to sign in, if anywhere.
   redirectTo?: string | null;
-  // The join link's slug or invite-link token, when the button is on `/join`.
+  // The join link's slug or connect-link token, when the button is on one's page.
   via?: string | null;
 }
 

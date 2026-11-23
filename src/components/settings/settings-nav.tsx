@@ -8,7 +8,6 @@ import {
   ClipboardList,
   HardDrive,
   KeyRound,
-  MailPlus,
   Plug,
   SlidersHorizontal,
   User,
@@ -40,7 +39,6 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     label: "Preferences",
     icon: SlidersHorizontal,
   },
-  { href: "/settings/invitations", label: "Invitations", icon: MailPlus },
 ];
 
 // The selection is one pill, the list's `::before`, tethered by anchor positioning to
@@ -146,17 +144,15 @@ export function SettingsNav() {
     return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
-  // An instance anyone may register on has nobody to invite, and one whose API does
-  // not report MCP on has nothing to connect. Each is hidden only once the config
-  // says so: while it loads, or if it failed, the entry stays, because the page
-  // behind it answers for itself either way. An API too old to carry `mcp_enabled`
-  // has no MCP, so a config without it counts as off.
-  const sections = SETTINGS_SECTIONS.filter((section) =>
-    section.href === "/settings/invitations"
-      ? config?.registration_mode !== "open"
-      : section.href !== "/settings/mcp" ||
-        config === null ||
-        config.mcp_enabled === true,
+  // An instance whose API does not report MCP on has nothing to connect. It is
+  // hidden only once the config says so: while it loads, or if it failed, the
+  // entry stays, because the page behind it answers for itself either way. An API
+  // too old to carry `mcp_enabled` has no MCP, so a config without it counts as off.
+  const sections = SETTINGS_SECTIONS.filter(
+    (section) =>
+      section.href !== "/settings/mcp" ||
+      config === null ||
+      config.mcp_enabled === true,
   );
 
   return (

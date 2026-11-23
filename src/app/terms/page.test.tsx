@@ -204,7 +204,7 @@ describe("the check-in link", () => {
     ).toHaveTextContent(/section 4\.9/);
     expect(
       screen.getByText(
-        /The invitation, check-in link, linking and photo proposal grants\s+above/,
+        /The connect link, check-in link, connection and photo proposal grants\s+above/,
       ),
     ).toBeInTheDocument();
     expect(
@@ -224,28 +224,34 @@ describe("the check-in link", () => {
   });
 });
 
-// Linking a person to an account is the third thing shown across accounts, and the
-// first that shows the diver something of another account's rather than the other
-// way round. It gets the same pair the check-in link did: a grant of its own here,
+// A connection is the third thing shown across accounts, and it runs both ways: the
+// diver sees the account's username and picture, the account sees the diver under
+// Added you. It gets the same pair the check-in link did: a grant of its own here,
 // pointing at a privacy section of its own, and a place in the count §2 keeps.
-describe("linking a person to an account", () => {
-  it("has a grant of its own in §5, naming what it shows and what the export carries", async () => {
+describe("connecting a person to an account", () => {
+  it("has a grant of its own in §5, naming what each side sees and what the export carries", async () => {
     await renderPage(false);
 
     const grant = screen.getByText(
-      /Where you link a person you recorded to an account/,
+      /Where you connect a person you recorded to an account/,
     );
     expect(grant).toHaveTextContent(/section 4\.10/);
-    expect(grant).toHaveTextContent(/current username/);
+    expect(grant).toHaveTextContent(/current username and picture/);
+    expect(grant).toHaveTextContent(
+      /show that account your\s+name, username and picture under its Added you/,
+    );
     expect(grant).toHaveTextContent(/identifier, which also encodes when the/);
-    expect(grant).toHaveTextContent(/it is told nothing/);
+    expect(grant).not.toHaveTextContent(/typing|told nothing/);
   });
 
-  it("is counted in §2, which no longer says there are no dive buddies", async () => {
+  it("is counted in §2, which says what a connection shows", async () => {
     await renderPage(false);
 
     expect(screen.getByText(/in four cases only/)).toHaveTextContent(
-      /a person you link to an account here/,
+      /a person of\s+yours connected to an account here/,
+    );
+    expect(screen.getByText(/in four cases only/)).not.toHaveTextContent(
+      /not connections between accounts/,
     );
     expect(screen.queryByText(/no dive buddies/)).toBeNull();
     // What §2 keeps saying, which is still true.
@@ -282,7 +288,7 @@ describe("join links", () => {
     expect(
       screen.getByText(/registering also needs an invitation/),
     ).toHaveTextContent(
-      /unless you came\s+by a member’s invite link or by one of the join links the operator has\s+published, either of which/,
+      /unless you came\s+by a member’s connect link or by one of the join links the operator has\s+published, either of which/,
     );
     const block = screen
       .getByRole("heading", { name: /Who Runs This Copy/ })
@@ -317,10 +323,11 @@ describe("the date on this page", () => {
   );
 });
 
-// A member's invite link shows the member's name to whoever opens it, and the
-// joiner's name to the member, so both people's grants are in §5 - and the
-// registration sentence names the link whether or not the copy has join links.
-describe("the invite link", () => {
+// A member's connect link shows the member's name and picture to whoever opens it,
+// and an account made through it starts connected to the member, so both people's
+// grants are in §5 - and the registration sentence names the link whether or not
+// the copy has join links.
+describe("the connect link", () => {
   it.each([[false], [true]])(
     "is named where registration needs an invitation, join links: %s",
     async (joinLinks) => {
@@ -328,26 +335,23 @@ describe("the invite link", () => {
 
       expect(
         screen.getByText(/registering also needs an invitation/),
-      ).toHaveTextContent(/unless you came\s+by a member’s invite link/);
+      ).toHaveTextContent(/unless you came\s+by a member’s connect link/);
     },
   );
 
-  it("carries the inviter's grant and the joiner's in §5", async () => {
+  it("carries the owner's grant and the joiner's in §5", async () => {
     await renderPage(false);
 
-    const grant = screen.getByText(
-      /Where this copy is invite-only and you invite somebody/,
+    const grant = screen.getByText(/Where you make a connect link, you grant/);
+    expect(grant).toHaveTextContent(
+      /show your\s+name and picture to whoever opens it, and your username to\s+whoever opens it signed in/,
     );
     expect(grant).toHaveTextContent(
-      /where you make an invite link,\s+to show your name to whoever opens it/,
+      /nobody learns anything of you through it but\s+whoever holds the link, however it reached them/,
     );
     expect(grant).toHaveTextContent(
-      /except\s+that whoever holds your invite link, however it reached them,\s+sees your name/,
+      /create your account through a member’s connect link, you\s+grant the operator/,
     );
-    expect(grant).toHaveTextContent(
-      /create your account through a\s+member’s invite link, you grant the operator/,
-    );
-    expect(grant).toHaveTextContent(/as it is and as you change it/);
     // Still one paragraph for each thing shown across accounts.
     expect(
       screen.getByText(/The next four paragraphs are the four things/),
@@ -418,7 +422,7 @@ describe("proposing for OpenDiving Commons", () => {
     "only the permission technically needed",
     "Your entries are not published, shared with other users",
     "The next four paragraphs are the four things this copy does show one person to another",
-    "The invitation, check-in link, linking and photo proposal grants above are that rule being kept",
+    "The connect link, check-in link, connection and photo proposal grants above are that rule being kept",
     "exporting what you have entered, your photo proposals aside",
   ];
 
@@ -494,7 +498,7 @@ describe("proposing for OpenDiving Commons", () => {
       /a proposal for OpenDiving Commons.*and your name in a Commons site's history/,
     );
     expect(pageText()).toContain(
-      "The invitation, check-in link, linking, photo proposal, Commons proposal and Commons history grants above are that rule being kept",
+      "The connect link, check-in link, connection, photo proposal, Commons proposal and Commons history grants above are that rule being kept",
     );
   });
 

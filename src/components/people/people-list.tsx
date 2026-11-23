@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { User } from "lucide-react";
 import {
   personRoleLabel,
   type Person,
@@ -9,6 +8,7 @@ import {
 } from "@/lib/api/people";
 import { cn } from "@/lib/utils";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
+import { PersonPicture } from "@/components/people/person-picture";
 
 interface PeopleListProps {
   // The references on the record, in the diver's order.
@@ -19,7 +19,8 @@ interface PeopleListProps {
 }
 
 // Who was on a dive, a trip or a course, as read-only rows: each name linking to
-// the person's page, the linked account's `@username`, and the role they had.
+// the person's page, the connected account's picture and `@username`, and the
+// role they had.
 // A reference whose person has not been read - still loading, or deleted since -
 // has no row, the way a contact that could not be looked up leaves its row out.
 export function PeopleList({ people, resolved, className }: PeopleListProps) {
@@ -37,7 +38,7 @@ export function PeopleList({ people, resolved, className }: PeopleListProps) {
           key={reference.person_uuid}
           className="flex items-start gap-2 text-sm touch:min-h-11"
         >
-          <User className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+          <PersonPicture person={person} />
           <span className="min-w-0">
             <Link
               href={withReturnTo(`/people/${person.uuid}`)}

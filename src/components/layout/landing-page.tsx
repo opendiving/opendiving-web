@@ -12,7 +12,8 @@ import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import { useInstanceConfig } from "@/hooks/useInstanceConfig";
 import { AuthForm } from "@/components/auth/auth-form";
 import { InviteRequestForm } from "@/components/auth/invite-request-form";
-import type { InviteLinkDoor, JoinChannel } from "@/lib/api/config";
+import type { JoinChannel } from "@/lib/api/config";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Fish, Anchor, ArrowRight, HardDriveDownload } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { PartnerLogo } from "@/components/partner-logo";
@@ -34,7 +35,7 @@ const ROADMAP_URL = "https://github.com/opendiving/opendiving-web#planned";
 // links below share it. See "The install lives in the product repository" in DECISIONS.md.
 const SELF_HOSTING_URL = "https://github.com/opendiving/opendiving";
 
-// The line under a join link's or an invite link's heading, in the two voices `InviteRequestForm`'s
+// The line under a join link's heading, in the two voices `InviteRequestForm`'s
 // `COPY` takes and on the same rule: `project` only where `/config` said the
 // project runs this copy, `generic` everywhere else, because it is true everywhere.
 const JOIN_COPY = {
@@ -42,23 +43,36 @@ const JOIN_COPY = {
   project: "Enter your email to join the OpenDiving beta.",
 } as const;
 
-// A member's invite link adds, before the form, what joining through it shows the
-// member: the Invitations card lists the new account by its name, never by its
-// address, and this sentence is the disclosure that rests on.
-const inviteLinkCopy = (voice: keyof typeof JOIN_COPY, inviterName: string) =>
-  `${JOIN_COPY[voice]} ${inviterName} will see the name on your account.`;
+// A connect link is followed by somebody new and by somebody with an account
+// alike, so its line offers both, and says before the form what creating an
+// account through it shares: the account starts with the link's owner in its
+// people, connected, and the owner sees it under Added you.
+const CONNECT_COPY = {
+  generic: "Enter your email to sign in, or to create your account.",
+  project: "Enter your email to sign in, or to join the OpenDiving beta.",
+} as const;
+const connectLinkCopy = (voice: keyof typeof CONNECT_COPY, ownerName: string) =>
+  `${CONNECT_COPY[voice]} A new account starts with ${ownerName} in its people, and ${ownerName} sees its name, username and picture.`;
+
+/** A live connect link, as `/connect/<token>` resolved it signed out. */
+export interface ConnectLinkDoor {
+  token: string;
+  ownerName: string;
+  avatarSha: string | null;
+}
 
 interface LandingPageProps {
   // A live join link, resolved by `/join` before this renders. It puts the sign-in
   // form in the hero in either mode, carrying the link's slug, under a heading that
   // names where the link was posted.
   channel?: JoinChannel;
-  // A live member's invite link, resolved the same way: the same form, carrying the
-  // token, under a heading that names the member. `/join` passes one or the other.
-  inviteLink?: InviteLinkDoor;
+  // A live connect link, resolved by `/connect/<token>` for a visitor signed out:
+  // the same form, carrying the token and returning to that page, under the
+  // owner's picture and a heading that names them. One or the other is passed.
+  connectLink?: ConnectLinkDoor;
 }
 
-export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
+export function LandingPage({ channel, connectLink }: LandingPageProps = {}) {
   const { isAuthenticated, isLoading } = useRedirectIfAuthenticated();
   // Under the same gate as the auth bootstrap below, and that is the point: the
   // hero must never paint one form and then swap it for the other, nor one voice
@@ -113,11 +127,11 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
                 below, and the link inside the request form - still reaches
                 `/signin`, which is unchanged in both modes.
 
-                A join link or a member's invite link is the exception, and it
-                wins over the mode: `/join` hands this page what its `via`
-                resolved to, and that link is what admits a stranger, so the
-                column holds the sign-in form carrying the `via`, whatever the
-                mode.
+                A join link or a member's connect link is the exception, and it
+                wins over the mode: `/join` or `/connect` hands this page what
+                the link resolved to, and that link is what admits a stranger, so
+                the column holds the sign-in form carrying the `via`, whatever
+                the mode.
 
                 An unknown config renders the sign-in form. A landing page has
                 to work on an instance whose API is briefly down, and `/signin`
@@ -145,16 +159,26 @@ export function LandingPage({ channel, inviteLink }: LandingPageProps = {}) {
                 them unless a link put `AuthForm` here. A returning member
                 takes Sign in and has all three on `/signin`, one tap away. */}
             <div className="flex justify-center">
-              {inviteLink ? (
-                <AuthForm
-                  via={inviteLink.token}
-                  title={`${inviteLink.inviterName} invited you`}
-                  titleAs="h2"
-                  description={inviteLinkCopy(
-                    config?.project_operated === true ? "project" : "generic",
-                    inviteLink.inviterName,
-                  )}
-                />
+              {connectLink ? (
+                <div className="flex flex-col items-center gap-4">
+                  <UserAvatar
+                    name={connectLink.ownerName}
+                    avatarSha={connectLink.avatarSha}
+                    source={{ kind: "connect-link", token: connectLink.token }}
+                    size={72}
+                    aria-hidden
+                  />
+                  <AuthForm
+                    via={connectLink.token}
+                    redirectTo={`/connect/${connectLink.token}`}
+                    title={`${connectLink.ownerName} invited you to connect on OpenDiving`}
+                    titleAs="h2"
+                    description={connectLinkCopy(
+                      config?.project_operated === true ? "project" : "generic",
+                      connectLink.ownerName,
+                    )}
+                  />
+                </div>
               ) : channel ? (
                 <AuthForm
                   via={channel.slug}

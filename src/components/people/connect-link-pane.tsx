@@ -7,12 +7,20 @@ import { QrCode } from "@/components/checkin/qr-code";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { LinkAddressField } from "@/components/ui/link-address-field";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useInstanceConfig } from "@/hooks/useInstanceConfig";
+import { connectLinksAPI, connectLinkUrl } from "@/lib/api/connect-links";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { invitationsAPI } from "@/lib/api/invitations";
 
 type LinkState =
   | { status: "loading" }
@@ -20,12 +28,7 @@ type LinkState =
   | { status: "live"; token: string }
   | { status: "failed"; message: string };
 
-const LOAD_FAILED = "Couldn't load your invite link.";
-
-/** The address a member's invite link opens, on whichever origin this copy runs. */
-function inviteLinkUrl(token: string): string {
-  return `${window.location.origin}/join?via=${token}`;
-}
+const LOAD_FAILED = "Couldn't load your connect link.";
 
 // Whether this browser has a share sheet: Safari, Chrome and Edge do, Firefox on a
 // desktop does not. Read through `useSyncExternalStore` so the server render and
@@ -34,19 +37,28 @@ const noSubscription = () => () => {};
 const canShare = () => typeof navigator.share === "function";
 const cannotShareOnServer = () => false;
 
+// The one thing the pane says that turns on the instance: only where an account
+// needs an invitation does the link also make one.
+function InviteOnlyNote() {
+  const { config } = useInstanceConfig();
+  if (config?.registration_mode !== "invite") return null;
+  return (
+    <p className="text-sm text-muted-foreground">
+      Somebody new can also create an account here through it, which counts
+      against the invitations you have for the day.
+    </p>
+  );
+}
+
 /**
- * The diver's own invite link: a QR code and an address that let whoever follows
- * it create an account here, counted as this diver's invitation.
+ * The diver's own connect link: a QR code and an address that let whoever opens
+ * it add the diver to their people, connected, on every instance - and on an
+ * invite-only one create an account through it, counted as the diver's invitation.
  *
- * Mounted by `InvitationsCard` only once its list has loaded. On an `open`-mode
- * instance this block's own route answers 404 as well, and read here as "no link
- * yet" it would offer to make one for the moment before the list's 404 removed
- * the card; mounting after the list is what makes that reading safe.
- *
- * The token lives in component state and nowhere else - read from the API on
- * every visit, never stored in the browser.
+ * The token lives in component state and nowhere else - read from the API each
+ * time the pane opens, never stored in the browser.
  */
-export function InviteLinkBlock() {
+export function ConnectLinkBlock() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [link, setLink] = useState<LinkState>({ status: "loading" });
@@ -58,11 +70,12 @@ export function InviteLinkBlock() {
     cannotShareOnServer,
   );
 
-  // A promise chain for the lint rule `InvitationsCard.refresh` names.
+  // A promise chain rather than `async`/`await` in the effect, for
+  // `react-hooks/set-state-in-effect`.
   const load = useCallback(
     () =>
-      invitationsAPI
-        .getInviteLink()
+      connectLinksAPI
+        .getOwn()
         .then((found) =>
           setLink(
             found ? { status: "live", token: found.token } : { status: "none" },
@@ -86,15 +99,15 @@ export function InviteLinkBlock() {
   const create = async () => {
     setBusy(true);
     try {
-      const created = await invitationsAPI.createInviteLink();
+      const created = await connectLinksAPI.create();
       setLink({ status: "live", token: created.token });
     } catch (error) {
-      console.error("Couldn't make your invite link.", error);
+      console.error("Couldn't make your connect link.", error);
       toast({
         title: "Error",
         description: getApiErrorMessage(
           error,
-          "Couldn't make your invite link. Please try again.",
+          "Couldn't make your connect link. Please try again.",
         ),
         variant: "destructive",
       });
@@ -107,19 +120,19 @@ export function InviteLinkBlock() {
   const remove = async () => {
     setBusy(true);
     try {
-      await invitationsAPI.removeInviteLink();
+      await connectLinksAPI.remove();
       setLink({ status: "none" });
       toast({
-        title: "Invite link removed",
-        description: "Nobody can create an account through it any more.",
+        title: "Connect link removed",
+        description: "Nobody can connect to you through it any more.",
       });
     } catch (error) {
-      console.error("Couldn't remove your invite link.", error);
+      console.error("Couldn't remove your connect link.", error);
       toast({
         title: "Error",
         description: getApiErrorMessage(
           error,
-          "Couldn't remove your invite link. Please try again.",
+          "Couldn't remove your connect link. Please try again.",
         ),
         variant: "destructive",
       });
@@ -144,15 +157,13 @@ export function InviteLinkBlock() {
 
   if (link.status === "none") {
     return (
-      <section
-        aria-label="Your invite link"
-        className="space-y-3 rounded-md border p-4"
-      >
+      <section aria-label="Your connect link" className="space-y-3">
         <p className="text-sm">
-          A link of your own lets whoever follows it create an account here as
-          your invitation, within the same allowance as the invitations you
-          send. Show it as a QR code, or send it.
+          A link of your own lets whoever opens it add you to their people,
+          connected to your account: they see your picture, name and username,
+          and you see them under Added you. Show it as a QR code, or send it.
         </p>
+        <InviteOnlyNote />
         <Button
           type="button"
           variant="outline"
@@ -164,26 +175,26 @@ export function InviteLinkBlock() {
           ) : (
             <Link2 className="h-4 w-4 mr-2" />
           )}
-          Create your invite link
+          Create your connect link
         </Button>
       </section>
     );
   }
 
-  const url = inviteLinkUrl(link.token);
+  const url = connectLinkUrl(window.location.origin, link.token);
 
-  // The invitation email's own subject, the same on every copy, so this block
-  // reads nothing from `/config`.
+  // The connect page's own heading, the same on every copy, so this reads nothing
+  // from `/config`.
   const share = () => {
     navigator
       .share({
-        title: `${user?.name ?? "A diver"} invited you to OpenDiving`,
+        title: `${user?.name ?? "A diver"} invited you to connect on OpenDiving`,
         url,
       })
       .catch((error: unknown) => {
         // A sheet the diver closed is not a failure.
         if ((error as { name?: string })?.name === "AbortError") return;
-        console.error("Couldn't share the invite link:", error);
+        console.error("Couldn't share the connect link:", error);
         toast({
           title: "Couldn't share",
           description: "Copy the address and send it from there.",
@@ -193,28 +204,26 @@ export function InviteLinkBlock() {
   };
 
   return (
-    <section
-      aria-label="Your invite link"
-      className="flex flex-col gap-4 rounded-md border p-4 sm:flex-row"
-    >
-      {/* The card's width on a phone, up to a cap that keeps every module of the
+    <section aria-label="Your connect link" className="flex flex-col gap-4">
+      {/* The pane's width on a phone, up to a cap that keeps every module of the
           largest symbol this address makes - 49 modules with its margin - at
           five pixels or more. */}
       <QrCode
         value={url}
-        label="QR code of your invite link"
-        className="aspect-square w-full max-w-64 shrink-0 self-center sm:w-60 sm:self-start"
+        label="QR code of your connect link"
+        className="aspect-square w-full max-w-64 shrink-0 self-center"
       />
-      <div className="min-w-0 flex-1 space-y-3">
+      <div className="min-w-0 space-y-3">
         <p className="text-sm">
-          Whoever scans or follows this link can create an account here, counted
-          as your invitation. You will see the name on their account, never
-          their address. It keeps working until you reset or remove it.
+          Whoever scans or opens this link can add you to their people and see
+          your picture, name and username; you see them under Added you. It
+          keeps working until you reset or remove it.
         </p>
+        <InviteOnlyNote />
         <LinkAddressField
           url={url}
-          label="Invite link address"
-          what="invite link"
+          label="Connect link address"
+          what="connect link"
         />
         <div className="flex flex-wrap gap-2">
           {shareable && (
@@ -247,8 +256,8 @@ export function InviteLinkBlock() {
       <ConfirmDialog
         open={confirming === "reset"}
         onOpenChange={(open) => !open && setConfirming(null)}
-        title="Reset your invite link"
-        description="The link you have now stops working for anyone who has it, and a new link and QR code take its place. People who already joined through it stay on your list."
+        title="Reset your connect link"
+        description="The link you have now stops working for anyone who has it, and a new link and QR code take its place. People already connected through it stay connected."
         confirmText="Reset"
         isLoading={busy}
         onConfirm={create}
@@ -256,12 +265,42 @@ export function InviteLinkBlock() {
       <ConfirmDialog
         open={confirming === "remove"}
         onOpenChange={(open) => !open && setConfirming(null)}
-        title="Remove your invite link"
-        description="The link stops working for anyone who has it. People who already joined through it stay on your list, and you can make a new link later."
+        title="Remove your connect link"
+        description="The link stops working for anyone who has it. People already connected through it stay connected, and you can make a new link later."
         confirmText="Remove"
         isLoading={busy}
         onConfirm={remove}
       />
     </section>
+  );
+}
+
+// The People address that opens the pane on arrival: where the connect page
+// sends the owner of the link it was opened with.
+export const CONNECT_LINK_PANE_HREF = "/people?show=connect-link";
+
+export const opensConnectLinkPane = (search: string) =>
+  new URLSearchParams(search).get("show") === "connect-link";
+
+interface ConnectLinkPaneProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+// The People header's Connect link pane. The block mounts only while it is open,
+// so the token is read when it is asked for and dropped when it closes.
+export function ConnectLinkPane({ open, onOpenChange }: ConnectLinkPaneProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Your connect link</DialogTitle>
+          <DialogDescription>
+            Show it to a buddy, or send it, so they can add you to their people.
+          </DialogDescription>
+        </DialogHeader>
+        {open && <ConnectLinkBlock />}
+      </DialogContent>
+    </Dialog>
   );
 }

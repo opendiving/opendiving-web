@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { QrCode } from "lucide-react";
 import Link from "next/link";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
@@ -11,6 +12,13 @@ import { countNoun } from "@/lib/format";
 import { RowActions } from "@/components/ui/row-actions";
 import { PeoplePageFrame } from "@/components/people/people-page-frame";
 import { PersonDialog } from "@/components/people/person-dialog";
+import { PersonPicture } from "@/components/people/person-picture";
+import { AddedYou } from "@/components/people/added-you";
+import {
+  ConnectLinkPane,
+  opensConnectLinkPane,
+} from "@/components/people/connect-link-pane";
+import { Button } from "@/components/ui/button";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -24,6 +32,16 @@ export function PeoplePageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const openCreate = useQuickCreate();
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+  const [isPaneOpen, setIsPaneOpen] = useState(false);
+
+  // Read from `window.location`, not `useSearchParams()`, which would put a
+  // `Suspense` boundary on the page for one flag.
+  useEffect(() => {
+    if (!opensConnectLinkPane(window.location.search)) return;
+    // Synchronising to the address once, on arrival.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsPaneOpen(true);
+  }, []);
 
   const {
     input: searchInput,
@@ -31,7 +49,7 @@ export function PeoplePageContent() {
     term: search,
   } = useDebouncedSearch();
 
-  // One term against both columns the API searches, the name and the linked
+  // One term against both columns the API searches, the name and the connected
   // username - the same query the pickers run.
   const fetchPeople = useCallback(
     (page: number, perPage: number) =>
@@ -98,15 +116,29 @@ export function PeoplePageContent() {
         onSearchChange={setSearchInput}
         isSearching={search.length > 0}
         onNew={() => openCreate("person")}
+        heroActions={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsPaneOpen(true)}
+          >
+            <QrCode className="h-4 w-4 mr-2" />
+            Connect link
+          </Button>
+        }
+        beforeList={<AddedYou onAdded={applySaved} />}
         rows={people.map((person) => (
           <TableRow key={person.uuid}>
             <TableCell className="font-medium">
-              <Link
-                href={`/people/${person.uuid}`}
-                className="relative hover:underline touch:tap-target"
-              >
-                {person.name}
-              </Link>
+              <span className="flex items-center gap-2">
+                <PersonPicture person={person} />
+                <Link
+                  href={`/people/${person.uuid}`}
+                  className="relative hover:underline touch:tap-target"
+                >
+                  {person.name}
+                </Link>
+              </span>
             </TableCell>
             <TableCell className="whitespace-nowrap">
               {person.username ? `@${person.username}` : NONE}
@@ -142,6 +174,8 @@ export function PeoplePageContent() {
         person={editingPerson}
         onSaved={applySaved}
       />
+
+      <ConnectLinkPane open={isPaneOpen} onOpenChange={setIsPaneOpen} />
 
       <ConfirmDialog
         open={pendingId !== null}

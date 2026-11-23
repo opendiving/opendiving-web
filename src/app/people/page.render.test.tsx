@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import PeoplePage from "./page";
 import { peopleAPI, type Person } from "@/lib/api/people";
 
@@ -32,9 +33,19 @@ vi.mock("@/lib/api/people", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/people")>();
   return {
     ...actual,
-    peopleAPI: { ...actual.peopleAPI, getPeople: vi.fn() },
+    peopleAPI: {
+      ...actual.peopleAPI,
+      getPeople: vi.fn(),
+      getAddedYou: vi.fn(),
+      getPersonPictureBlob: vi.fn(),
+    },
   };
 });
+
+vi.mock("@/lib/api/connect-links", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/connect-links")>()),
+  connectLinksAPI: { getOwn: vi.fn() },
+}));
 
 const person = (overrides: Partial<Person> = {}): Person => ({
   uuid: "person-1",
@@ -49,6 +60,9 @@ const person = (overrides: Partial<Person> = {}): Person => ({
 });
 
 const getPeople = vi.mocked(peopleAPI.getPeople);
+const getAddedYou = vi.mocked(peopleAPI.getAddedYou);
+const { connectLinksAPI } = await import("@/lib/api/connect-links");
+const getOwn = vi.mocked(connectLinksAPI.getOwn);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -68,6 +82,18 @@ beforeEach(() => {
     page: 1,
     items_per_page: 10,
   });
+  getAddedYou.mockResolvedValue({
+    data: [],
+    total_count: 0,
+    has_more: false,
+    page: 1,
+    items_per_page: 50,
+  });
+  getOwn.mockResolvedValue({
+    token: "0123456789abcdef0123456789abcdef",
+    created_at: "2026-11-23T09:00:00Z",
+  });
+  window.history.replaceState(null, "", "/people");
 });
 
 describe("the People page", () => {
@@ -126,5 +152,56 @@ describe("the People page", () => {
       }),
     ).toBeInTheDocument();
     expect(getPeople).toHaveBeenCalledWith(1, 10, { search: "" });
+  });
+
+  it("opens the connect link pane from its header", async () => {
+    const user = userEvent.setup();
+    render(<PeoplePage />);
+    await screen.findByRole("link", { name: "Sam" });
+
+    await user.click(screen.getByRole("button", { name: "Connect link" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Your connect link" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue(/\/connect\/0123456789abcdef/),
+    ).toBeInTheDocument();
+  });
+
+  // Where the connect page sends the owner of the link it was opened with.
+  it("opens the pane on arrival at its address", async () => {
+    window.history.replaceState(null, "", "/people?show=connect-link");
+
+    render(<PeoplePage />);
+
+    expect(
+      await screen.findByRole("dialog", { name: "Your connect link" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows Added you above the list only when somebody is in it", async () => {
+    getAddedYou.mockResolvedValue({
+      data: [{ uuid: "account-1", name: "Robin Reef", username: "robin" }],
+      total_count: 1,
+      has_more: false,
+      page: 1,
+      items_per_page: 50,
+    });
+
+    render(<PeoplePage />);
+
+    const heading = await screen.findByRole("heading", { name: "Added you" });
+    const list = screen.getByRole("table");
+    expect(
+      heading.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("has no Added you where nobody added the diver", async () => {
+    render(<PeoplePage />);
+    await screen.findByRole("link", { name: "Sam" });
+
+    expect(screen.queryByRole("heading", { name: "Added you" })).toBeNull();
   });
 });

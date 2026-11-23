@@ -45,6 +45,10 @@ export interface TableListFrameData {
   onLoadMore?: () => void;
   /** Opens the new-record dialog. */
   onNew?: () => void;
+  /** More of the hero's buttons, before the New one. */
+  heroActions?: ReactNode;
+  /** What sits above the list's card - People's Added you. */
+  beforeList?: ReactNode;
 }
 
 /** The words, icon and columns that make a table list page one record's. */
@@ -94,6 +98,8 @@ export function TableListFrame({
   hasMore = false,
   onLoadMore = noop,
   onNew = noop,
+  heroActions,
+  beforeList,
 }: TableListFrameData & { copy: TableListFrameCopy }) {
   const isEmptyList = useIsEmptyList({
     isLoading,
@@ -108,14 +114,18 @@ export function TableListFrame({
         title={copy.title}
         description={copy.description}
         actions={
-          <Button size="sm" onClick={onNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            {copy.newLabel}
-          </Button>
+          <>
+            {heroActions}
+            <Button size="sm" onClick={onNew}>
+              <Plus className="h-4 w-4 mr-2" />
+              {copy.newLabel}
+            </Button>
+          </>
         }
       />
 
       <div className={HERO_BODY}>
+        {beforeList}
         <Card>
           <ListCardHeader title={copy.listTitle} isEmpty={isEmptyList}>
             <CountBadge

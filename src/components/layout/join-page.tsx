@@ -1,15 +1,16 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { LandingPage } from "@/components/layout/landing-page";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useJoinVia } from "@/hooks/useJoinVia";
 
 // The body of `/join?via=<x>`: the landing page, with its hero holding the sign-in
-// form for a member's invite link or a join link the API says is live, and exactly
-// the landing page for anything else - no `via`, a token or slug that is not live,
+// form for a join link the API says is live, the connect page for a member's live
+// connect link - the address those links had before they had a page of their own -
+// and exactly the landing page for anything else - no `via`, a token or slug that is not live,
 // or an API that did not answer. Silently: a visitor holding a dead link is best served
 // by the page they would have reached anyway, whose request form is the next thing
 // for them to try.
@@ -38,11 +39,15 @@ function JoinSpinner() {
 
 function JoinContent() {
   const via = useSearchParams().get("via");
-  const { inviteLink, channel, isLoading } = useJoinVia(via);
+  const { connectLink, channel, isLoading } = useJoinVia(via);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (connectLink) router.replace(`/connect/${connectLink}`);
+  }, [connectLink, router]);
 
   // Resolved before the landing page mounts, which then holds the same spinner
   // until its own reads - the session and `/config` - have answered too.
-  if (isLoading) return <JoinSpinner />;
-  if (inviteLink) return <LandingPage inviteLink={inviteLink} />;
+  if (isLoading || connectLink) return <JoinSpinner />;
   return channel ? <LandingPage channel={channel} /> : <LandingPage />;
 }

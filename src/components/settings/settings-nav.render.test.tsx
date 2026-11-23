@@ -156,7 +156,7 @@ describe("SettingsNav", () => {
     }
   });
 
-  it("offers Invitations on an invite-only instance", () => {
+  it("lists every section where the instance reports MCP", () => {
     instance.config = {
       registration_mode: "invite",
       project_operated: true,
@@ -168,6 +168,8 @@ describe("SettingsNav", () => {
     };
     render(<SettingsNav />);
 
+    // Invitations is gone: a member brings somebody in with the connect link on
+    // People.
     expect(labels()).toEqual([
       "Account",
       "Check-in",
@@ -176,32 +178,14 @@ describe("SettingsNav", () => {
       "Data",
       "Notifications",
       "Preferences",
-      "Invitations",
     ]);
   });
 
-  it("leaves Invitations out where anyone may register", () => {
-    instance.config = {
-      registration_mode: "open",
-      project_operated: false,
-      join_links: false,
-      map_tiles: false,
-      dive_conditions: false,
-      commons_primary: false,
-      mcp_enabled: false,
-    };
-    render(<SettingsNav />);
-
-    expect(labels()).not.toContain("Invitations");
-    expect(labels()).not.toContain("MCP");
-  });
-
-  it("keeps Invitations and MCP while the config is not known", () => {
-    // A failed or pending `/config` is not an answer, and the page behind each
+  it("keeps MCP while the config is not known", () => {
+    // A failed or pending `/config` is not an answer, and the page behind the
     // entry explains itself where the feature is missing.
     render(<SettingsNav />);
 
-    expect(labels()).toContain("Invitations");
     expect(labels()).toContain("MCP");
   });
 
@@ -220,6 +204,5 @@ describe("SettingsNav", () => {
     render(<SettingsNav />);
 
     expect(labels()).not.toContain("MCP");
-    expect(labels()).toContain("Invitations");
   });
 });

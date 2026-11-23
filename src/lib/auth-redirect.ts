@@ -71,19 +71,24 @@ const RESTORE_PATH = "/restore";
 // somebody holding no onboarding token into the onboarding form, so the mapping lives
 // here and the call sites pass a status.
 //
-// `next` is only honoured for a sign-in, and is sanitized here rather than at each
-// call site: the magic link reads it out of `localStorage` under the key in this
-// file, Google from its own per-attempt record, and the rest take it from a prop -
-// and none should have to remember. The other statuses drop it - a brand-new account
-// has nothing to return to, and neither has an account that isn't back yet. Both
-// screens end at the default.
+// `next` is honoured for a sign-in, and is sanitized here rather than at each call
+// site: the magic link reads it out of `localStorage` under the key in this file,
+// Google from its own per-attempt record, and the rest take it from a prop - and
+// none should have to remember. A brand-new account has nothing to return to but
+// the connect page it signed up from, so onboarding carries that one destination
+// through its own address and drops every other; an account that isn't back yet
+// has nothing to return to at all. Both screens otherwise end at the default.
 export function destinationForOutcome(
   status: AuthStatus,
   next?: string | null,
 ): string {
   switch (status) {
-    case "onboarding_required":
-      return ONBOARDING_PATH;
+    case "onboarding_required": {
+      const target = connectPage(next);
+      return target
+        ? `${ONBOARDING_PATH}?next=${encodeURIComponent(target)}`
+        : ONBOARDING_PATH;
+    }
     case "deletion_pending":
       return RESTORE_PATH;
     // Exhaustive on purpose: a fourth status added to `AuthStatus` is a type error
@@ -91,6 +96,24 @@ export function destinationForOutcome(
     case "authenticated":
       return sanitizeRedirectPath(next) ?? DEFAULT_POST_AUTH_REDIRECT;
   }
+}
+
+// A connect page's path, the one destination onboarding keeps, or null.
+const CONNECT_PAGE = /^\/connect\/[a-z0-9-]+$/;
+function connectPage(value: string | null | undefined): string | null {
+  const target = sanitizeRedirectPath(value);
+  return target && CONNECT_PAGE.test(target) ? target : null;
+}
+
+// Where a new account goes once onboarding has made it: the connect page the
+// visitor signed up from, when the address `destinationForOutcome` built carries
+// one, and the default otherwise - which is where a link finished in another
+// browser lands, since only this browser held the destination.
+export function destinationAfterOnboarding(search: string): string {
+  return (
+    connectPage(new URLSearchParams(search).get("next")) ??
+    DEFAULT_POST_AUTH_REDIRECT
+  );
 }
 
 // A placeholder origin to parse against: `.invalid` is reserved and never resolves, so

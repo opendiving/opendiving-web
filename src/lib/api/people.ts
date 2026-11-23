@@ -1,4 +1,9 @@
-import { apiClient, fetchAllPages, lookupFetcher } from "./client";
+import {
+  apiClient,
+  fetchAllPages,
+  lookupFetcher,
+  versionedRequest,
+} from "./client";
 import { labelOrFallback } from "./labels";
 import type {
   MessageResponse,
@@ -68,11 +73,14 @@ export interface Person {
   email?: string | null;
   phone?: string | null;
   notes: string;
-  // The *current* username of the account on this instance the diver linked
-  // this person to, or null when unlinked. Joined on every read, so a rename
-  // shows through and a purged account reads null. Nothing else of that account
-  // is ever sent.
+  // The *current* username of the account on this instance the person is
+  // connected to, or null when not connected. Joined on every read, so a rename
+  // shows through and a purged account reads null.
   username?: string | null;
+  // That account's picture version, the `v` of `getPersonPictureBlob`: null when
+  // the person is not connected, the account has no picture, or it has asked to
+  // be deleted - which is why a person can carry a username and no picture.
+  avatar_sha256?: string | null;
   // The live dives that name this person - what the dives list's `person_uuid`
   // filter matches, so the People page's count and the person's page agree.
   dive_count: number;
@@ -80,25 +88,47 @@ export interface Person {
   updated_at?: string | null;
 }
 
-export interface PersonCreate {
+/**
+ * What connects a person to an account, at most one per body: the token of a live
+ * connect link, or the public id of an account under the diver's Added you. Each
+ * is refused with a 422 on its own member - a dead link, no such tie, the diver's
+ * own account, an account another of their people is connected to - which
+ * `getApiFieldError` reads.
+ */
+export type PersonConnection =
+  | { connect_link: string; connect_account?: never }
+  | { connect_account: string; connect_link?: never };
+
+export interface PersonFields {
   name: string;
   email?: string | null;
   phone?: string | null;
   notes?: string;
-  // The exact username of an account on this instance. A 422 on this one field
-  // when no account has it, when it is the diver's own, or when another of their
-  // people already links it - see `getApiFieldError`.
-  username?: string | null;
 }
+
+export type PersonCreate = PersonFields & Partial<PersonConnection>;
 
 /**
  * The `PATCH /person/{uuid}` body. An explicit `null` clears the email or the
- * phone, and `null` for `username` unlinks the person; `name` and `notes` take no
- * null. Omitting a key leaves it alone.
+ * phone; `name` and `notes` take no null. Omitting a key leaves it alone. A
+ * connection member connects a person who is not connected yet; disconnecting is
+ * `disconnectPerson`.
  */
-export type PersonUpdate = Partial<PersonCreate>;
+export type PersonUpdate = Partial<PersonFields> & Partial<PersonConnection>;
 
-/** One row of `GET /people/lookup`: the name and the linked account's current username. */
+/**
+ * One row of `GET /people/added-you`: an account that has the diver in its
+ * people and that the diver has not added, by its public id, its current name,
+ * username and picture version. It sees the diver's name, username and picture.
+ */
+export interface AddedYouRow {
+  uuid: string;
+  name: string;
+  username: string;
+  avatar_sha256?: string | null;
+}
+
+/** One row of `GET /people/lookup`: the name and the connected account's current username. */
 export interface PersonLookupItem {
   uuid: string;
   name: string;
@@ -109,8 +139,7 @@ export interface PersonLookupItem {
 export const peopleAPI = {
   /**
    * Create a person. Names are unique per diver, compared case-insensitively
-   * and trimmed, so a second "Alex" is a flat 422. Linking a username counts
-   * against a per-user limit and answers 429 past it.
+   * and trimmed, so a second "Alex" is a flat 422.
    */
   async createPerson(data: PersonCreate): Promise<Person> {
     const response = await apiClient.post<Person>(`/person`, data);
@@ -119,7 +148,7 @@ export const peopleAPI = {
 
   /**
    * A page of the diver's people, by name. `search` narrows server-side to
-   * people whose name or linked username contains it, case-insensitively - the
+   * people whose name or connected username contains it, case-insensitively - the
    * API caps `items_per_page` at 100, so this is a page of matches, never the
    * whole set.
    */
@@ -162,6 +191,84 @@ export const peopleAPI = {
     const response = await apiClient.patch<MessageResponse>(
       `/person/${personUuid}`,
       data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Disconnect a person from the account it is connected to, keeping the person:
+   * it loses that account's picture and username, and the diver leaves that
+   * account's Added you. The account is not told. Answers the person, the same
+   * for one that was not connected.
+   */
+  async disconnectPerson(personUuid: string): Promise<Person> {
+    const response = await apiClient.post<Person>(
+      `/person/${personUuid}/disconnect`,
+    );
+    return response.data;
+  },
+
+  /**
+   * The picture of the account a person is connected to. `version` is the
+   * person's `avatar_sha256`; the API never lets the browser store the bytes, so
+   * a cut tie stops the next read.
+   */
+  async getPersonPictureBlob(
+    personUuid: string,
+    version?: string,
+  ): Promise<Blob> {
+    const response = await apiClient.get<Blob>(
+      `/person/${personUuid}/avatar`,
+      versionedRequest(version, { responseType: "blob" }),
+    );
+    return response.data;
+  },
+
+  /** A page of the diver's Added you, ordered by the account's name. */
+  async getAddedYou(
+    page: number = 1,
+    items_per_page: number = 50,
+  ): Promise<PaginatedResponse<AddedYouRow>> {
+    const response = await apiClient.get<PaginatedResponse<AddedYouRow>>(
+      `/people/added-you`,
+      { params: { page, items_per_page } },
+    );
+    return response.data;
+  },
+
+  /** The picture of an account under the diver's Added you, as `getPersonPictureBlob`. */
+  async getAddedYouPictureBlob(
+    accountUuid: string,
+    version?: string,
+  ): Promise<Blob> {
+    const response = await apiClient.get<Blob>(
+      `/people/added-you/${accountUuid}/avatar`,
+      versionedRequest(version, { responseType: "blob" }),
+    );
+    return response.data;
+  },
+
+  /**
+   * Hide an account from the diver's Added you. Nothing else changes, and there
+   * is no undo: it comes back only when its tie is cut and made again. A 404
+   * where the account no longer has the diver in its people.
+   */
+  async hideAddedYou(accountUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.post<MessageResponse>(
+      `/people/added-you/${accountUuid}/hide`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Cut an account's tie to the diver: its person stays, as a name with no
+   * picture and no username, and it is not told. It can connect again through
+   * the diver's connect link while that stands; an import does not connect it
+   * again. A 404 where there is no tie, a second disconnect among them.
+   */
+  async disconnectAddedYou(accountUuid: string): Promise<MessageResponse> {
+    const response = await apiClient.post<MessageResponse>(
+      `/people/added-you/${accountUuid}/disconnect`,
     );
     return response.data;
   },

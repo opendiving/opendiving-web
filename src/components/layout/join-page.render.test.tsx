@@ -3,22 +3,24 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { JoinPage } from "./join-page";
 
-// `/join?via=<x>` has three faces - the invite-link hero for a member's live link,
-// the channel hero for a live join link, and the plain landing page for anything
-// else - and one rule it shares with `/`: the hero never paints one form and then
+// `/join?via=<x>` has three answers - the connect page for a member's live connect
+// link, the channel hero for a live join link, and the plain landing page for
+// anything else - and one rule it shares with `/`: the hero never paints one form and then
 // swaps it for the other. The resolve is real here, down to `configAPI`; only the
 // requests under it are staged.
 const {
   searchParams,
   getJoinChannel,
-  getInviteLink,
+  resolve,
+  replace,
   useInstanceConfig,
   useRedirectIfAuthenticated,
   requestEmailLink,
 } = vi.hoisted(() => ({
   searchParams: { current: "" },
   getJoinChannel: vi.fn(),
-  getInviteLink: vi.fn(),
+  resolve: vi.fn(),
+  replace: vi.fn(),
   useInstanceConfig: vi.fn(),
   useRedirectIfAuthenticated: vi.fn(),
   requestEmailLink: vi.fn(),
@@ -26,11 +28,14 @@ const {
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(searchParams.current),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace }),
 }));
 vi.mock("@/lib/api/config", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  configAPI: { getJoinChannel, getInviteLink },
+  configAPI: { getJoinChannel },
+}));
+vi.mock("@/lib/api/connect-links", () => ({
+  connectLinksAPI: { resolve },
 }));
 vi.mock("@/hooks/useInstanceConfig", () => ({ useInstanceConfig }));
 vi.mock("@/hooks/useRedirectIfAuthenticated", () => ({
@@ -65,7 +70,7 @@ beforeEach(() => {
   });
   useInstanceConfig.mockReturnValue({ config: INVITE, isLoading: false });
   requestEmailLink.mockResolvedValue({ message: "sent", request_id: "req-1" });
-  getInviteLink.mockResolvedValue(null);
+  resolve.mockResolvedValue(null);
 });
 
 const TOKEN = "0123456789abcdef0123456789abcdef";
@@ -77,30 +82,20 @@ const requestButton = () =>
   screen.queryByRole("button", { name: /request an invite/i });
 
 describe("/join", () => {
-  it("lands a member's live invite link on the sign-in form, and sends its token", async () => {
+  // An address or a printed QR code made before connect links had a page.
+  it("sends a member's live connect link on to its page, painting no form", async () => {
     searchParams.current = `via=${TOKEN}`;
-    getInviteLink.mockResolvedValue({ token: TOKEN, inviterName: "Sam Diver" });
-    const user = userEvent.setup();
+    resolve.mockResolvedValue({ name: "Sam Diver", avatar_sha256: null });
 
     render(<JoinPage />);
 
-    expect(
-      await screen.findByRole("heading", { name: "Sam Diver invited you" }),
-    ).toBeInTheDocument();
-    // The disclosure the inviter's card rests on, before the form.
-    expect(
-      screen.getByText(/Sam Diver will see the name on your account\./),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith(`/connect/${TOKEN}`),
+    );
+    expect(signInButton()).toBeNull();
     expect(requestButton()).toBeNull();
     // A live token never reaches the publicly cacheable channel route.
     expect(getJoinChannel).not.toHaveBeenCalled();
-
-    await user.type(screen.getByLabelText("Email"), "diver@example.com");
-    await user.click(signInButton()!);
-
-    await waitFor(() =>
-      expect(requestEmailLink).toHaveBeenCalledWith("diver@example.com", TOKEN),
-    );
   });
 
   it("shows exactly the landing page for a dead token, after asking both routes", async () => {
@@ -112,7 +107,7 @@ describe("/join", () => {
     expect(
       await screen.findByRole("button", { name: /request an invite/i }),
     ).toBeInTheDocument();
-    expect(getInviteLink).toHaveBeenCalledWith(TOKEN);
+    expect(resolve).toHaveBeenCalledWith(TOKEN);
     expect(getJoinChannel).toHaveBeenCalledWith(TOKEN);
     expect(screen.queryByRole("heading", { name: /invited you/ })).toBeNull();
     expect(signInButton()).toBeNull();

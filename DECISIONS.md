@@ -424,7 +424,7 @@ _Rejected:_ counting mounts, which cannot tell a return from a genuine change.
 
 There is one auth form, `components/auth/auth-form.tsx` (email, "Continue", "Continue with Google"),
 for the passwordless flow; Settings has no "Change Password" card. Its host page depends on
-`REGISTRATION_MODE` and on join and invite links; see "The landing hero holds one of two forms, and
+`REGISTRATION_MODE` and on join and connect links; see "The landing hero holds one of two forms, and
 the API is what says which" and "`/signin` is a dedicated sign-in page, and carries where the
 visitor was headed".
 
@@ -694,9 +694,9 @@ on create, and it is the "No type" option's value.
 `CreatableCombobox` items carry an optional `hint`: a purely cosmetic second line after the name.
 Dive sites put a location there; the gear picker puts the item's type ("Apeks XTX50, Regulator"),
 since kit often has cryptic model names and the category is what makes the dropdown scannable. The
-name is `hint` rather than `location` because the slot is not about places. A person's is the linked
-account's `@username`, the second field the people search matches, so a row found by its username
-shows why it is there.
+name is `hint` rather than `location` because the slot is not about places. A person's is the
+connected account's `@username`, the second field the people search matches, so a row found by its
+username shows why it is there.
 
 ## Drag-to-reorder uses Pointer Events and no library
 
@@ -1229,8 +1229,9 @@ after the auth bootstrap resolves. The page is a Server Component for `metadata`
 expired session onto the marketing page, where the form is one section among many and nothing
 records the destination. There is still exactly one form and one entry point, not a password-based
 `/signin`/`/signup` pair. On an `open`-mode instance the landing hero hosts its own `AuthForm`; on
-`invite`-mode, the default, the hero holds the invite-request form and, outside a join link's or
-invite link's `/join`, `/signin` is `AuthForm`'s only mount, which makes this page load-bearing.
+`invite`-mode, the default, the hero holds the invite-request form and, outside a join link's
+`/join` or a connect link's `/connect`, `/signin` is `AuthForm`'s only mount, which makes this page
+load-bearing.
 
 `Header`'s signed-out state shows a coral "Sign in" button linking here, kept in the actions row at
 every breakpoint rather than folded into the mobile menu: on a phone it is the most important thing
@@ -3837,7 +3838,7 @@ failed verify covers a challenge expired in an open page.
 It arms in the landing hero too (`AuthForm` in `open` mode), one POST per signed-out page view; the
 lever, if ever needed, is arming on first focus of the email input, not a lower ceiling. In `invite`
 mode the hero's `InviteRequestForm` (plain `autoComplete="email"`) arms nothing unless a join link
-or invite link puts `AuthForm` there; `/signin` covers the returning member. The email input's
+or connect link puts `AuthForm` there; `/signin` covers the returning member. The email input's
 `autoComplete="username webauthn"` is load-bearing; v13 will not arm conditionally without
 `webauthn`.
 
@@ -3995,9 +3996,10 @@ each.
 passes the status it was given. The `switch` is exhaustive on `AuthStatus`, so a new status is a
 type error in one file rather than a silent mis-route at each caller. It sanitizes `next` itself
 with `sanitizeRedirectPath` — callers take it from a `?next=` prop or out of `localStorage`, and
-making each remember is how one forgets. `next` is honoured only for `authenticated`: onboarding has
-nothing to return to, and a restore drops it because the account is not back yet when the
-destination is chosen.
+making each remember is how one forgets. `next` is honoured for `authenticated`; onboarding keeps
+only a connect page's path, carried as `/onboarding?next=` and read back by
+`destinationAfterOnboarding`, since that page is the one a new account came from; and a restore
+drops it because the account is not back yet when the destination is chosen.
 
 ## The entry points resolve with the whole outcome, not a status
 
@@ -4353,8 +4355,8 @@ disclosed by hand in §10.1.
 `via` rides `opendiving:google-sign-in-attempts` beside the verifier, and the consent clause of the
 rule above does not reach it. On an invite-only copy it is what admits the visitor, part of the
 sign-in they asked for; on an open one, where it only counts, the owner ruled for §10.2's disclosure
-over a consent step. A member's invite-link token rides the same field, fitting the slug's shape,
-and only ever admits. No new key, so `storage-keys.test.ts` is unchanged.
+over a consent step. A member's connect-link token rides the same field, fitting the slug's shape,
+and only ever admits or connects. No new key, so `storage-keys.test.ts` is unchanged.
 
 ## Privacy page: §6.3 enumerates every email, and the enumeration is exhaustive on purpose
 
@@ -5541,12 +5543,12 @@ repository drops it.
 ## The landing hero holds one of two forms, and the API is what says which
 
 Registration mode is `open` or `invite`; the hero holds `InviteRequestForm` in `invite` and
-`AuthForm` only in `open`, since sign-in there ends in refusal. On `/join` a live join link or
-invite link overrides the mode with `AuthForm`, since the link admits. The mode comes from
-`GET /config` via `useInstanceConfig`, not this container's environment: a mirrored variable is a
-server fact the web cannot check, `runtimeConfig()` (`lib/runtime-config.ts`) is memoised per
-process, so a flip restarts the web too, and the bundle hands this container a curated variable
-list. Rejected: a `PublicConfig` field fed from a web-side `REGISTRATION_MODE`.
+`AuthForm` only in `open`, since sign-in there ends in refusal. On `/join` a live join link, and on
+`/connect` a live connect link, overrides the mode with `AuthForm`, since the link admits. The mode
+comes from `GET /config` via `useInstanceConfig`, not this container's environment: a mirrored
+variable is a server fact the web cannot check, `runtimeConfig()` (`lib/runtime-config.ts`) is
+memoised per process, so a flip restarts the web too, and the bundle hands this container a curated
+variable list. Rejected: a `PublicConfig` field fed from a web-side `REGISTRATION_MODE`.
 
 The fetch shares the auth bootstrap's gate, so the hero never swaps forms. A failed fetch resolves
 `mode: null` and sign-in renders, which works anywhere and is what the API-less axe scan in
@@ -5556,31 +5558,27 @@ The fetch shares the auth bootstrap's gate, so the hero never swaps forms. A fai
 
 ## `/join` is the landing page with a join link's form, and its canonical is `/`
 
-`/join?via=<x>` resolves `x` as a member's invite link (`GET /invite-link/{token}`) and, only on its
-404, as a channel (`GET /join-channel/{slug}`), rendering `LandingPage` with `inviteLink` or
-`channel`, else plain. The order is load-bearing: the channel route is publicly cacheable, so a live
-bearer token must never reach it first, and a failed link request stops there. One value per
-request, never a list: a visitor holding one link learns nothing of the others. The address bar
+`/join?via=<x>` resolves `x` as a member's connect link (`GET /connect-link/{token}`) and, only on
+its 404, as a channel (`GET /join-channel/{slug}`). A live connect link is replaced by
+`/connect/<token>`, so an address or QR code made before connect links had a page still works; a
+channel renders `LandingPage` with `channel`, anything else the plain page. The order is
+load-bearing: the channel route is publicly cacheable, so a live bearer token must never reach it
+first, and a failed link request stops there. One value per request, never a list. The address bar
 keeps it; `/privacy` promises no `sessionStorage`. `metadata` names `/` as canonical, handing forum
 links' weight to the home page; `noindex` would discard it, and `robots.txt` leaves the page
-fetchable because an unfetched page's canonical is never seen. Next renders a root canonical as the
-bare origin, the same URL. The body is `join-page.tsx`, not `-page-content`, so like `/` it is no
-frame destination.
+fetchable because an unfetched page's canonical is never seen. The body is `join-page.tsx`, not
+`-page-content`, so like `/` it is no frame destination.
 
-## The invitations card learns the registration mode from a 404, and knows nothing else
+## The connect page asks for the username only with a session
 
-`InvitationsCard` never asks the instance's mode: `GET /user/invitations` answers `404` on an `open`
-instance, and the card maps that to `absent`, returning `null` like `SessionsCard` and
-`PasskeysCard`. Not `useInstanceConfig`: a second source could disagree with the API; the 404 rides
-a request made anyway. `InviteLinkBlock` mounts only once the list is `ready`, so its own 404 can
-only mean no link.
-
-A send prepends the row `POST /user/invitations` returns rather than re-reading; a revoke re-reads,
-since `revoked_at` is the server's. Refusals show verbatim in the error slot, not a toast. Only this
-list is paginated, since only invitations grow uncapped. Appending dedupes by uuid: a prepended row
-from any tab shifts offset page 2 onto page 1's last row, which a plain append would render twice
-under one key. `fetchAllPages` (`lib/api/client.ts`) dedupes the same way; the gap a removed row
-leaves cannot arise here, since a revoke never deletes.
+`/connect/<token>` reads `GET /connect-link/{token}` signed out and
+`GET /connect-link/{token}/owner` signed in, never both: the anonymous answer has the owner's name
+and picture and no username, so a forwarded QR code yields a handle to nobody without an account.
+Signed out it is `LandingPage` with `connectLink`, whose `AuthForm` carries the token as `via` and
+the page as `redirectTo`; onboarding keeps that one destination (`destinationAfterOnboarding`). The
+route answers 200 for every token and is `noindex` with no canonical, as `/checkin/[token]` is: what
+a token names is asked in the browser, so a status says nothing. _Rejected:_ one anonymous read with
+the page hiding the username.
 
 ## `Course` has no `cost`: money is modelled once, and a course references it
 

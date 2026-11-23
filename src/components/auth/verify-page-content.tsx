@@ -121,9 +121,9 @@ function VerifyMagicLinkContent() {
     setState(restoring ? "restoring" : "verifying");
     try {
       const outcome = await verifyEmailLink(token);
-      // Consumed unconditionally, even when heading to onboarding: a brand-new
-      // account has nothing to return to, and leaving the value behind would
-      // only let it surface at some unrelated later sign-in in this tab.
+      // Consumed unconditionally, even when heading to onboarding, which keeps
+      // only a connect page of it: leaving the value behind would only let it
+      // surface at some unrelated later sign-in in this tab.
       const next = consumePostAuthRedirect();
 
       // The button said "Restore my account" and it was clicked, so the decision

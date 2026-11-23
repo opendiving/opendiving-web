@@ -132,8 +132,8 @@ describe("consuming an attempt", () => {
     expect(consumeGoogleAttempt(stateOf(url))?.via).toBe("reddit");
   });
 
-  // A member's invite-link token rides the same field, and fits the slug's shape.
-  it("hands back an invite-link token the same way", async () => {
+  // A member's connect-link token rides the same field, and fits the slug's shape.
+  it("hands back a connect-link token the same way", async () => {
     const token = "0123456789abcdef0123456789abcdef";
     const url = await beginGoogleSignIn({ clientId: CLIENT_ID, via: token });
 

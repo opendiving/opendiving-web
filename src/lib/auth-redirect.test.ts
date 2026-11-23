@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, beforeEach, vi } from "vitest";
 import {
   consumePostAuthRedirect,
+  destinationAfterOnboarding,
   destinationForOutcome,
   rememberPostAuthRedirect,
   sanitizeRedirectPath,
@@ -36,6 +37,36 @@ describe("destinationForOutcome", () => {
     expect(destinationForOutcome("deletion_pending", "/dives/abc")).toBe(
       "/restore",
     );
+  });
+});
+
+// A new account through a connect link ends onboarding on the connect page, in the
+// browser that opened it; every other destination is dropped, as before.
+describe("the destination through onboarding", () => {
+  const TOKEN = "0123456789abcdef0123456789abcdef";
+
+  it("carries a connect page through the onboarding address", () => {
+    const onboarding = destinationForOutcome(
+      "onboarding_required",
+      `/connect/${TOKEN}`,
+    );
+    expect(onboarding).toBe(
+      `/onboarding?next=${encodeURIComponent(`/connect/${TOKEN}`)}`,
+    );
+    expect(
+      destinationAfterOnboarding(
+        new URL(onboarding, "https://x.invalid").search,
+      ),
+    ).toBe(`/connect/${TOKEN}`);
+  });
+
+  it.each([
+    "",
+    "?next=%2Fdives%2Fabc",
+    "?next=%2F%2Fevil.example",
+    "?next=%2Fconnect%2Fa%2Fb",
+  ])("ends anything else at the default: %j", (search) => {
+    expect(destinationAfterOnboarding(search)).toBe("/home");
   });
 });
 

@@ -244,23 +244,27 @@ describe("the landing hero on a join link", () => {
   });
 });
 
-// A member's invite link, resolved by `/join` and handed in as `inviteLink`. The
-// same door as a join link, titled by the member, and with the one sentence the
-// member's Invitations card relies on: that they will see the name you join under.
-describe("the landing hero on a member's invite link", () => {
-  const inviteLink = {
+// A member's connect link, resolved by `/connect/<token>` for a visitor signed out
+// and handed in as `connectLink`. The same door as a join link, titled by the
+// member, returning to the connect page, and with the sentence on what an
+// account made through it shares.
+describe("the landing hero on a member's connect link", () => {
+  const connectLink = {
     token: "0123456789abcdef0123456789abcdef",
-    inviterName: "Sam Diver",
+    ownerName: "Sam Diver",
+    avatarSha: null,
   };
   const heading = () =>
-    screen.queryByRole("heading", { name: "Sam Diver invited you" });
+    screen.queryByRole("heading", {
+      name: "Sam Diver invited you to connect on OpenDiving",
+    });
 
   it.each(["invite", "open"] as const)(
     "holds the sign-in form and never the request form in %s mode",
     (mode) => {
       known({ registration_mode: mode, project_operated: false });
 
-      render(<LandingPage inviteLink={inviteLink} />);
+      render(<LandingPage connectLink={connectLink} />);
 
       expect(heading()).toBeInTheDocument();
       expect(heading()!.tagName).toBe("H2");
@@ -270,22 +274,31 @@ describe("the landing hero on a member's invite link", () => {
   );
 
   it.each([
-    [true, "Enter your email to join the OpenDiving beta."],
-    [false, "Enter your email to create your account."],
+    [true, "Enter your email to sign in, or to join the OpenDiving beta."],
+    [false, "Enter your email to sign in, or to create your account."],
   ])(
-    "says the member will see your name, in either voice (project-operated: %s)",
+    "says what a new account shares, in either voice (project-operated: %s)",
     (projectOperated, line) => {
       known({ registration_mode: "invite", project_operated: projectOperated });
 
-      render(<LandingPage inviteLink={inviteLink} />);
+      render(<LandingPage connectLink={connectLink} />);
 
       expect(
         screen.getByText(
-          `${line} Sam Diver will see the name on your account.`,
+          `${line} A new account starts with Sam Diver in its people, and Sam Diver sees its name, username and picture.`,
         ),
       ).toBeInTheDocument();
     },
   );
+
+  // Never the username, which the anonymous read does not answer.
+  it("shows no username", () => {
+    known({ registration_mode: "open", project_operated: false });
+
+    render(<LandingPage connectLink={connectLink} />);
+
+    expect(screen.queryByText(/@/)).toBeNull();
+  });
 });
 
 describe("the partner apps section", () => {

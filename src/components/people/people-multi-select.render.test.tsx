@@ -60,7 +60,7 @@ const page = (items: Person[]) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // A server search: the name *or* the linked username. The combobox must not
+  // A server search: the name *or* the connected username. The combobox must not
   // filter what comes back a second time.
   lookupPeople.mockImplementation(async (_page, _perPage, { search } = {}) =>
     page(

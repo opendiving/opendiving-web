@@ -14,7 +14,7 @@ import { peopleAPI, type PersonLookupItem } from "@/lib/api/people";
 const PEOPLE_PER_SEARCH = 25;
 
 /**
- * A person as a picker's menu row: the name, and the linked account's
+ * A person as a picker's menu row: the name, and the connected account's
  * `@username` as the hint - the second field the search matches, so a row found
  * by its username says why it is there.
  */

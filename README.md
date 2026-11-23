@@ -104,10 +104,10 @@ one.
   from it, and a trip names its dive centers from its dives.
 - **People** — your buddies, guides, instructors, fellow students and whoever came along, each kept
   once and picked for a dive, a trip or a course with the role they had that time; a course's and a
-  card's instructor is one of them. Type a name that is new and it becomes a person. Link one to
-  their account on the same instance by its username and you see that account's current `@username`
-  beside the name, nothing else of theirs, and they are not told. UDDF and Subsurface buddies arrive
-  as people when you import.
+  card's instructor is one of them. Type a name that is new and it becomes a person. Show a buddy
+  your connect link — a QR code on People — and they add you to their people, connected: each of you
+  sees the other's picture and `@username`, and you see who added you under _Added you_, to add
+  back, hide or disconnect. UDDF and Subsurface buddies arrive as people when you import.
 - **Full export** — one click to take _everything_ out in open formats: a **DiveJSON** document
   holding the whole logbook, a **UDDF** one other programs import, a **CSV** for a spreadsheet, or a
   complete **archive** carrying all three alongside every dive-computer file you uploaded, every

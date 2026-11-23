@@ -7,7 +7,7 @@ import { getApiErrorStatus } from "./error";
  * `open` is what this app did before invitations existed: any address that can
  * prove it owns a mailbox gets an account. `invite` means the operator hands out
  * invitations and the gate refuses everyone else - except whoever follows one of
- * the instance's join links or a member's invite link, and the very first account
+ * the instance's join links or a member's connect link, and the very first account
  * on an empty instance, which is the operator's own and needs no invitation.
  */
 export type RegistrationMode = "open" | "invite";
@@ -96,15 +96,9 @@ export interface JoinChannel {
   label: string;
 }
 
-/** A live member's invite link, as `/join` resolved it: who it says invited you. */
-export interface InviteLinkDoor {
-  token: string;
-  inviterName: string;
-}
-
 /**
  * The shape the API accepts for a `via` - a join-link slug or a member's
- * invite-link token, which is 32 lowercase hex characters and so fits it too - in
+ * connect-link token, which is 32 lowercase hex characters and so fits it too - in
  * both resolve routes and on both sign-in doors. A value outside it can name
  * neither, so it is answered here without a request - and never sent, where the
  * API would answer `422`.
@@ -161,31 +155,6 @@ export const configAPI = {
         `/join-channel/${slug}`,
       );
       return response.data;
-    } catch (error) {
-      const status = getApiErrorStatus(error);
-      if (status === 404) return null;
-      throw error;
-    }
-  },
-
-  /**
-   * The member a live invite link names, or `null` for every token that is not
-   * one - unknown, reset, removed, a deleted owner, or an `open`-mode instance,
-   * which all answer the same 404. Anonymous, one token per request, and never
-   * cached: the API marks both answers `private, no-store` so that a Reset stops
-   * the old link resolving at the very next request.
-   *
-   * `/join` asks this before `getJoinChannel`, never after: that route's answers
-   * are publicly cacheable, and a live bearer token must not be the first thing
-   * sent to it.
-   */
-  async getInviteLink(token: string): Promise<InviteLinkDoor | null> {
-    if (!JOIN_CHANNEL_SLUG.test(token)) return null;
-    try {
-      const response = await apiClient.get<{ inviter_name: string }>(
-        `/invite-link/${token}`,
-      );
-      return { token, inviterName: response.data.inviter_name };
     } catch (error) {
       const status = getApiErrorStatus(error);
       if (status === 404) return null;

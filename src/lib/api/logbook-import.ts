@@ -223,10 +223,12 @@ export type ImportNoteCode =
   // The archive's portrait was taken, and the account's had changed since the
   // review, so the account's stayed. Information: nothing was lost.
   | "portrait_kept"
-  // A person is linked, by the review's word or the apply's deed, to the account
-  // on this instance its entry names; the sentence names that account's current
-  // username. Information: the link is what the file asked for, under the same
-  // per-user limit a typed username counts against.
+  // A person is connected, by the review's word or the apply's deed, to the
+  // account on this instance its entry names; the sentence names that account's
+  // current username. Information: the tie is what the file asked for, under a
+  // per-user limit.
+  | "account_connected"
+  // The same note as a review stored before the API renamed it still carries.
   | "account_linked"
   // The tags the import adds to the diver's list, named in one note. Tags are
   // members of a dive rather than a collection, so no row of counts has them.

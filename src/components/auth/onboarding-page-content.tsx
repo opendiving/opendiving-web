@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { destinationAfterOnboarding } from "@/lib/auth-redirect";
 import { ProfileCompletionForm } from "@/components/auth/profile-completion-form";
 import { StandaloneShell } from "@/components/layout/standalone-shell";
 
@@ -19,7 +20,7 @@ export function OnboardingPageContent() {
   useEffect(() => {
     if (isLoading) return;
     if (isAuthenticated) {
-      router.replace("/home");
+      router.replace(destinationAfterOnboarding(window.location.search));
       return;
     }
     if (!onboarding) {

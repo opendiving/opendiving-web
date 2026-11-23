@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { PersonDialog } from "./person-dialog";
 import { PersonCombobox } from "./person-combobox";
 import type { Person } from "@/lib/api/people";
+import type { ConnectTarget } from "./connected-account-head";
 
 vi.mock("@/lib/api/people", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/people")>()),
@@ -12,14 +13,18 @@ vi.mock("@/lib/api/people", async (importOriginal) => ({
     updatePerson: vi.fn(),
     getPeople: vi.fn(),
     getPerson: vi.fn(),
+    getPersonPictureBlob: vi.fn(),
+    getAddedYouPictureBlob: vi.fn(),
   },
+  fetchAllPeople: vi.fn(),
 }));
 
-const { peopleAPI } = await import("@/lib/api/people");
+const { peopleAPI, fetchAllPeople } = await import("@/lib/api/people");
 const createPerson = vi.mocked(peopleAPI.createPerson);
 const updatePerson = vi.mocked(peopleAPI.updatePerson);
 const getPeople = vi.mocked(peopleAPI.getPeople);
 const getPerson = vi.mocked(peopleAPI.getPerson);
+const allPeople = vi.mocked(fetchAllPeople);
 
 const EXISTING: Person = {
   uuid: "person-1",
@@ -28,18 +33,44 @@ const EXISTING: Person = {
   phone: "+44 7700 900111",
   notes: "Rescue diver, dives a drysuit.",
   username: "alexm",
+  avatar_sha256: null,
   dive_count: 12,
   created_at: "2026-03-01T09:00:00Z",
 };
 
+// One of the diver's people, logged by name and connected to nobody.
+const LOGGED: Person = {
+  ...EXISTING,
+  uuid: "person-2",
+  name: "Sam Diver",
+  email: null,
+  phone: null,
+  notes: "",
+  username: null,
+};
+
+const BY_LINK: ConnectTarget = {
+  via: "link",
+  token: "0123456789abcdef0123456789abcdef",
+  name: "Sam Diver",
+  username: "samd",
+  avatarSha: null,
+};
+
+const BY_ACCOUNT: ConnectTarget = {
+  via: "account",
+  uuid: "account-1",
+  name: "Robin Reef",
+  username: "robin",
+  avatarSha: null,
+};
+
 // FastAPI's own 422 for a refusal the API makes on one body field.
-const refusedOnUsername = (msg: string) => ({
+const refusedOn = (member: string, msg: string) => ({
   response: {
     status: 422,
     data: {
-      detail: [
-        { type: "value_error", loc: ["body", "username"], msg, input: "x" },
-      ],
+      detail: [{ type: "value_error", loc: ["body", member], msg, input: "x" }],
     },
   },
 });
@@ -62,24 +93,27 @@ beforeEach(() => {
     items_per_page: 25,
   });
   getPerson.mockResolvedValue(EXISTING);
+  allPeople.mockResolvedValue([EXISTING, LOGGED]);
 });
 
-function open(person?: Person, onSaved = vi.fn()) {
+function open(person?: Person, onSaved = vi.fn(), connecting?: ConnectTarget) {
   render(
     <PersonDialog
       open
       onOpenChange={vi.fn()}
       person={person}
       onSaved={onSaved}
+      connecting={connecting}
     />,
   );
   return onSaved;
 }
 
-const username = () => screen.getByLabelText("Username");
 const save = () =>
   userEvent.click(
-    screen.getByRole("button", { name: /Create person|Save changes/ }),
+    screen.getByRole("button", {
+      name: /Create person|Save changes|Add to your people/,
+    }),
   );
 
 describe("PersonDialog", () => {
@@ -92,7 +126,6 @@ describe("PersonDialog", () => {
     await waitFor(() => expect(createPerson).toHaveBeenCalled());
     expect(createPerson.mock.calls[0][0]).toEqual({
       name: "Robin",
-      username: null,
       email: null,
       phone: null,
       notes: "",
@@ -102,36 +135,11 @@ describe("PersonDialog", () => {
     );
   });
 
-  it("links a username, without the @ a diver copies off a picker", async () => {
+  // Connecting by a typed username is gone, from the form and from the body.
+  it("has no username field", () => {
     open();
 
-    await userEvent.type(screen.getByLabelText("Name *"), "Alex M.");
-    await userEvent.type(username(), "@alexm");
-    await save();
-
-    await waitFor(() => expect(createPerson).toHaveBeenCalled());
-    expect(createPerson.mock.calls[0][0]).toMatchObject({ username: "alexm" });
-  });
-
-  it.each([
-    "No account has that username.",
-    "That is your own account.",
-    "Sam is already linked to that account.",
-  ])("shows the API's %s on the username field", async (message) => {
-    createPerson.mockRejectedValue(refusedOnUsername(message));
-    const onSaved = open();
-
-    await userEvent.type(screen.getByLabelText("Name *"), "Alex M.");
-    await userEvent.type(username(), "alexm");
-    await save();
-
-    // On the field, where the diver typed it - and not a second time in the
-    // dialog's own line.
-    const shown = await screen.findByText(message);
-    expect(username()).toHaveAttribute("aria-invalid", "true");
-    expect(username().getAttribute("aria-describedby")).toContain(shown.id);
-    expect(screen.getByRole("alert")).not.toHaveTextContent(message);
-    expect(onSaved).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/username/i)).toBeNull();
   });
 
   it("shows a taken name, a flat refusal, on the name field", async () => {
@@ -154,16 +162,14 @@ describe("PersonDialog", () => {
     expect(name.getAttribute("aria-describedby")).toContain(shown.id);
     expect(name).toHaveFocus();
     expect(screen.getByRole("alert")).not.toHaveTextContent("already exists");
-    expect(username()).not.toHaveAttribute("aria-invalid", "true");
   });
 
-  it("seeds the person being edited, and unlinks with an explicit null", async () => {
+  it("seeds the person being edited, and never sends a username", async () => {
     const onSaved = open(EXISTING);
 
-    await waitFor(() => expect(username()).toHaveValue("alexm"));
-    expect(screen.getByLabelText("Email")).toHaveValue(EXISTING.email);
-
-    await userEvent.clear(username());
+    await waitFor(() =>
+      expect(screen.getByLabelText("Email")).toHaveValue(EXISTING.email),
+    );
     await userEvent.clear(screen.getByLabelText("Phone"));
     await save();
 
@@ -172,7 +178,6 @@ describe("PersonDialog", () => {
       EXISTING.uuid,
       {
         name: "Alex M.",
-        username: null,
         email: EXISTING.email,
         phone: null,
         notes: EXISTING.notes,
@@ -182,10 +187,115 @@ describe("PersonDialog", () => {
     expect(onSaved).toHaveBeenCalledWith(
       expect.objectContaining({
         uuid: EXISTING.uuid,
-        username: null,
+        username: "alexm",
         dive_count: 12,
       }),
     );
+  });
+
+  // A person read carries the account's username and picture, not its name.
+  it("heads a connected person's form with its account's username", () => {
+    open(EXISTING);
+
+    expect(screen.getByText("@alexm")).toBeInTheDocument();
+  });
+
+  it("has no head for a person who is not connected", () => {
+    open(LOGGED);
+
+    expect(screen.queryByText(/^@/)).toBeNull();
+  });
+});
+
+describe("PersonDialog connecting an account", () => {
+  it("is headed by the account, fills the name, and says what saving shows", async () => {
+    allPeople.mockResolvedValue([EXISTING]);
+    open(undefined, vi.fn(), BY_ACCOUNT);
+
+    const dialog = screen.getByRole("dialog", { name: "Add to your people" });
+    expect(within(dialog).getByText("Robin Reef")).toBeInTheDocument();
+    expect(within(dialog).getByText("@robin")).toBeInTheDocument();
+    expect(screen.getByLabelText("Name *")).toHaveValue("Robin Reef");
+    expect(dialog).toHaveTextContent(
+      "Robin Reef will see your name, username and picture",
+    );
+  });
+
+  it("creates a new person connected through the link, with no username", async () => {
+    allPeople.mockResolvedValue([EXISTING]);
+    const onSaved = open(undefined, vi.fn(), BY_LINK);
+
+    await save();
+
+    await waitFor(() => expect(createPerson).toHaveBeenCalled());
+    expect(createPerson.mock.calls[0][0]).toEqual({
+      name: "Sam Diver",
+      email: null,
+      phone: null,
+      notes: "",
+      connect_link: BY_LINK.token,
+    });
+    expect(onSaved).toHaveBeenCalledWith(
+      expect.objectContaining({ uuid: "person-new" }),
+    );
+  });
+
+  // The buddy logged by name months before they showed a code.
+  it("opens on the person already named as the account, and connects them", async () => {
+    getPerson.mockResolvedValue({ ...LOGGED, username: "samd" });
+    const onSaved = open(undefined, vi.fn(), BY_LINK);
+
+    const choice = await screen.findByLabelText("Add as");
+    await waitFor(() => expect(choice).toHaveValue(LOGGED.uuid));
+    // A person already connected is no candidate.
+    expect(
+      within(choice).queryByRole("option", { name: "Alex M." }),
+    ).toBeNull();
+    expect(screen.queryByLabelText("Name *")).toBeNull();
+
+    await save();
+
+    await waitFor(() =>
+      expect(updatePerson).toHaveBeenCalledWith(LOGGED.uuid, {
+        connect_link: BY_LINK.token,
+      }),
+    );
+    expect(createPerson).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(onSaved).toHaveBeenCalledWith(
+        expect.objectContaining({ uuid: LOGGED.uuid, username: "samd" }),
+      ),
+    );
+  });
+
+  it("makes a new person instead where the diver picks that", async () => {
+    open(undefined, vi.fn(), BY_ACCOUNT);
+
+    const choice = await screen.findByLabelText("Add as");
+    await userEvent.selectOptions(choice, "A new person");
+    await save();
+
+    await waitFor(() =>
+      expect(createPerson.mock.calls[0][0]).toMatchObject({
+        name: "Robin Reef",
+        connect_account: BY_ACCOUNT.uuid,
+      }),
+    );
+  });
+
+  it("shows a refused connection in the dialog's own line", async () => {
+    allPeople.mockResolvedValue([]);
+    createPerson.mockRejectedValue(
+      refusedOn("connect_link", "This connect link is no longer active."),
+    );
+    const onSaved = open(undefined, vi.fn(), BY_LINK);
+
+    await save();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This connect link is no longer active.",
+    );
+    expect(onSaved).not.toHaveBeenCalled();
   });
 });
 

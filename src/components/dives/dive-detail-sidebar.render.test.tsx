@@ -422,7 +422,7 @@ describe("DiveDetailSidebar people", () => {
   const SAM = person("person-sam", "Sam");
   const PEOPLE = { [ALEX.uuid]: ALEX, [SAM.uuid]: SAM };
 
-  it("names each person with their role and linked username, in the dive's order", () => {
+  it("names each person with their role and connected username, in the dive's order", () => {
     renderSidebar(
       dive({
         people: [

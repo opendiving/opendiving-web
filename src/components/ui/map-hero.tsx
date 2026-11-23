@@ -127,6 +127,9 @@ const OVERLINE = "mb-1 pl-13 md:pl-18";
 // drawing, which a 24-unit icon keeps inside 2-22. It glows as their text does.
 const ICON =
   "mt-1.5 size-10 shrink-0 stroke-[1.5] md:mt-1 md:size-14 glow-icon";
+// A picture in the icon's place takes its box, so the title stays where a hero
+// with the icon has it.
+const PICTURE = "mt-1.5 size-10 shrink-0 md:mt-1 md:size-14";
 
 // Known before the record is, so the skeleton's is the real one. Padded as the
 // actions opposite it are: over the map it is a button among buttons.
@@ -325,6 +328,7 @@ export function MapHero({
 function HeroDetails({
   className,
   icon: Icon,
+  picture,
   title,
   subtitle,
   overline,
@@ -336,6 +340,8 @@ function HeroDetails({
 }: Pick<MapHeroProps, "title" | "subtitle" | "overline"> &
   Partial<Pick<MapHeroProps, "icon" | "figures">> & {
     className?: string;
+    // Drawn in the icon's place and box: a connected person's picture.
+    picture?: ReactNode;
     headingRef?: Ref<HTMLHeadingElement>;
     info?: ReactNode;
     aside?: ReactNode;
@@ -356,7 +362,11 @@ function HeroDetails({
       <div className={DETAILS_INSET}>
         {overline && <div className={OVERLINE}>{overline}</div>}
         <div className={HEADING}>
-          {Icon && <Icon aria-hidden className={ICON} />}
+          {picture ? (
+            <div className={PICTURE}>{picture}</div>
+          ) : (
+            Icon && <Icon aria-hidden className={ICON} />
+          )}
           <div className="min-w-0 flex-1">
             {info || aside ? (
               <div className="flex flex-wrap items-center gap-x-1 gap-y-3">
@@ -423,6 +433,7 @@ export function PlainHero({
   backHref,
   backLabel,
   icon,
+  picture,
   actions,
   title,
   subtitle,
@@ -433,6 +444,8 @@ export function PlainHero({
   Known & {
     // Narrows the hero to its page's column - `FORM_COLUMN` on a form page.
     column?: string;
+    // Drawn in the icon's place: a connected person's picture.
+    picture?: ReactNode;
   }) {
   return (
     // The actions' glow is drawn in the page's colour, so it shows nothing here.
@@ -444,6 +457,7 @@ export function PlainHero({
       <HeroDetails
         className={cn(COLUMN, column, PLAIN_DETAILS)}
         icon={icon}
+        picture={picture}
         title={title}
         subtitle={subtitle}
         overline={overline}

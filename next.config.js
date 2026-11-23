@@ -31,6 +31,18 @@ const nextConfig = {
     exposeTestingApiInProductionBuild:
       process.env.NEXT_EXPOSE_TESTING_API === "1",
   },
+  // Settings -> Invitations is gone, and a member brings somebody in with the
+  // connect link on People, so an address kept from before lands there.
+  // Temporary, so no browser holds it past a page of that name coming back.
+  async redirects() {
+    return [
+      {
+        source: "/settings/invitations",
+        destination: "/people",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     // Content-Security-Policy and Strict-Transport-Security are set per-request
     // by src/proxy.ts instead of here - the first needs a fresh, unpredictable

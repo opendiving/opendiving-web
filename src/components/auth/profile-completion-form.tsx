@@ -13,6 +13,7 @@ import {
   ProfileCompletionFormData,
 } from "@/lib/validations/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { destinationAfterOnboarding } from "@/lib/auth-redirect";
 import { UserPlus } from "lucide-react";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
@@ -86,7 +87,7 @@ export function ProfileCompletionForm() {
           variant: "destructive",
         });
       }
-      router.push("/home");
+      router.push(destinationAfterOnboarding(window.location.search));
     } catch (err) {
       setError(getApiErrorMessage(err, "Could not complete your profile."));
     }

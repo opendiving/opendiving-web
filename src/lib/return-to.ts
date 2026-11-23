@@ -35,6 +35,7 @@ const SECTIONS: Record<string, { index: string; item: string }> = {
   people: { index: "people", item: "person" },
   species: { index: "aquatic life", item: "species" },
   checkin: { index: "check-in", item: "check-in" },
+  connect: { index: "connect link", item: "connect link" },
   import: { index: "import", item: "import" },
   settings: { index: "settings", item: "settings" },
   admin: { index: "admin", item: "admin" },

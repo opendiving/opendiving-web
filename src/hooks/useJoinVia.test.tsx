@@ -2,23 +2,26 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useJoinVia } from "./useJoinVia";
 
-const { getJoinChannel, getInviteLink } = vi.hoisted(() => ({
+const { getJoinChannel, resolve } = vi.hoisted(() => ({
   getJoinChannel: vi.fn(),
-  getInviteLink: vi.fn(),
+  resolve: vi.fn(),
 }));
 
 vi.mock("@/lib/api/config", () => ({
-  configAPI: { getJoinChannel, getInviteLink },
+  configAPI: { getJoinChannel },
+}));
+vi.mock("@/lib/api/connect-links", () => ({
+  connectLinksAPI: { resolve },
 }));
 
 const SCUBABOARD = { slug: "scubaboard", label: "ScubaBoard" };
 const TOKEN = "0123456789abcdef0123456789abcdef";
-const LINK = { token: TOKEN, inviterName: "Sam Diver" };
+const OWNER = { name: "Sam Diver", avatar_sha256: null };
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
-  getInviteLink.mockResolvedValue(null);
+  resolve.mockResolvedValue(null);
 });
 
 describe("useJoinVia", () => {
@@ -26,11 +29,11 @@ describe("useJoinVia", () => {
     const { result } = renderHook(() => useJoinVia(null));
 
     expect(result.current).toEqual({
-      inviteLink: null,
+      connectLink: null,
       channel: null,
       isLoading: false,
     });
-    expect(getInviteLink).not.toHaveBeenCalled();
+    expect(resolve).not.toHaveBeenCalled();
     expect(getJoinChannel).not.toHaveBeenCalled();
   });
 
@@ -40,7 +43,7 @@ describe("useJoinVia", () => {
     const { result } = renderHook(() => useJoinVia("scubaboard"));
 
     expect(result.current).toEqual({
-      inviteLink: null,
+      connectLink: null,
       channel: null,
       isLoading: true,
     });
@@ -51,18 +54,18 @@ describe("useJoinVia", () => {
 
   // The link resolver is `no-store`; the channel one is publicly cacheable. A live
   // token must never reach the second.
-  it("asks for an invite link first, and never sends a live one to the channel route", async () => {
-    getInviteLink.mockResolvedValue(LINK);
+  it("asks for a connect link first, and never sends a live one to the channel route", async () => {
+    resolve.mockResolvedValue(OWNER);
 
     const { result } = renderHook(() => useJoinVia(TOKEN));
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current).toEqual({
-      inviteLink: LINK,
+      connectLink: TOKEN,
       channel: null,
       isLoading: false,
     });
-    expect(getInviteLink).toHaveBeenCalledWith(TOKEN);
+    expect(resolve).toHaveBeenCalledWith(TOKEN);
     expect(getJoinChannel).not.toHaveBeenCalled();
   });
 
@@ -72,9 +75,9 @@ describe("useJoinVia", () => {
     const { result } = renderHook(() => useJoinVia("scubaboard"));
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(getInviteLink).toHaveBeenCalledWith("scubaboard");
+    expect(resolve).toHaveBeenCalledWith("scubaboard");
     expect(
-      getInviteLink.mock.invocationCallOrder[0] <
+      resolve.mock.invocationCallOrder[0] <
         getJoinChannel.mock.invocationCallOrder[0],
     ).toBe(true);
   });
@@ -88,19 +91,19 @@ describe("useJoinVia", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.channel).toBeNull();
-    expect(result.current.inviteLink).toBeNull();
+    expect(result.current.connectLink).toBeNull();
   });
 
   // The token may have been live, so a failed link request does not fall through
   // to the publicly cacheable route.
   it("reads a failed link request as nothing, without asking the channel route", async () => {
-    getInviteLink.mockRejectedValue(new Error("Network Error"));
+    resolve.mockRejectedValue(new Error("Network Error"));
 
     const { result } = renderHook(() => useJoinVia(TOKEN));
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current).toEqual({
-      inviteLink: null,
+      connectLink: null,
       channel: null,
       isLoading: false,
     });
@@ -126,7 +129,7 @@ describe("useJoinVia", () => {
 
     rerender({ via: "reddit" });
     expect(result.current).toEqual({
-      inviteLink: null,
+      connectLink: null,
       channel: null,
       isLoading: true,
     });

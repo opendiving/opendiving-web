@@ -39,13 +39,13 @@ interface AuthFormProps {
   // reason the level is not just hardcoded.
   title?: string;
   description?: string;
-  // The level a `title` renders at. `h2` for `/join`'s hero, which names the link
-  // in the card under a page that already has its `h1`.
+  // The level a `title` renders at. `h2` for the hero of `/join` or `/connect`,
+  // which names the link in the card under a page that already has its `h1`.
   titleAs?: "h1" | "h2";
-  // The join link's slug or the member's invite-link token this form is on, sent
+  // The join link's slug or the member's connect-link token this form is on, sent
   // with both doors that can create an account - the email request and the Google
-  // attempt. Only `/join` passes it, and only for a value the API has just
-  // resolved.
+  // attempt. Only `/join` and `/connect` pass it, and only for a value the API has
+  // just resolved.
   via?: string;
 }
 
