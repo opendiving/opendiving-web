@@ -189,7 +189,8 @@ describe("noFileKeptSentence", () => {
   it("names the merge for a recording others were folded into, without blaming it", () => {
     // The distinction the recording's own shape cannot make. A merge moves
     // every file its records held onto the recording it leaves, so the
-    // sentence says so: what is missing was never there to move.
+    // sentence says so: what is missing was never there to move, or was
+    // deleted since.
     expect(
       noFileKeptSentence(
         recording({ profile: profileInfo({ provenance: "merge" }) }),

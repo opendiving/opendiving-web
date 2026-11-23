@@ -886,7 +886,7 @@ export interface DiveProfileInfo {
   // Always sent: every stored profile is one of the three. It is here because a
   // file-less recording is first-class rather than degenerate, and the two ways
   // of being file-less are different things to say - "imported through the
-  // converter" against "merged from two recordings". Nothing else in the dive
+  // converter" against "come from a merge". Nothing else in the dive
   // read tells them apart: `files` is empty for both. Read it through
   // `noFileKeptSentence` (`lib/dive-recordings.ts`) rather than switching on it
   // at a call site.
