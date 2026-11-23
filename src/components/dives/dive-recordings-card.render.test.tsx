@@ -173,9 +173,7 @@ describe("DiveRecordingsCard", () => {
     );
 
     const [merged, imported] = screen.getAllByTestId("dive-recording");
-    expect(
-      within(merged).getByText(/merged from two recordings/i),
-    ).toBeVisible();
+    expect(within(merged).getByText(/come from a merge/i)).toBeVisible();
     expect(
       within(imported).getByText(/imported through the converter/i),
     ).toBeVisible();

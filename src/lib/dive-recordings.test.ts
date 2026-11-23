@@ -186,15 +186,17 @@ describe("noFileKeptSentence", () => {
     ).toBe("No file kept — these samples were imported through the converter.");
   });
 
-  it("names the merge for a recording two others were folded into", () => {
-    // The distinction the recording's own shape cannot make: a merge keeps
-    // whatever files either half had, so an empty `files` says only that
-    // neither half had one.
+  it("names the merge for a recording others were folded into, without blaming it", () => {
+    // The distinction the recording's own shape cannot make. A merge moves
+    // every file its records held onto the recording it leaves, so the
+    // sentence says so: what is missing was never there to move.
     expect(
       noFileKeptSentence(
         recording({ profile: profileInfo({ provenance: "merge" }) }),
       ),
-    ).toBe("No file kept — these samples were merged from two recordings.");
+    ).toBe(
+      "No file kept — these samples come from a merge, which carries over every file the merged records held.",
+    );
   });
 
   it("claims nothing about samples for a recording that carries none", () => {

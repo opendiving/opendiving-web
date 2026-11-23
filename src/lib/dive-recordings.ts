@@ -315,8 +315,10 @@ export function recordingLabel(recording: Recording): string {
  * **Which of the two it was comes from the profile's `provenance`**, the closed
  * `file` / `divejson_import` / `merge` vocabulary the dive read publishes on
  * every recording's profile summary. The recording's own shape cannot answer it:
- * `files` is empty either way, and a merge keeps whatever files either half had,
- * so file-lessness says only that neither half had one.
+ * `files` is empty either way. A merge moves every file its records held onto the
+ * recording it leaves, so a merged one without files never had any to keep, or
+ * lost them to a deletion since — which is why its sentence says what the merge
+ * does rather than why nothing is here.
  *
  * The fallback covers the case with no provenance to read — a recording the
  * import wrote from a device and nothing else, which carries no profile at all,
@@ -330,7 +332,7 @@ export function noFileKeptSentence(recording: Recording): string | null {
     case "divejson_import":
       return "No file kept — these samples were imported through the converter.";
     case "merge":
-      return "No file kept — these samples were merged from two recordings.";
+      return "No file kept — these samples come from a merge, which carries over every file the merged records held.";
     default:
       return "No file kept — nothing was stored here to re-read this recording from.";
   }
