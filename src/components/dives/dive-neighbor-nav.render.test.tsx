@@ -45,11 +45,15 @@ function neighbors(overrides: Partial<DiveNeighbors> = {}): DiveNeighbors {
       uuid: "older-uuid",
       dive_number: 11,
       start_time: "2021-04-03T09:00:00+02:00",
+      max_depth: 18,
+      submerged_time: 2700,
     },
     next: {
       uuid: "newer-uuid",
       dive_number: 13,
       start_time: "2021-04-05T09:00:00+02:00",
+      max_depth: 18,
+      submerged_time: 2700,
     },
     ...overrides,
   };
@@ -245,6 +249,8 @@ describe("DiveNeighborNav", () => {
           uuid: "older-still-uuid",
           dive_number: 10,
           start_time: "2021-04-02T09:00:00+02:00",
+          max_depth: 18,
+          submerged_time: 2700,
         },
       }),
     );
@@ -293,6 +299,8 @@ describe("DiveNeighborNav", () => {
           uuid: "current-uuid",
           dive_number: 12,
           start_time: "2021-04-04T10:04:47+02:00",
+          max_depth: 18,
+          submerged_time: 2700,
         },
       }),
     );

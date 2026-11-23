@@ -14,6 +14,10 @@ vi.mock("@/lib/api/dives", async (importOriginal) => ({
   },
 }));
 
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
+
 vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
@@ -42,10 +46,14 @@ const dive = (overrides: Partial<Dive> = {}) =>
     ...overrides,
   });
 
+// The first half of a dive the computer split in two: it surfaced briefly
+// three minutes in.
 const previous = {
   uuid: "part-1",
   dive_number: 1,
   start_time: "2026-09-08T15:18:10",
+  max_depth: 6.4,
+  submerged_time: 180,
 };
 
 function mergeResult(
@@ -120,6 +128,44 @@ describe("DiveMergeAction", () => {
     );
     expect(
       screen.getByRole("button", { name: /#1, Sep 8, 2026/ }),
+    ).toBeVisible();
+  });
+
+  it("shows each candidate's start time, duration and max depth", async () => {
+    // A split dive's halves share a day, so the day alone does not tell them
+    // apart; the short, shallow one is the fragment.
+    render(
+      <DiveMergeAction dive={dive()} onMerged={vi.fn()}>
+        {trigger}
+      </DiveMergeAction>,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /merge/i }),
+    );
+    expect(
+      screen.getByRole("button", {
+        name: "#1, Sep 8, 2026, 15:18, 3min · 6 m",
+      }),
+    ).toBeVisible();
+  });
+
+  it("leaves out a depth the neighbour has none of", async () => {
+    vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue({
+      previous: { ...previous, max_depth: null },
+      next: null,
+    });
+    render(
+      <DiveMergeAction dive={dive()} onMerged={vi.fn()}>
+        {trigger}
+      </DiveMergeAction>,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /merge/i }),
+    );
+    expect(
+      screen.getByRole("button", { name: "#1, Sep 8, 2026, 15:18, 3min" }),
     ).toBeVisible();
   });
 
@@ -228,6 +274,8 @@ describe("DiveMergeAction", () => {
         uuid: "part-0",
         dive_number: 0,
         start_time: "2026-09-08T14:02:00",
+        max_depth: 22.1,
+        submerged_time: 3120,
       },
       next: null,
     });

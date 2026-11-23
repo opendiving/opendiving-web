@@ -145,6 +145,8 @@ const NEIGHBORS: Record<string, DiveNeighbors> = {
       uuid: DIVE_B.uuid,
       dive_number: DIVE_B.dive_number,
       start_time: DIVE_B.start_time,
+      max_depth: DIVE_B.max_depth ?? null,
+      submerged_time: DIVE_B.submerged_time,
     },
     next: null,
   },
@@ -154,6 +156,8 @@ const NEIGHBORS: Record<string, DiveNeighbors> = {
       uuid: DIVE_A.uuid,
       dive_number: DIVE_A.dive_number,
       start_time: DIVE_A.start_time,
+      max_depth: DIVE_A.max_depth ?? null,
+      submerged_time: DIVE_A.submerged_time,
     },
   },
 };

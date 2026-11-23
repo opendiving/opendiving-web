@@ -8,7 +8,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { Dive, DiveNeighbor, divesAPI } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { canMergeDive } from "@/lib/dive-recordings";
-import { formatDiveDateTime } from "@/lib/date-time";
+import {
+  formatDiveDateTime,
+  formatDurationHoursMinutes,
+} from "@/lib/date-time";
+import { formatDepth, type UnitSystem } from "@/lib/units";
+import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
 import { withReturnTo } from "@/lib/return-to";
 
@@ -29,16 +34,22 @@ interface DiveMergeActionProps {
   children: (openMerge: (() => void) | null) => ReactNode;
 }
 
-// How a neighbour is named in the dialog: the diver's own number and the day.
-// `#212` alone is ambiguous in a log with duplicate numbers, which the numbering
-// summary exists because logs have.
+// How a neighbour is named in the dialog: the diver's own number and when it
+// started. `#212` alone is ambiguous in a log with duplicate numbers, which the
+// numbering summary exists because logs have.
 function neighborName(neighbor: DiveNeighbor): string {
-  const date = formatDiveDateTime(neighbor.start_time, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-  return `#${neighbor.dive_number}, ${date}`;
+  return `#${neighbor.dive_number}, ${formatDiveDateTime(neighbor.start_time)}`;
+}
+
+// What tells the two candidates apart at a glance: a split dive's second half
+// is the short, shallow one. Whole units, as the dive card rounds them.
+function neighborFigures(neighbor: DiveNeighbor, units: UnitSystem): string {
+  const figures = [formatDurationHoursMinutes(neighbor.submerged_time)];
+  // `!= null`, since 0 m is a reading.
+  if (neighbor.max_depth != null) {
+    figures.push(formatDepth(neighbor.max_depth, units, { decimals: 0 }));
+  }
+  return figures.join(" · ");
 }
 
 /**
@@ -68,6 +79,7 @@ export function DiveMergeAction({
   // The dive a merge keeps leads back where the one on screen did.
   const from = useSearchParams()?.get("from") ?? null;
   const { toast } = useToast();
+  const units = useUnits();
   const [isOpen, setIsOpen] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
   const [chosen, setChosen] = useState<DiveNeighbor | null>(null);
@@ -194,12 +206,17 @@ export function DiveMergeAction({
               variant={chosen?.uuid === neighbor.uuid ? "secondary" : "outline"}
               aria-pressed={chosen?.uuid === neighbor.uuid}
               className={cn(
-                "justify-start",
+                "h-auto flex-col items-start gap-0.5 whitespace-normal text-left",
                 chosen?.uuid === neighbor.uuid && "font-semibold",
               )}
               onClick={() => setChosen(neighbor)}
             >
-              {neighborName(neighbor)}
+              <span>{neighborName(neighbor)}</span>
+              {/* The two lines are spans, which an accessible name runs together. */}
+              <span className="sr-only">,</span>{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                {neighborFigures(neighbor, units)}
+              </span>
             </Button>
           ))}
         </div>

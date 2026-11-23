@@ -1323,13 +1323,18 @@ export interface DiveRenumberResult {
 
 /**
  * One of the two dives chronologically adjacent to another, from
- * `/dive/{uuid}/neighbors`. Just enough to label a link and follow it - the
- * neighbour itself is loaded when the diver actually goes there.
+ * `/dive/{uuid}/neighbors`. Enough to label a link and follow it, and to tell the
+ * two apart in the merge dialog - the neighbour itself is loaded when the diver
+ * actually goes there.
  */
 export interface DiveNeighbor {
   uuid: string;
   dive_number: number;
   start_time: string;
+  // An explicit `null` where the dive has no depth recorded, never an absent key.
+  max_depth: number | null;
+  // Seconds, as `Dive.submerged_time`.
+  submerged_time: number;
 }
 
 /**
