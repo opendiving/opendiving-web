@@ -1072,7 +1072,12 @@ describe("the result", () => {
     await drawResult(
       appliedImport({
         dives: [
-          { ...modifiedRow(2), outcome: "skipped", reason: "Deleted here." },
+          {
+            ...modifiedRow(2),
+            outcome: "skipped",
+            reason:
+              "This dive's file could no longer be read when the import was applied, so nothing was written for it.",
+          },
         ],
       }),
     );

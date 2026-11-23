@@ -129,11 +129,12 @@ one.
   new and what changes, each opening the dive or what it was and what it becomes, with any file that
   could not be read listed first; nothing is written until you import. Each import stays as history,
   with a log of what its files did not record, what the import worked out, and which of the dive's
-  values it left out. Records you already have are matched rather than duplicated, and a dive you
-  deleted stays deleted. The archive additionally restores the dive-computer files and c-card scans,
-  which the bare document names by digest but does not carry. The check-in details a logbook
-  carries, and an archive's portrait, are shown beside yours in the review, and only what you choose
-  there is saved.
+  values it left out. Records you already have are matched rather than duplicated, and a file of a
+  dive you merged into another is that dive's, adding no dive; a dive, certification or service
+  record you deleted and import again is added as a new one. The archive additionally restores the
+  dive-computer files and c-card scans, which the bare document names by digest but does not carry.
+  The check-in details a logbook carries, and an archive's portrait, are shown beside yours in the
+  review, and only what you choose there is saved.
 - **Year in review** — each January, an email with the year before in figures: dives and time
   underwater, the deepest and longest, dive sites, and species with the ones you saw for the first
   time.
