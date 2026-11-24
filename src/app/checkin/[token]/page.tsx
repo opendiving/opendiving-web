@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { SharedCheckInPage } from "@/components/checkin/shared-checkin-page";
+import { PageSpinner } from "@/components/ui/page-spinner";
 
 // A Server Component for the one thing a client page cannot carry: `robots` for this
 // route alone. A link is somebody's details for a day, so it asks every instance's
@@ -10,11 +12,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function SharedCheckInRoute({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+type Params = Promise<{ token: string }>;
+
+// The token is read under a boundary so every link shares one shell, whose fallback
+// is the spinner the page draws first anyway.
+export default function SharedCheckInRoute({ params }: { params: Params }) {
+  return (
+    <Suspense fallback={<PageSpinner variant="inset" />}>
+      <SharedCheckInToken params={params} />
+    </Suspense>
+  );
+}
+
+async function SharedCheckInToken({ params }: { params: Params }) {
   const { token } = await params;
   return <SharedCheckInPage token={token} />;
 }

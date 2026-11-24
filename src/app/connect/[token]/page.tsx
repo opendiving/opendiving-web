@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { ConnectPage } from "@/components/people/connect-page";
+import { PageSpinner } from "@/components/ui/page-spinner";
 
 // A Server Component for the one thing a client page cannot carry: `robots` for this
 // route alone. A link is one diver's, made to be handed to one person, so it asks
@@ -12,11 +14,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function ConnectRoute({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+type Params = Promise<{ token: string }>;
+
+// The token is read under a boundary so every link shares one shell, whose fallback
+// is the spinner the page draws first anyway.
+export default function ConnectRoute({ params }: { params: Params }) {
+  return (
+    <Suspense fallback={<PageSpinner className="bg-background" />}>
+      <ConnectToken params={params} />
+    </Suspense>
+  );
+}
+
+async function ConnectToken({ params }: { params: Params }) {
   const { token } = await params;
   return <ConnectPage token={token} />;
 }
