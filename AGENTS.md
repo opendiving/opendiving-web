@@ -34,8 +34,8 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
   `MAP_STYLE_URL_DARK`, `MAP_ATTRIBUTION` and the `MAP_TILE_*` raster escape hatch — are read on
   the server by `lib/runtime-config.ts`. Only what a client component needs — the Google client
   ID and the basemap — sits on `PublicConfig` and reaches the browser through
-  `contexts/ConfigContext.tsx`'s `useConfig()`; `SITE_URL`, `CONTACT_EMAIL`, `WEB_HSTS` and
-  `WEB_NOINDEX` stay on `RuntimeConfig` and are read only on the server. Add a new setting to that
+  `contexts/ConfigContext.tsx`'s `useConfig()`; `SITE_URL`, `CONTACT_EMAIL`, `WEB_HSTS`,
+  `WEB_NOINDEX` and `IOS_APP_ID` stay on `RuntimeConfig` and are read only on the server. Add a new setting to that
   module, never as a new `NEXT_PUBLIC_` variable: those are inlined by the compiler and would be
   frozen into the published image. The prefixed spellings survive as fallbacks, read through a
   computed key so they are not inlined either. `.env.example` documents each one.

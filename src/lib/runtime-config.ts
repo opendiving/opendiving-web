@@ -69,6 +69,13 @@ export interface RuntimeConfig extends PublicConfig {
    * a private one sets `WEB_NOINDEX=true`.
    */
   noindex: boolean;
+  /**
+   * The iOS app this instance's links open, as Apple's app id: the team's ten-character
+   * id, a dot and the bundle identifier. It is what
+   * `app/.well-known/apple-app-site-association/route.ts` names, and unset that file is a
+   * 404, so no instance claims an app its operator has not named.
+   */
+  iosAppId?: string;
 }
 
 /**
@@ -148,6 +155,24 @@ function resolveSiteUrl(value: string | undefined): string {
   }
 }
 
+// Apple's team id is ten upper-case letters and digits; a bundle identifier is letters,
+// digits, hyphens and dots.
+const IOS_APP_ID = /^[A-Z0-9]{10}\.[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*$/;
+
+/**
+ * An app id, or nothing. A malformed one would be published for Apple's CDN to cache and
+ * match against nothing, so it is refused and said once, as a malformed `SITE_URL` is.
+ */
+function resolveIosAppId(value: string | undefined): string | undefined {
+  if (!value || IOS_APP_ID.test(value)) return value;
+  console.warn(
+    `[runtime-config] Ignoring malformed IOS_APP_ID: ${value}. ` +
+      `Give the Apple team id, a dot and the bundle identifier, such as ` +
+      `ABCDE12345.com.example.app; serving no apple-app-site-association.`,
+  );
+  return undefined;
+}
+
 /**
  * Reads a configuration out of a given environment.
  *
@@ -178,11 +203,12 @@ export function readRuntimeConfig(
       attribution: configured(env, "MAP_ATTRIBUTION"),
       apiKey: configured(env, "MAP_TILE_API_KEY"),
     }),
-    // Read directly rather than through `configured`: these two have no `NEXT_PUBLIC_`
+    // Read directly rather than through `configured`: these three have no `NEXT_PUBLIC_`
     // spelling to fall back to, and offering one would invite an operator to set a
     // variable that reaches the browser for a decision the server makes alone.
     hstsEnabled: flag("WEB_HSTS", set(env.WEB_HSTS), true),
     noindex: flag("WEB_NOINDEX", set(env.WEB_NOINDEX), false),
+    iosAppId: resolveIosAppId(set(env.IOS_APP_ID)),
   };
 }
 

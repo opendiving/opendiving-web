@@ -183,6 +183,38 @@ describe("readRuntimeConfig", () => {
       ).toBe("http://192.168.1.4:3000");
     });
   });
+
+  describe("IOS_APP_ID", () => {
+    it("reads a team id, a dot and a bundle identifier", () => {
+      expect(
+        readRuntimeConfig({ IOS_APP_ID: " ABCDE12345.app.opendiving.ios " })
+          .iosAppId,
+      ).toBe("ABCDE12345.app.opendiving.ios");
+    });
+
+    // Published, the value is cached by Apple's CDN and matches no app.
+    it.each([
+      "app.opendiving.ios",
+      "abcde12345.app.opendiving.ios",
+      "ABCDE1234.app.opendiving.ios",
+      "ABCDE12345.",
+      "ABCDE12345.app..ios",
+      "ABCDE12345.app/ios",
+    ])("refuses %s and says so", (value) => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      expect(readRuntimeConfig({ IOS_APP_ID: value }).iosAppId).toBeUndefined();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("IOS_APP_ID"));
+    });
+
+    it("ignores a NEXT_PUBLIC_ spelling", () => {
+      expect(
+        readRuntimeConfig({
+          NEXT_PUBLIC_IOS_APP_ID: "ABCDE12345.app.opendiving.ios",
+        }).iosAppId,
+      ).toBeUndefined();
+    });
+  });
 });
 
 // The refusal has to fire on exactly one of the three basemap states. Trip the
@@ -249,6 +281,7 @@ describe("publicConfig", () => {
         SITE_URL: "https://dives.example.com",
         CONTACT_EMAIL: "hello@example.com",
         GOOGLE_CLIENT_ID: "client-id",
+        IOS_APP_ID: "ABCDE12345.app.opendiving.ios",
       }),
     );
 
