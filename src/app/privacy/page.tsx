@@ -378,7 +378,7 @@ export default async function PrivacyPage() {
                   same way, on the dive it becomes or on the one your logbook
                   already has for it, and is an import applied as it is
                   uploaded; the question it asks this copy first, about which of
-                  the computer&rsquo;s dives your logbook already has and
+                  the dives it would download your logbook already has and
                   whether each keeps that original download, leaves nothing
                   here. A file from a computer with a wrist sensor or a
                   heart-rate strap switched on carries your heart rate, which is
@@ -467,35 +467,42 @@ export default async function PrivacyPage() {
                 time it connects, even with the phone locked, unless you switch{" "}
                 <em>Download automatically</em> off for that computer. Before it
                 downloads any of a computer&rsquo;s dives, the app asks this
-                copy which of them your logbook already has, and whether each of
-                those keeps the computer&rsquo;s original download, sending the
-                computer&rsquo;s serial number and, for each dive the computer
-                lists, an identifier the app gives it and when the dive started.
-                The question names dives you may then not download, and this
-                copy answers it without keeping any of it. The app leaves out
-                the dives this copy says your logbook has with their original
-                download. A dive your logbook has without it, the app downloads
-                and sends as well, so that the computer&rsquo;s original
-                download is kept on that dive, which this copy fills in where it
-                lacks something the download holds. Where the app asks you which
-                of a computer&rsquo;s dives to download, it downloads none until
-                you have chosen, and it remembers on the phone the dives you
-                chose not to download, so that a later download leaves them out
-                too. Every download, whether it started by itself or from the
-                app&rsquo;s screen, is sent to this copy, which imports it into
-                your logbook without a review. The downloaded dives are kept on
-                the phone until this copy has them, and the app remembers which
-                of them it has sent, and which this copy said your logbook
-                already has, so it sends none twice. It also remembers on the
-                phone, for your account, each dive it sent only for the
-                computer&rsquo;s original download, and does not send that dive
-                again for that reason, whatever this copy answers later. Where
-                the phone has no internet, the app leaves iOS a request for this
-                copy&rsquo;s health check, which names no account and carries no
-                dive, and which iOS sends once there is a connection, so that
-                the app learns when it can send them. A file you share to the
-                app is uploaded as it arrives and waits for your review, as on
-                this site.
+                copy which of the dives it would download your logbook already
+                has, and whether each of those keeps the computer&rsquo;s
+                original download, sending the computer&rsquo;s serial number
+                and, for each of those dives, an identifier the app gives it and
+                when the dive started. The dives it would download are those
+                newer than its last download from that computer, or every dive
+                the computer lists where it has no last download or where you
+                choose the dives yourself. The question names dives you may then
+                not download, and this copy answers it without keeping any of
+                it. The app leaves out the dives this copy says your logbook has
+                with their original download. A dive your logbook has without it
+                is downloaded only as a dive your logbook lacks would be, where
+                it is newer than the app&rsquo;s last download from that
+                computer or where you chose it, and is then sent as well, so
+                that the computer&rsquo;s original download is kept on that
+                dive, which this copy fills in where it lacks something the
+                download holds. Where the app asks you which of a
+                computer&rsquo;s dives to download, it counts these dives with
+                the others and lists them under <em>Dives to update</em>; it
+                downloads none until you have chosen, and it remembers on the
+                phone the dives you chose not to download, so that a later
+                download leaves them out too. Every download, whether it started
+                by itself or from the app&rsquo;s screen, is sent to this copy,
+                which imports it into your logbook without a review. The
+                downloaded dives are kept on the phone until this copy has them,
+                and the app remembers which of them it has sent, and which this
+                copy said your logbook already has, so it sends none twice. It
+                also remembers on the phone, for your account, each dive it sent
+                only for the computer&rsquo;s original download, and does not
+                send that dive again for that reason, whatever this copy answers
+                later. Where the phone has no internet, the app leaves iOS a
+                request for this copy&rsquo;s health check, which names no
+                account and carries no dive, and which iOS sends once there is a
+                connection, so that the app learns when it can send them. A file
+                you share to the app is uploaded as it arrives and waits for
+                your review, as on this site.
               </p>
               <p className="text-foreground mb-4">
                 If you allow it notifications, which its Dive Computers screen
