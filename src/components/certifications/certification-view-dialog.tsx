@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { useToast } from "@/components/ui/use-toast";
+import { PersonRow } from "@/components/people/people-list";
 import { CertificationCardImage } from "./certification-card-image";
 import { useEffect, useState } from "react";
 
@@ -116,23 +117,18 @@ function ContactRow({ contactUuid }: { contactUuid: string }) {
   );
 }
 
-// Who signed the card, on the same terms: a person, by uuid, named once the
-// record has arrived and linked to their page.
+// Who signed the card, on the same terms: a person, by uuid, drawn once the
+// record has arrived as a people row draws them. The label names the role, so
+// the row carries none.
 function InstructorRow({ personUuid }: { personUuid: string }) {
   const person = useRecordByUuid(peopleAPI.getPerson, personUuid);
-  const withReturnTo = useWithReturnTo();
   if (!person) return null;
 
   return (
     <div>
       <dt className="text-xs text-muted-foreground">Instructor</dt>
-      <dd className="text-sm">
-        <Link
-          href={withReturnTo(`/people/${person.uuid}`)}
-          className="relative hover:underline touch:tap-target"
-        >
-          {person.name}
-        </Link>
+      <dd>
+        <PersonRow person={person} />
       </dd>
     </div>
   );
