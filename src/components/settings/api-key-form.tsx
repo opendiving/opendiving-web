@@ -27,6 +27,9 @@ const loadPermissions = () => apiKeysAPI.getPermissions();
 const NAME_MAX_LENGTH = PASSKEY_NAME_MAX_LENGTH;
 
 const LIFETIME_LABELS: Record<ApiKeyLifetime, string> = {
+  "1h": "1 hour",
+  "1d": "1 day",
+  "7d": "7 days",
   "30d": "30 days",
   "90d": "90 days",
   "1y": "1 year",
@@ -40,7 +43,7 @@ const apiKeySchema = z.object({
     .min(1, "Give the key a name.")
     .max(NAME_MAX_LENGTH, `At most ${NAME_MAX_LENGTH} characters.`),
   scopes: z.array(z.string()).min(1, "Select at least one permission."),
-  lifetime: z.enum(["30d", "90d", "1y", "never"]),
+  lifetime: z.enum(["1h", "1d", "7d", "30d", "90d", "1y", "never"]),
 });
 type ApiKeyFormData = z.infer<typeof apiKeySchema>;
 

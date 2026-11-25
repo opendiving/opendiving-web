@@ -16,7 +16,7 @@ const keySchema = z
     expires_at: z.string().nullable(),
   })
   .and(permissionMode);
-const lifetimeSchema = z.enum(["30d", "90d", "1y", "never"]);
+const lifetimeSchema = z.enum(["1h", "1d", "7d", "30d", "90d", "1y", "never"]);
 
 /** A key's access mode and selected content permissions. */
 export type ApiKeyScope = z.infer<typeof permissionMode>["scope"];

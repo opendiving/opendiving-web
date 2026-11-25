@@ -120,6 +120,21 @@ describe("ApiKeysCard", () => {
     expect(nightly).toHaveTextContent("No expiry");
   });
 
+  // A key can last an hour, so its expiry gives the time as well as the day.
+  it("shows the time a key expires", async () => {
+    render(<ApiKeysCard />);
+
+    expect(await screen.findByText("laptop")).toBeInTheDocument();
+    const time = new Date(LAPTOP.expires_at).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    expect(row("laptop")).toHaveTextContent(
+      `Expires ${localDay(LAPTOP.expires_at)}, ${time}`,
+    );
+  });
+
   it("points at the API reference", async () => {
     render(<ApiKeysCard />);
     await screen.findByText("laptop");
@@ -187,7 +202,15 @@ describe("ApiKeysCard", () => {
       within(screen.getByLabelText("Expires after"))
         .getAllByRole("option")
         .map((option) => option.textContent),
-    ).toEqual(["30 days", "90 days", "1 year", "Never"]);
+    ).toEqual([
+      "1 hour",
+      "1 day",
+      "7 days",
+      "30 days",
+      "90 days",
+      "1 year",
+      "Never",
+    ]);
   });
 
   it("sends nothing for an empty name", async () => {

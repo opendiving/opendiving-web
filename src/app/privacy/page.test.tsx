@@ -2129,6 +2129,9 @@ describe.each([
       /an approval the app never came back for is deleted within the hour/,
     );
     expect(page).toMatch(/reads it again once its copy is an hour old/);
+    expect(page).toMatch(
+      /until the expiry you chose when you made it \u2014 an hour, a day, 7 days, 30 days, 90 days, a year, or never \u2014/,
+    );
   });
 });
 

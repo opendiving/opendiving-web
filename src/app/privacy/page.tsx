@@ -1662,11 +1662,11 @@ export default async function PrivacyPage() {
               </p>
               <p className="text-foreground mb-4">
                 <strong>For how long:</strong> until the expiry you chose when
-                you made it &mdash; 30 days, 90 days, a year, or never &mdash;
-                or until you revoke it on the API keys card, which stops it on
-                its very next request. Signing out, or signing other devices
-                out, leaves every key working. Asking to delete your account
-                stops all of them.
+                you made it &mdash; an hour, a day, 7 days, 30 days, 90 days, a
+                year, or never &mdash; or until you revoke it on the API keys
+                card, which stops it on its very next request. Signing out, or
+                signing other devices out, leaves every key working. Asking to
+                delete your account stops all of them.
               </p>
               <p className="text-foreground mb-4">
                 <strong>What this copy keeps:</strong> a fingerprint of the key

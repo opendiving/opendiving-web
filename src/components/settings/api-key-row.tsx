@@ -56,7 +56,7 @@ export function ApiKeyRow({
               : "Never used"}{" "}
             ·{" "}
             {apiKey.expires_at
-              ? `${expired ? "Expired" : "Expires"} ${formatDateTime(apiKey.expires_at, DAY)}`
+              ? `${expired ? "Expired" : "Expires"} ${formatDateTime(apiKey.expires_at)}`
               : "No expiry"}
           </p>
         </div>
