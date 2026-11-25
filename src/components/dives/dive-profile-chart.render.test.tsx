@@ -1136,7 +1136,7 @@ describe("DiveProfileChart markers past the end of the recorded profile", () => 
 
     expect(name).toContain("Bookmark at 25min");
     expect(name).not.toContain("53min");
-    expect(name).not.toContain("1h 40min");
+    expect(name).not.toContain("100min");
   });
 });
 

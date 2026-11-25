@@ -1162,7 +1162,7 @@ own sample with `nearestSampleIndex`. Readouts are real readings, never interpol
 `tooltipVerticalAnchor` pins the card to the plot's top or bottom edge, whichever keeps it off the
 readings: card height depends on channel count, so offsetting from a point overflows the chart.
 
-Keyboard scrubbing is out of scope. The `aria-label` uses `formatDurationHoursMinutes`, not `MM:SS`.
+Keyboard scrubbing is out of scope. The `aria-label` uses `formatDurationMinutes`, not `MM:SS`.
 `--pressure` is a third theme-stable token in `globals.css`, grey.
 
 ## The profile's line breaks are derived from the series' own cadence

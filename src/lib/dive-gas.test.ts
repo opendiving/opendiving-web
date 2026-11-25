@@ -867,8 +867,8 @@ describe("gasAttributionNote", () => {
 
   it("attributes the denominator, which outruns the dive's own dive time", () => {
     // Dive #493's real numbers: 2075 s attributed against a 4300 s profile span,
-    // on a dive whose logged dive time is 4001 s and prints as "1h 7min" at the
-    // top of the same page. Unattributed, "of the 1h 12min recorded" reads as
+    // on a dive whose logged dive time is 4001 s and prints as "67min" at the
+    // top of the same page. Unattributed, "of the 72min recorded" reads as
     // contradicting that header rather than as the computer's own span.
     const note = gasAttributionNote(
       multiTankUse([tank()], {
@@ -877,7 +877,7 @@ describe("gasAttributionNote", () => {
       }),
     );
 
-    expect(note).toMatch(/35min of the 1h 12min the dive computer recorded/);
+    expect(note).toMatch(/35min of the 72min the dive computer recorded/);
   });
 
   it("says nothing when the API sent no coverage figures", () => {

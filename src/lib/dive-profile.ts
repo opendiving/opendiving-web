@@ -6,10 +6,7 @@ import type {
   DiveProfileSeries,
 } from "@/lib/api/dives";
 import { niceDomain, type Domain } from "@/lib/chart-scale";
-import {
-  formatDurationForForm,
-  formatDurationHoursMinutes,
-} from "@/lib/date-time";
+import { formatDurationForForm, formatDurationMinutes } from "@/lib/date-time";
 import {
   toDisplayUnits,
   unitLabel,
@@ -42,11 +39,11 @@ export function formatElapsed(milliseconds: number): string {
 }
 
 /**
- * An axis span read aloud - "1h 25min" rather than "85:00", which is not a
+ * An axis span read aloud - "85min" rather than "85:00", which is not a
  * length of time to a screen reader.
  */
 export function formatElapsedSpoken(milliseconds: number): string {
-  return formatDurationHoursMinutes(milliseconds / MILLISECONDS_PER_SECOND);
+  return formatDurationMinutes(milliseconds / MILLISECONDS_PER_SECOND);
 }
 
 export type ProfileChannelKey =

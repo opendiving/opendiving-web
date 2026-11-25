@@ -9,7 +9,7 @@ import type { UnitSystem } from "@/lib/units";
 
 // The dive page's heading: its title and line, the three numbers that describe
 // the shape of the dive, and what its map is handed - the map itself is covered
-// where it lives. The dive time's arithmetic is `formatDurationHoursMinutes`'s,
+// where it lives. The dive time's arithmetic is `formatDurationMinutes`'s,
 // tested in `lib/date-time.test.ts`; what a render adds is which figures stand.
 
 const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));

@@ -1107,9 +1107,9 @@ describe("formatElapsed", () => {
 });
 
 describe("formatElapsedSpoken", () => {
-  it("reads a span aloud in hours and minutes", () => {
+  it("reads a span aloud in minutes, never hours", () => {
     expect(formatElapsedSpoken(1_500_000)).toBe("25min");
-    expect(formatElapsedSpoken(5_100_000)).toBe("1h 25min");
+    expect(formatElapsedSpoken(5_100_000)).toBe("85min");
   });
 });
 

@@ -16,10 +16,7 @@ import { gearItemLabel } from "@/lib/api/gear";
 import { labelOrFallback } from "@/lib/api/labels";
 import type { LogbookImportChange } from "@/lib/api/logbook-import";
 import type { SpeciesSummary } from "@/lib/api/species";
-import {
-  formatDiveDateTime,
-  formatDurationHoursMinutes,
-} from "@/lib/date-time";
+import { formatDiveDateTime, formatDurationMinutes } from "@/lib/date-time";
 import {
   GAS_ROLE_LABELS,
   TANK_USAGE_LABELS,
@@ -81,9 +78,9 @@ const worded =
 const when: Format = (value) =>
   typeof value === "string" ? formatDiveDateTime(value) : asSent(value);
 
-const seconds: Format = measured((value) => formatDurationHoursMinutes(value));
+const seconds: Format = measured((value) => formatDurationMinutes(value));
 const milliseconds: Format = measured((value) =>
-  formatDurationHoursMinutes(Math.round(value / 1000)),
+  formatDurationMinutes(Math.round(value / 1000)),
 );
 const depth: Format = measured((value, units) => formatDepth(value, units));
 const temperature: Format = measured((value, units) =>
@@ -236,7 +233,7 @@ export function recordingProfileSummary(
   units: UnitSystem,
 ): string {
   return [
-    formatDurationHoursMinutes(Math.round(profile.duration / 1000)),
+    formatDurationMinutes(Math.round(profile.duration / 1000)),
     profile.max_depth != null ? formatDepth(profile.max_depth, units) : null,
     countNoun(profile.depth_sample_count, "sample"),
   ]

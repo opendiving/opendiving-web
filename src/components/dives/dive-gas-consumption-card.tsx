@@ -7,7 +7,7 @@ import {
   tankGasUseRows,
 } from "@/lib/dive-gas";
 import { GAS_BADGE_CLASS, GAS_ROLE_LABELS } from "@/lib/dive-mixtures";
-import { formatDurationHoursMinutes } from "@/lib/date-time";
+import { formatDurationMinutes } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
 import {
   CARD_SECTION_CONTENT,
@@ -305,7 +305,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
 /**
  * A stretch of time on one cylinder, for the table's Time column.
  *
- * `formatDurationHoursMinutes` rounds to whole minutes, which is right for a dive and
+ * `formatDurationMinutes` rounds to whole minutes, which is right for a dive and
  * wrong at the bottom of this column: a cylinder breathed for twenty seconds — two gas
  * switches close together, which nothing stops a diver making — would print `0min` beside
  * real litres and an RMV derived from that stretch, and a row reading "0 minutes, 40
@@ -316,7 +316,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
  * shape worth spending a special case on.
  */
 function formatTimeOnGas(seconds: number): string {
-  return seconds < 30 ? "<1min" : formatDurationHoursMinutes(seconds);
+  return seconds < 30 ? "<1min" : formatDurationMinutes(seconds);
 }
 
 /**

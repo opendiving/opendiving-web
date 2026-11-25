@@ -20,7 +20,7 @@ import { FactsLine } from "@/components/ui/icon-fact";
 import { diveMapLocations } from "@/components/dives/dive-map-locations";
 import { DiveIcon } from "@/components/logo";
 import { DiveProfileSilhouette } from "@/components/dives/dive-profile-silhouette";
-import { formatDurationHoursMinutes } from "@/lib/date-time";
+import { formatDurationMinutes } from "@/lib/date-time";
 import { useUnits } from "@/hooks/useUnits";
 import { useWithReturnTo } from "@/hooks/useReturnTo";
 import { formatDepth, formatTemperature } from "@/lib/units";
@@ -82,7 +82,7 @@ export function DiveCard({
   const figures: BackdropCardFigure[] = [
     {
       label: "Dive time",
-      value: formatDurationHoursMinutes(dive.submerged_time),
+      value: formatDurationMinutes(dive.submerged_time),
     },
     { label: "Max depth", value: depth(dive.max_depth) },
   ];

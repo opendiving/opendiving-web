@@ -11,6 +11,7 @@ import {
   formatDiveTimeOnly,
   formatDurationForForm,
   formatDurationHoursMinutes,
+  formatDurationMinutes,
   formatTripDateRange,
   formatUtcOffset,
   getBrowserUtcOffsetMinutes,
@@ -439,6 +440,25 @@ describe("formatDurationHoursMinutes", () => {
 
   it("rounds to the nearest minute", () => {
     expect(formatDurationHoursMinutes(59.6 * 60)).toBe("1h");
+  });
+});
+
+describe("formatDurationMinutes", () => {
+  it("formats sub-hour durations as minutes", () => {
+    expect(formatDurationMinutes(45 * 60)).toBe("45min");
+  });
+
+  it("never shows hours", () => {
+    expect(formatDurationMinutes(90 * 60)).toBe("90min");
+    expect(formatDurationMinutes(120 * 60)).toBe("120min");
+  });
+
+  it("rounds to the nearest minute", () => {
+    expect(formatDurationMinutes(3576)).toBe("60min");
+  });
+
+  it("formats zero as zero minutes", () => {
+    expect(formatDurationMinutes(0)).toBe("0min");
   });
 });
 

@@ -11,7 +11,7 @@ import {
   periodRange,
   stepPeriod,
 } from "@/lib/chart-period";
-import { formatDurationHoursMinutes } from "@/lib/date-time";
+import { formatDurationMinutes } from "@/lib/date-time";
 import { gasName, hasStagedCylinder, isParallelSet } from "@/lib/dive-mixtures";
 import { primaryRecording } from "@/lib/dive-recordings";
 
@@ -883,7 +883,7 @@ const UNATTRIBUTED_NOTE_SECONDS = 60;
  * `submerged_time` - and it routinely runs longer than the dive time the same page
  * prints at the top: a computer keeps sampling
  * after the diver surfaces, by five minutes on dive #493. An unattributed "of the
- * 1h 12min recorded" under a header reading "1h 7min" reads as one of the two
+ * 72min recorded" under a header reading "67min" reads as one of the two
  * being wrong, when both are right about different things.
  */
 export function gasAttributionNote(gasUse: DiveGasUse): string | null {
@@ -899,5 +899,5 @@ export function gasAttributionNote(gasUse: DiveGasUse): string | null {
 
   if (total - attributed < UNATTRIBUTED_NOTE_SECONDS) return null;
 
-  return `These figures cover ${formatDurationHoursMinutes(attributed)} of the ${formatDurationHoursMinutes(total)} the dive computer recorded - the rest couldn't be assigned to a cylinder.`;
+  return `These figures cover ${formatDurationMinutes(attributed)} of the ${formatDurationMinutes(total)} the dive computer recorded - the rest couldn't be assigned to a cylinder.`;
 }

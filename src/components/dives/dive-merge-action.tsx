@@ -8,10 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Dive, DiveNeighbor, divesAPI } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { canMergeDive } from "@/lib/dive-recordings";
-import {
-  formatDiveDateTime,
-  formatDurationHoursMinutes,
-} from "@/lib/date-time";
+import { formatDiveDateTime, formatDurationMinutes } from "@/lib/date-time";
 import { formatDepth, type UnitSystem } from "@/lib/units";
 import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
@@ -44,7 +41,7 @@ function neighborName(neighbor: DiveNeighbor): string {
 // What tells the two candidates apart at a glance: a split dive's second half
 // is the short, shallow one. Whole units, as the dive card rounds them.
 function neighborFigures(neighbor: DiveNeighbor, units: UnitSystem): string {
-  const figures = [formatDurationHoursMinutes(neighbor.submerged_time)];
+  const figures = [formatDurationMinutes(neighbor.submerged_time)];
   // `!= null`, since 0 m is a reading.
   if (neighbor.max_depth != null) {
     figures.push(formatDepth(neighbor.max_depth, units, { decimals: 0 }));

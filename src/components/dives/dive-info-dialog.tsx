@@ -11,10 +11,7 @@ import {
 } from "@/lib/api/dives";
 import { labelOrFallback } from "@/lib/api/labels";
 import { useUnits } from "@/hooks/useUnits";
-import {
-  formatDiveDateTime,
-  formatDurationHoursMinutes,
-} from "@/lib/date-time";
+import { formatDiveDateTime, formatDurationMinutes } from "@/lib/date-time";
 import {
   formatAltitude,
   formatDepth,
@@ -65,7 +62,7 @@ export function diveInfoSections(
         { label: "Dive number", value: dive.dive_number },
         {
           label: "Dive time",
-          value: formatDurationHoursMinutes(dive.submerged_time),
+          value: formatDurationMinutes(dive.submerged_time),
         },
         {
           label: "Maximum depth",

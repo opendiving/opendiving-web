@@ -14,7 +14,7 @@ import {
 } from "@/components/dives/dive-map-locations";
 import { DiveIcon } from "@/components/logo";
 import { useUnits } from "@/hooks/useUnits";
-import { formatDurationHoursMinutes } from "@/lib/date-time";
+import { formatDurationMinutes } from "@/lib/date-time";
 import { formatDepth, formatTemperature, formatVisibility } from "@/lib/units";
 import type { ReturnTarget } from "@/lib/return-to";
 
@@ -43,7 +43,7 @@ export function DiveHero({
   const figures: MapHeroFigure[] = [
     {
       label: "Dive time",
-      value: formatDurationHoursMinutes(dive.submerged_time),
+      value: formatDurationMinutes(dive.submerged_time),
     },
   ];
   if (dive.max_depth != null) {

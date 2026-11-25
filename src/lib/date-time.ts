@@ -481,6 +481,7 @@ export function parseFormDuration(value: string): number {
 }
 
 // Formats a duration given in seconds as "Xh Ym" (or just "Ymin" under an hour).
+// For totals summed over many dives; one dive's time is `formatDurationMinutes`.
 export function formatDurationHoursMinutes(durationSeconds: number): string {
   const totalMinutes = Math.round(durationSeconds / 60);
 
@@ -491,6 +492,12 @@ export function formatDurationHoursMinutes(durationSeconds: number): string {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`;
+}
+
+// One dive's or one recording's time, in whole minutes and never hours - "85min",
+// the way a diver reads a dive time off a computer or a log.
+export function formatDurationMinutes(durationSeconds: number): string {
+  return `${Math.round(durationSeconds / 60)}min`;
 }
 
 const RELATIVE = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });

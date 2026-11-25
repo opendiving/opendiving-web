@@ -2310,7 +2310,7 @@ function describeProfile({
   temperatureDecimals: number;
 }): string {
   // `formatElapsedSpoken` here rather than the axis's `MM:SS`: read aloud,
-  // "84:36" is not a length of time, whereas "1h 25min" is. The axis keeps
+  // "84:36" is not a length of time, whereas "85min" is. The axis keeps
   // `MM:SS`, which is what a dive profile's elapsed scale conventionally shows.
   const parts = [`Dive profile over ${formatElapsedSpoken(duration)}`];
 
