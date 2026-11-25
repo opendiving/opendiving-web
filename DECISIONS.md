@@ -2353,7 +2353,7 @@ identically. The denominator is the profile's span, not `Dive.submerged_time`: i
 attribution ran over, and `Dive.submerged_time` may be hand-edited, making the fraction
 unfalsifiable. It returns null when `attributed >= total` rather than printing "covers 45min of the
 40min recorded" — unreachable from a correct API, but the shape a degenerate profile takes. The
-sentence names the dive computer ("the 1h 12min the dive computer recorded") because
+sentence names the dive computer ("the 72min the dive computer recorded") because
 `DiveGasUse.duration` routinely outruns the header's `Dive time`; two right numbers for two spans
 must not read as one being wrong.
 
