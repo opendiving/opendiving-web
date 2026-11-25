@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { CourseCertificationsCard } from "@/components/courses/course-certifications-card";
 import { CourseDialog } from "@/components/courses/course-dialog";
-import { PeopleList } from "@/components/people/people-list";
+import { PeopleList, PersonRow } from "@/components/people/people-list";
 import { Button, ButtonLink } from "@/components/ui/button";
 import {
   DeleteMenuItem,
@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { BadgeCheck, Edit, Plus, GraduationCap } from "lucide-react";
-import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { InfoRow } from "@/components/ui/info-row";
 
@@ -210,12 +209,7 @@ export function CourseDetailPageContent() {
               {contact && <InfoRow label="Dive center">{contact.name}</InfoRow>}
               {instructor && (
                 <InfoRow label="Instructor">
-                  <Link
-                    href={withReturnTo(`/people/${instructor.uuid}`)}
-                    className="relative hover:underline touch:tap-target"
-                  >
-                    {instructor.name}
-                  </Link>
+                  <PersonRow person={instructor} />
                 </InfoRow>
               )}
               {course.instructor_number && (
