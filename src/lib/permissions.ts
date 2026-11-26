@@ -25,12 +25,8 @@ const ACTION_LABELS = new Map([
   ["delete", { label: "Delete", order: 2 }],
 ]);
 
-// Every read except check-in's, which includes the diver's insurance and emergency
-// contact and so is never granted without being picked.
 export function readPermissions(scopes: string[]): string[] {
-  return scopes.filter(
-    (scope) => scope.endsWith(":read") && !scope.startsWith("checkin:"),
-  );
+  return scopes.filter((scope) => scope.endsWith(":read"));
 }
 
 interface Permission {

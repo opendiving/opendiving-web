@@ -385,6 +385,25 @@ describe("detailed API-key permissions", () => {
     ).toHaveTextContent("Create & edit");
   });
 
+  it("includes check-in's read in Read only", async () => {
+    mocks.getPermissions.mockResolvedValue([
+      "dives:read",
+      "dives:write",
+      "checkin:read",
+    ]);
+    const user = userEvent.setup();
+    render(<ApiKeysCard />);
+    await screen.findByText("laptop");
+    await user.click(screen.getByRole("button", { name: /create api key/i }));
+    await user.click(await screen.findByRole("button", { name: "Read only" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Read check-in" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Create & edit dives" }),
+    ).not.toBeChecked();
+  });
+
   it("labels the species permission and says what it reaches beyond your content", async () => {
     mocks.getPermissions.mockResolvedValue(["dives:read", "species:write"]);
     const user = userEvent.setup();

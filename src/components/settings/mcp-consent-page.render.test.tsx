@@ -222,9 +222,7 @@ it("groups permissions by content and keeps every requested scope available", as
   const dives = await screen.findByRole("group", { name: "Dives" });
   expect(within(dives).getAllByRole("checkbox")).toHaveLength(3);
   expect(screen.getAllByRole("checkbox")).toHaveLength(scopes.length);
-  expect(
-    screen.getByRole("checkbox", { name: "Read check-in" }),
-  ).not.toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Read check-in" })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: "Read files" })).toBeChecked();
   expect(
     screen.getByRole("checkbox", { name: "custom action custom resource" }),
@@ -254,7 +252,7 @@ it("marks a self-registered name as unverified and shows where approval returns"
   expect(screen.getByText("client.example")).toBeInTheDocument();
 });
 
-it("leaves check-in out of Read only", async () => {
+it("includes check-in's read in Read only", async () => {
   api.getConsent.mockResolvedValue({
     name: "Dive assistant",
     client_id: "client-123",
@@ -265,8 +263,9 @@ it("leaves check-in out of Read only", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Select all" }));
   fireEvent.click(screen.getByRole("button", { name: "Read only" }));
   expect(screen.getByRole("checkbox", { name: "Read dives" })).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "Read check-in" })).toBeChecked();
   expect(
-    screen.getByRole("checkbox", { name: "Read check-in" }),
+    screen.getByRole("checkbox", { name: "Create & edit dives" }),
   ).not.toBeChecked();
 });
 
