@@ -1,85 +1,114 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { UnitsCard } from "./units-card";
-import type { UnitSystem } from "@/lib/units";
+import type { UnitSystem, UnitPreferenceOverrides } from "@/lib/units";
 
-// The card is one `<select>`, so what a render reaches is the wiring: that picking a
-// system PATCHes only that field and then re-reads the user, and that a failed save
-// says so instead of leaving the box showing a choice the server never took.
-
-// The whole value is hoisted and returned by identity, `user` included. Nothing this
-// card renders depends on that today - it reads one string off `user` and has no
-// effect keyed on it - but the real `AuthContext` holds `user` in state and so keeps
-// one identity across renders, and a mock that rebuilds it per render is what put the
-// new-dive page's test in an unbounded loop with its own `form.reset`. Varying a
-// field means writing to `auth.user`, which leaves the identity alone. See "The
-// new-dive render test's mocks are identity-stable, so the prefill effect runs
-// once" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
-  user: { uuid: "user-1", units: "metric" as UnitSystem },
+  user: {
+    uuid: "user-1",
+    units: "metric" as UnitSystem,
+    unit_preferences: {} as UnitPreferenceOverrides,
+  },
   refreshUser: vi.fn(),
 }));
-
-vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => auth,
-}));
-
-vi.mock("@/lib/api/auth", () => ({
-  authAPI: { updateProfile: vi.fn() },
-}));
-
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => auth }));
+vi.mock("@/lib/api/auth", () => ({ authAPI: { updateProfile: vi.fn() } }));
 const { authAPI } = await import("@/lib/api/auth");
 const updateProfile = vi.mocked(authAPI.updateProfile);
 
 beforeEach(() => {
   auth.user.units = "metric";
+  auth.user.unit_preferences = {};
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
   updateProfile.mockReset().mockResolvedValue({ message: "ok" });
 });
 
-const picker = () => screen.getByLabelText("Measurement system");
-
-describe("UnitsCard", () => {
-  it("shows the account's current system", () => {
-    auth.user.units = "imperial";
-    render(<UnitsCard />);
-
-    expect((picker() as HTMLSelectElement).value).toBe("imperial");
+const familyButton = (family: string, label: string) =>
+  within(screen.getByRole("group", { name: family })).getByRole("button", {
+    name: label,
   });
 
-  it("saves on change and re-reads the user", async () => {
+describe("UnitsCard", () => {
+  it("shows the account preset and all five families", () => {
+    auth.user.units = "imperial";
     render(<UnitsCard />);
-
-    await userEvent.selectOptions(picker(), "imperial");
-
-    // Only the field that changed - `PATCH /user` is `extra="forbid"`, and a body
-    // carrying anything else would be a 422 rather than a save.
-    await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith({ units: "imperial" }),
+    expect(screen.getByRole("button", { name: /Imperial/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
-    // The re-read is what makes every mounted component re-render converted,
-    // which is why there is no reload step and no Save button.
+    for (const [family, label] of [
+      ["Depth and distance", "Feet"],
+      ["Pressure", "PSI"],
+      ["Gas volume", "Cu ft"],
+      ["Weight", "Pounds"],
+      ["Temperature", "°F"],
+    ]) {
+      expect(familyButton(family, label)).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    }
+  });
+
+  it("saves a preset and clears custom overrides", async () => {
+    auth.user.unit_preferences = { pressure: "imperial" };
+    render(<UnitsCard />);
+    expect(screen.getByText("Custom")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Imperial/ }));
+    await waitFor(() =>
+      expect(updateProfile).toHaveBeenCalledWith({
+        units: "imperial",
+        unit_preferences: {},
+      }),
+    );
     expect(auth.refreshUser).toHaveBeenCalled();
   });
 
-  it("says so when the save fails", async () => {
+  it("changes pressure while preserving other families", async () => {
+    auth.user.unit_preferences = { depth: "imperial", temperature: "metric" };
+    render(<UnitsCard />);
+    await userEvent.click(familyButton("Pressure", "PSI"));
+    expect(updateProfile).toHaveBeenCalledWith({
+      unit_preferences: {
+        depth: "imperial",
+        pressure: "imperial",
+        volume: "metric",
+        weight: "metric",
+        temperature: "metric",
+      },
+    });
+    await waitFor(() => expect(auth.refreshUser).toHaveBeenCalled());
+  });
+
+  it("shows a failed save and keeps the previous selection", async () => {
     updateProfile.mockRejectedValue(new Error("nope"));
     render(<UnitsCard />);
-
-    await userEvent.selectOptions(picker(), "imperial");
-
+    await userEvent.click(familyButton("Pressure", "PSI"));
     expect(
       await screen.findByText("Failed to save. Please try again."),
     ).toBeInTheDocument();
+    expect(familyButton("Pressure", "Bar")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(auth.refreshUser).not.toHaveBeenCalled();
   });
 
-  it("names both systems by the units they mean, not just by their names", () => {
+  it("disables all controls until the save and account refresh finish", async () => {
+    let finish: (() => void) | undefined;
+    updateProfile.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = () => resolve({ message: "ok" });
+        }),
+    );
     render(<UnitsCard />);
-
-    // A diver who thinks in psi should not have to flip the toggle to find out
-    // whether this app agrees with them about what "imperial" covers.
-    expect(screen.getByRole("option", { name: /m · °C · bar/ })).toBeTruthy();
-    expect(screen.getByRole("option", { name: /ft · °F · psi/ })).toBeTruthy();
+    await userEvent.click(familyButton("Pressure", "PSI"));
+    expect(familyButton("Temperature", "°F")).toBeDisabled();
+    finish?.();
+    await waitFor(() =>
+      expect(familyButton("Temperature", "°F")).toBeEnabled(),
+    );
   });
 });

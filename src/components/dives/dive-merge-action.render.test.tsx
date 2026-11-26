@@ -14,8 +14,12 @@ vi.mock("@/lib/api/dives", async (importOriginal) => ({
   },
 }));
 
+const auth = vi.hoisted(() => ({
+  unit_preferences: {} as { depth?: "metric" | "imperial" },
+}));
+
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric", ...auth } }),
 }));
 
 vi.mock("@/components/ui/use-toast", () => ({
@@ -74,6 +78,7 @@ function trigger(openMerge: (() => void) | null) {
 }
 
 beforeEach(() => {
+  auth.unit_preferences = {};
   vi.clearAllMocks();
   vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue({
     previous,
@@ -131,24 +136,31 @@ describe("DiveMergeAction", () => {
     ).toBeVisible();
   });
 
-  it("shows each candidate's start time, duration and max depth", async () => {
-    // A split dive's halves share a day, so the day alone does not tell them
-    // apart; the short, shallow one is the fragment.
-    render(
-      <DiveMergeAction dive={dive()} onMerged={vi.fn()}>
-        {trigger}
-      </DiveMergeAction>,
-    );
+  it.each([
+    ["metric", "6 m"],
+    ["imperial", "21 ft"],
+  ] as const)(
+    "shows each candidate's figures with a %s depth override",
+    async (depth, expectedDepth) => {
+      auth.unit_preferences = { depth };
+      // A split dive's halves share a day, so the day alone does not tell them
+      // apart; the short, shallow one is the fragment.
+      render(
+        <DiveMergeAction dive={dive()} onMerged={vi.fn()}>
+          {trigger}
+        </DiveMergeAction>,
+      );
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /merge/i }),
-    );
-    expect(
-      screen.getByRole("button", {
-        name: "#1, Sep 8, 2026, 15:18, 3min · 6 m",
-      }),
-    ).toBeVisible();
-  });
+      await userEvent.click(
+        await screen.findByRole("button", { name: /merge/i }),
+      );
+      expect(
+        screen.getByRole("button", {
+          name: `#1, Sep 8, 2026, 15:18, 3min · ${expectedDepth}`,
+        }),
+      ).toBeVisible();
+    },
+  );
 
   it("leaves out a depth the neighbour has none of", async () => {
     vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue({

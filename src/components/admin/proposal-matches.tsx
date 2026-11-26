@@ -38,7 +38,7 @@ export function ProposalMatches({
   proposal,
   onAcceptInto,
 }: ProposalMatchesProps) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const canFold = proposal.kind === "new_site";
   const credits = commonsCredits(proposal.matches);
 

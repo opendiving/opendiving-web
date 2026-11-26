@@ -9,7 +9,7 @@ import { Dive, DiveNeighbor, divesAPI } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { canMergeDive } from "@/lib/dive-recordings";
 import { formatDiveDateTime, formatDurationMinutes } from "@/lib/date-time";
-import { formatDepth, type UnitSystem } from "@/lib/units";
+import { formatDepth, type UnitSelection } from "@/lib/units";
 import { useUnits } from "@/hooks/useUnits";
 import { cn } from "@/lib/utils";
 import { withReturnTo } from "@/lib/return-to";
@@ -40,7 +40,7 @@ function neighborName(neighbor: DiveNeighbor): string {
 
 // What tells the two candidates apart at a glance: a split dive's second half
 // is the short, shallow one. Whole units, as the dive card rounds them.
-function neighborFigures(neighbor: DiveNeighbor, units: UnitSystem): string {
+function neighborFigures(neighbor: DiveNeighbor, units: UnitSelection): string {
   const figures = [formatDurationMinutes(neighbor.submerged_time)];
   // `!= null`, since 0 m is a reading.
   if (neighbor.max_depth != null) {
@@ -76,7 +76,7 @@ export function DiveMergeAction({
   // The dive a merge keeps leads back where the one on screen did.
   const from = useSearchParams()?.get("from") ?? null;
   const { toast } = useToast();
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const [isOpen, setIsOpen] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
   const [chosen, setChosen] = useState<DiveNeighbor | null>(null);

@@ -9,7 +9,7 @@ import { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
 import { formatContactAddress } from "@/lib/contact";
 import { LinkList } from "@/components/ui/link-list";
-import { formatDistance, haversineMeters } from "@/lib/geo-distance";
+import { haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/coordinates";
 import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
@@ -67,7 +67,7 @@ export function DiveDetailSidebar({
   onEdit,
   onEditRecordings,
 }: DiveDetailSidebarProps) {
-  const units = useUnits();
+  const { formatDistance } = useUnits();
   const withReturnTo = useWithReturnTo();
   const divePeople = dive.people ?? [];
   const hasPeople = divePeople.some(
@@ -89,7 +89,7 @@ export function DiveDetailSidebar({
   // The hero's map is capped at zoom 9, where a surface swim is well under a pixel, so
   // the drift between the two fixes is a line of text or it is nothing.
   const drift =
-    entry && exit ? formatDistance(haversineMeters(entry, exit), units) : null;
+    entry && exit ? formatDistance(haversineMeters(entry, exit)) : null;
 
   return (
     <div className="space-y-6 max-sm:space-y-2.5">

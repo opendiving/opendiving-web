@@ -41,7 +41,7 @@ export function TripCard({
 }: TripCardProps) {
   const locations = tripPartLocations(trip.parts);
   const facts = tripFacts(trip);
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const withReturnTo = useWithReturnTo();
   // The first three of what the trip adds up to, which `tripFigures` orders so
   // that a trip with species shows those over its depth.

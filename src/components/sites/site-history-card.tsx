@@ -15,7 +15,7 @@ import {
 } from "@/lib/api/dive-sites";
 import { formatDateTime } from "@/lib/date-time";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
-import type { UnitSystem } from "@/lib/units";
+import type { UnitSelection } from "@/lib/units";
 
 // A diver reads the entry; a reviewer also reads who it came from and how it was
 // reviewed, which the admin read alone carries.
@@ -57,7 +57,7 @@ function change(before: ReactNode, after: ReactNode) {
 // line, saying how far it moved.
 function detailLines(
   details: DiveSiteHistoryDetail[],
-  units: UnitSystem,
+  units: UnitSelection,
 ): DetailLine[] {
   const lines: DetailLine[] = [];
   const pin = details.filter((detail) => PIN.includes(detail.field));
@@ -131,7 +131,7 @@ function reviewerLines(entry: HistoryEntry): string[] | null {
 }
 
 function HistoryItem({ entry }: { entry: HistoryEntry }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const lines = detailLines(entry.details, units);
   const review = reviewerLines(entry);
   return (

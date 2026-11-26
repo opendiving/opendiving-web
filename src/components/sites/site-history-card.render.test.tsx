@@ -4,10 +4,13 @@ import { SiteHistoryCard } from "./site-history-card";
 import type { AdminDiveSiteHistoryEntry } from "@/lib/api/admin";
 import type { DiveSiteHistoryEntry } from "@/lib/api/dive-sites";
 
-const auth = vi.hoisted(() => ({ units: "metric" as "metric" | "imperial" }));
+const auth = vi.hoisted(() => ({
+  units: "metric" as "metric" | "imperial",
+  unit_preferences: {} as { depth?: "metric" | "imperial" },
+}));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+  useAuth: () => ({ user: { uuid: "user-1", ...auth } }),
 }));
 vi.mock("@/lib/api/dive-sites", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/dive-sites")>()),
@@ -66,6 +69,7 @@ const entries = async () =>
 
 beforeEach(() => {
   auth.units = "metric";
+  auth.unit_preferences = {};
   getHistory.mockReset();
   getAdminHistory.mockReset();
 });
@@ -86,40 +90,44 @@ describe("SiteHistoryCard", () => {
     expect(getAdminHistory).not.toHaveBeenCalled();
   });
 
-  it("shows each member's old and new value as the page formats it, in the diver's units", async () => {
-    auth.units = "imperial";
-    answer([
-      entry({
-        details: [
-          { field: "name", old: "Kapal Polis", new: "Kapal Polisi" },
-          { field: "other_names", old: [], new: ["KP", "Police Wreck"] },
-          { field: "location_name", old: null, new: "Tulamben" },
-          { field: "depth_from", old: 5, new: 6 },
-          { field: "depth_to", old: 30, new: null },
-          { field: "water_type", old: "salt", new: "fresh" },
-          { field: "altitude", old: null, new: 1000 },
-          { field: "entry_types", old: ["shore"], new: ["shore", "boat"] },
-          {
-            field: "external_ids",
-            old: [],
-            new: [{ registry: "wikidata", identifier: "Q1" }],
-          },
-        ],
-      }),
-    ]);
-    render(<SiteHistoryCard siteUuid="site-1" asReviewer={false} />);
+  it.each(["preset", "depth override"])(
+    "shows each member's old and new value in the diver's units (%s)",
+    async (source) => {
+      if (source === "preset") auth.units = "imperial";
+      else auth.unit_preferences = { depth: "imperial" };
+      answer([
+        entry({
+          details: [
+            { field: "name", old: "Kapal Polis", new: "Kapal Polisi" },
+            { field: "other_names", old: [], new: ["KP", "Police Wreck"] },
+            { field: "location_name", old: null, new: "Tulamben" },
+            { field: "depth_from", old: 5, new: 6 },
+            { field: "depth_to", old: 30, new: null },
+            { field: "water_type", old: "salt", new: "fresh" },
+            { field: "altitude", old: null, new: 1000 },
+            { field: "entry_types", old: ["shore"], new: ["shore", "boat"] },
+            {
+              field: "external_ids",
+              old: [],
+              new: [{ registry: "wikidata", identifier: "Q1" }],
+            },
+          ],
+        }),
+      ]);
+      render(<SiteHistoryCard siteUuid="site-1" asReviewer={false} />);
 
-    const text = (await card()).textContent;
-    expect(text).toContain("NameKapal Polis → Kapal Polisi");
-    expect(text).toContain("Other namesNot recorded → KP, Police Wreck");
-    expect(text).toContain("LocationNot recorded → Tulamben");
-    expect(text).toMatch(/Depth from16 ft → 20 ft/);
-    expect(text).toMatch(/Depth to98 ft → Not recorded/);
-    expect(text).toContain("Water typeSalt water → Fresh water");
-    expect(text).toMatch(/AltitudeNot recorded → 3,?281 ft/);
-    expect(text).toMatch(/Entry types.*Shore → Shore, Boat/);
-    expect(text).toContain("RegistriesNot recorded → Wikidata Q1");
-  });
+      const text = (await card()).textContent;
+      expect(text).toContain("NameKapal Polis → Kapal Polisi");
+      expect(text).toContain("Other namesNot recorded → KP, Police Wreck");
+      expect(text).toContain("LocationNot recorded → Tulamben");
+      expect(text).toMatch(/Depth from16 ft → 20 ft/);
+      expect(text).toMatch(/Depth to98 ft → Not recorded/);
+      expect(text).toContain("Water typeSalt water → Fresh water");
+      expect(text).toMatch(/AltitudeNot recorded → 3,?281 ft/);
+      expect(text).toMatch(/Entry types.*Shore → Shore, Boat/);
+      expect(text).toContain("RegistriesNot recorded → Wikidata Q1");
+    },
+  );
 
   it("says how far a pin moved, on one line", async () => {
     answer([

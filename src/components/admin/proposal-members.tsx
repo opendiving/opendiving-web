@@ -24,7 +24,7 @@ export function ProposalMembers({
 }: {
   proposal: AdminDiveSiteProposal;
 }) {
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const isChange = proposal.kind === "change";
 
   const cell = (members: DiveSiteSharedMembers, row: SharedMemberRow) =>
