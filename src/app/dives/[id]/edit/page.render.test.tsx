@@ -58,6 +58,7 @@ vi.mock("@/lib/api/dives", async (importOriginal) => {
       ...actual.divesAPI,
       getDive: vi.fn(),
       updateDive: vi.fn(),
+      deleteDive: vi.fn(),
       deleteDiveFile: vi.fn(),
       lookupConditions: vi.fn(),
       parseDiveFile: vi.fn(),
@@ -158,6 +159,8 @@ const storedDive = (overrides: Partial<Dive> = {}): Dive =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  stable.searchParams = new URLSearchParams();
+  vi.mocked(divesAPI.deleteDive).mockResolvedValue({ message: "ok" });
   stable.auth.user.dive_form_hidden_fields = [];
   vi.mocked(divesAPI.getDive).mockResolvedValue(storedDive());
   vi.mocked(divesAPI.updateDive).mockResolvedValue({ message: "ok" });
@@ -1066,5 +1069,63 @@ describe("removing a file the dive already holds", () => {
       ),
     );
     expect(stable.router.push).toHaveBeenCalledWith("/dives/dive-1");
+  });
+});
+
+describe("deleting the dive being edited", () => {
+  const openDelete = async () => {
+    await screen.findByRole("heading", { name: "Edit Dive #41" });
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" }),
+    );
+    return screen.findByRole("dialog", { name: "Delete dive" });
+  };
+
+  it("cancels without deleting or losing edits", async () => {
+    render(<EditDivePage />);
+    const dialog = await openDelete();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(divesAPI.deleteDive).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  });
+
+  it("deletes the open dive and returns to the list without saving", async () => {
+    render(<EditDivePage />);
+    const dialog = await openDelete();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+    await waitFor(() =>
+      expect(stable.router.push).toHaveBeenCalledWith("/dives"),
+    );
+    expect(divesAPI.deleteDive).toHaveBeenCalledWith("dive-1", undefined);
+    expect(divesAPI.updateDive).not.toHaveBeenCalled();
+  });
+
+  it("keeps the form available and reports an API refusal", async () => {
+    vi.mocked(divesAPI.deleteDive).mockRejectedValue({
+      response: { data: { detail: "Cannot delete this dive" } },
+    });
+    render(<EditDivePage />);
+    const dialog = await openDelete();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    );
+    await waitFor(() =>
+      expect(stable.toast.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: "Cannot delete this dive",
+          variant: "destructive",
+        }),
+      ),
+    );
+    expect(stable.router.push).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
   });
 });

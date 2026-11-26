@@ -6,6 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  DeleteMenuItem,
+  ItemActionsMenu,
+} from "@/components/ui/item-actions-menu";
 import { useResource } from "@/hooks/useResource";
 import { useReturnTo } from "@/hooks/useReturnTo";
 import { withReturnTo } from "@/lib/return-to";
@@ -21,7 +27,10 @@ import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { usePendingDiveFiles } from "@/components/dives/use-pending-dive-files";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { useDiveConditionsFill } from "@/hooks/useDiveConditionsFill";
-import { entryFixAfterSave } from "@/lib/dive-recordings";
+import {
+  DELETE_DIVE_CONFIRMATION,
+  entryFixAfterSave,
+} from "@/lib/dive-recordings";
 import { DiveForm } from "@/components/dives/dive-form";
 import { fetchedMarks } from "@/lib/dive-conditions";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
@@ -85,6 +94,13 @@ export function EditDivePageContent() {
     redirectTo: "/dives",
     onLoaded: resetFromDive,
   });
+  const del = useDeleteResource(divesAPI.deleteDive, {
+    confirmMessage: DELETE_DIVE_CONFIRMATION,
+    successMessage: "Dive deleted successfully.",
+    errorMessage: "Failed to delete dive. Please try again.",
+    onDeleted: () => router.push("/dives"),
+  });
+  const isDeleting = del.deletingId !== null;
   const files = usePendingDiveFiles(dive?.recordings);
   // At the entry fix the save leaves, with the files struck off and picked here.
   const savedPosition = entryFixAfterSave({
@@ -117,7 +133,7 @@ export function EditDivePageContent() {
   });
 
   const onSubmit = async (data: DiveUpdateInput) => {
-    if (!user || !diveId) return;
+    if (!user || !diveId || isDeleting) return;
 
     try {
       setIsSubmitting(true);
@@ -196,7 +212,27 @@ export function EditDivePageContent() {
         subtitle="Update the details of your dive"
         figures={[]}
         column={FORM_COLUMN}
-        actions={<DiveFormFieldsMenu visibility={visibility} />}
+        actions={
+          <>
+            <DiveFormFieldsMenu visibility={visibility} />
+            <ItemActionsMenu>
+              <DeleteMenuItem
+                onSelect={() => del.requestDelete(dive.uuid)}
+                disabled={isSubmitting || isDeleting}
+              />
+            </ItemActionsMenu>
+          </>
+        }
+      />
+
+      <ConfirmDialog
+        open={del.pendingId !== null}
+        onOpenChange={(open) => !open && del.cancelDelete()}
+        title="Delete dive"
+        description={del.confirmMessage}
+        confirmText="Delete"
+        isLoading={isDeleting}
+        onConfirm={del.confirmDelete}
       />
 
       <div className={FORM_BODY}>
@@ -206,7 +242,7 @@ export function EditDivePageContent() {
           visibility={visibility}
           mode="edit"
           onSubmit={onSubmit}
-          isSubmitting={isSubmitting}
+          isSubmitting={isSubmitting || isDeleting}
           cancelHref={returnTo.href}
           submittingLabel="Saving..."
           submitLabel="Save changes"
