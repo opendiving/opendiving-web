@@ -51,7 +51,7 @@ const EXISTING: Contact = {
   roles: ["dive_center", "accommodation"],
   phone: "+20 69 364 0000",
   email: "info@blueocean.example",
-  website: "https://blueocean.example",
+  links: [{ url: "https://blueocean.example", label: "Booking" }],
   address: {
     street: null,
     city: "Dahab",
@@ -118,7 +118,13 @@ describe("ContactDialog", () => {
     const onSaved = open({ initialRoles: ["dive_center"] });
 
     await userEvent.type(screen.getByLabelText("Name *"), "Sea Dragon");
-    await userEvent.type(screen.getByLabelText("Website"), "seadragon.example");
+    await userEvent.click(screen.getByRole("button", { name: "Add a link" }));
+    await userEvent.type(
+      screen.getByLabelText("Web address link 1 of 1"),
+      "seadragon.example",
+    );
+    // A row left blank is no link, and is dropped rather than refused.
+    await userEvent.click(screen.getByRole("button", { name: "Add a link" }));
     await create();
 
     await waitFor(() => expect(createContact).toHaveBeenCalled());
@@ -127,7 +133,7 @@ describe("ContactDialog", () => {
       roles: ["dive_center"],
       phone: null,
       email: null,
-      website: "https://seadragon.example",
+      links: [{ url: "https://seadragon.example", label: null }],
       address: null,
       latitude: null,
       longitude: null,
@@ -193,7 +199,7 @@ describe("ContactDialog", () => {
         roles: ["dive_center", "accommodation", "shop"],
         phone: null,
         email: "info@blueocean.example",
-        website: "https://blueocean.example",
+        links: [{ url: "https://blueocean.example", label: "Booking" }],
         address: {
           street: null,
           city: "Dahab",
@@ -212,6 +218,82 @@ describe("ContactDialog", () => {
       "shop",
       "accommodation",
     ]);
+  });
+
+  it("refuses an address the API would refuse, on its row, and a label with no address", async () => {
+    open();
+
+    await userEvent.type(screen.getByLabelText("Name *"), "Sea Dragon");
+    await userEvent.click(screen.getByRole("button", { name: "Add a link" }));
+    await userEvent.type(
+      screen.getByLabelText("Web address link 1 of 1"),
+      "seadragon.example/a b",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add a link" }));
+    await userEvent.type(screen.getByLabelText("Label link 2 of 2"), "Booking");
+    await create();
+
+    expect(
+      await screen.findByText("Use a web address, e.g. blueocean.com"),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Add the address, or clear the label"),
+    ).toBeVisible();
+    expect(createContact).not.toHaveBeenCalled();
+  });
+
+  it("stops adding links at twenty", async () => {
+    open({
+      contact: {
+        ...EXISTING,
+        links: Array.from({ length: 19 }, (_, index) => ({
+          url: `https://blueocean.example/${index}`,
+          label: null,
+        })),
+      },
+    });
+    const add = await screen.findByRole("button", { name: "Add a link" });
+    await waitFor(() => expect(add).toBeEnabled());
+
+    await userEvent.click(add);
+
+    expect(add).toBeDisabled();
+    expect(screen.getByText(/20 links at most/)).toBeVisible();
+  });
+
+  it("hands back the links as the API stores them, reordered, with a duplicate folded", async () => {
+    const onSaved = open({ contact: EXISTING });
+    await waitFor(() =>
+      expect(screen.getByLabelText("Web address link 1 of 1")).toHaveValue(
+        "https://blueocean.example",
+      ),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Add a link" }));
+    await userEvent.type(
+      screen.getByLabelText("Web address link 2 of 2"),
+      "seadragon.example",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add a link" }));
+    await userEvent.type(
+      screen.getByLabelText("Web address link 3 of 3"),
+      "https://blueocean.example",
+    );
+    // The handle answers Up/Down, so the second row is moved above the first.
+    screen
+      .getByRole("button", { name: /^Reorder seadragon\.example, position 2/ })
+      .focus();
+    await userEvent.keyboard("{ArrowUp}");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(updateContact).toHaveBeenCalled());
+    const links = [
+      { url: "https://seadragon.example", label: null },
+      { url: "https://blueocean.example", label: "Booking" },
+    ];
+    expect(updateContact.mock.calls[0][1].links).toEqual(links);
+    expect(updateContact.mock.calls[0][1]).not.toHaveProperty("website");
+    expect(onSaved.mock.calls[0][0].links).toEqual(links);
   });
 
   it("clears a stored address with an explicit null", async () => {

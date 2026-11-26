@@ -7,7 +7,8 @@ import { Trip } from "@/lib/api/trips";
 import { Course } from "@/lib/api/courses";
 import { Contact } from "@/lib/api/contacts";
 import type { Person } from "@/lib/api/people";
-import { formatContactAddress, formatWebsite } from "@/lib/contact";
+import { formatContactAddress } from "@/lib/contact";
+import { LinkList } from "@/components/ui/link-list";
 import { formatDistance, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/coordinates";
 import { CARD_SECTION_CONTENT, Card, CardContent } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
 import { PeopleList } from "@/components/people/people-list";
 import { fixPoint } from "@/components/dives/dive-map-locations";
-import { Building2, Globe, GraduationCap, Luggage, Phone } from "lucide-react";
+import { Building2, GraduationCap, Luggage, Phone } from "lucide-react";
 import { DiveSiteIcon } from "@/components/icons/dive-site-icon";
 import { DiveEnvironmentCard } from "@/components/dives/dive-environment-card";
 import { DiveCardHeader } from "@/components/dives/dive-card-header";
@@ -189,18 +190,8 @@ export function DiveDetailSidebar({
                     {contact.phone}
                   </a>
                 )}
-                {contact.website && (
-                  <a
-                    href={contact.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex min-h-11 items-center gap-2 text-sm hover:underline"
-                  >
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span className="min-w-0 truncate">
-                      {formatWebsite(contact.website)}
-                    </span>
-                  </a>
+                {contact.links && contact.links.length > 0 && (
+                  <LinkList links={contact.links} />
                 )}
               </div>
             )}

@@ -43,18 +43,3 @@ export function formatContactPlace(
     .filter((part): part is string => !!part);
   return parts.length > 0 ? parts.join(", ") : undefined;
 }
-
-/**
- * A website as a link reads it: the host and path without the scheme or a
- * trailing slash, which is how a sign or a card prints one. The stored value is
- * always absolute (the API refuses anything else), so a failed parse only means
- * the text is shown as it is.
- */
-export function formatWebsite(website: string): string {
-  try {
-    const url = new URL(website);
-    return `${url.host}${url.pathname === "/" ? "" : url.pathname}${url.search}`;
-  } catch {
-    return website;
-  }
-}

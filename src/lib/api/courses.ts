@@ -11,6 +11,7 @@ import type {
 } from "./client";
 import type { CertificationAgency } from "./certifications";
 import type { PersonReference } from "./people";
+import type { WebLink } from "./links";
 
 /**
  * How far a course got. Mirrors the API's `CourseStatus` enum - a closed
@@ -73,6 +74,9 @@ export interface Course {
   // each with their role. Optional because a response cached before people
   // existed carries none.
   people?: PersonReference[];
+  // In the diver's order. Optional because a response cached before links existed
+  // carries none.
+  links?: WebLink[];
   notes?: string;
   user_uuid: string;
   created_at: string;
@@ -89,6 +93,8 @@ export interface CourseCreate {
   contact_uuid?: string | null;
   // Replaces the course's people wholesale; omitting it leaves them alone.
   people?: PersonReference[];
+  // Replaces the links whole; omitting it leaves them alone. Never null.
+  links?: WebLink[];
   notes?: string;
 }
 

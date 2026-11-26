@@ -169,6 +169,7 @@ export function TripDetailPageContent() {
   );
 
   const tripParts = trip?.parts ?? [];
+  const tripLinks = trip?.links ?? [];
   const hasPeople = tripPeople.some(
     (reference) => people[reference.person_uuid],
   );
@@ -301,11 +302,15 @@ export function TripDetailPageContent() {
             <div>
               <div className="space-y-6 max-sm:space-y-2.5 lg:sticky lg:top-[calc(var(--header-height)+--spacing(5))] lg:-m-1 lg:max-h-[calc(100dvh-var(--header-height)-3rem)] lg:overflow-y-auto lg:p-1">
                 <SectionIndexNav className="hidden lg:block" />
-                {(hasPeople || diveCenterNames.length > 0 || trip.notes) && (
+                {(hasPeople ||
+                  diveCenterNames.length > 0 ||
+                  tripLinks.length > 0 ||
+                  trip.notes) && (
                   <TripInformationCard
                     people={tripPeople}
                     resolvedPeople={people}
                     diveCenterNames={diveCenterNames}
+                    links={tripLinks}
                     notes={trip.notes}
                   />
                 )}

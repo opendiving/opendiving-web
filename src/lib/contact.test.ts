@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatContactAddress,
-  formatContactPlace,
-  formatWebsite,
-} from "./contact";
+import { formatContactAddress, formatContactPlace } from "./contact";
 
 describe("formatContactAddress", () => {
   it("writes the parts in postal order, leaving out the empty ones", () => {
@@ -51,20 +47,5 @@ describe("formatContactPlace", () => {
     expect(
       formatContactPlace({ street: "Mashraba", city: "", country: "" }),
     ).toBeUndefined();
-  });
-});
-
-describe("formatWebsite", () => {
-  it("drops the scheme and a bare trailing slash, as a sign prints it", () => {
-    expect(formatWebsite("https://blueocean.example/")).toBe(
-      "blueocean.example",
-    );
-    expect(formatWebsite("http://blueocean.example/dahab?lang=en")).toBe(
-      "blueocean.example/dahab?lang=en",
-    );
-  });
-
-  it("shows text it cannot parse as it is", () => {
-    expect(formatWebsite("blueocean")).toBe("blueocean");
   });
 });

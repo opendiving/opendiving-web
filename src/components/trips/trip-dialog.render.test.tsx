@@ -66,7 +66,7 @@ function renderDialog() {
 describe("TripDialog", () => {
   // A part carries its own dates, so the only dates in this dialog are inside
   // the rows the Parts field holds - and a new trip opens with one of them.
-  it("asks for the name, then a part, then the people and the notes", () => {
+  it("asks for the name, then a part, then the people, the links and the notes", () => {
     renderDialog();
 
     const labels = Array.from(document.querySelectorAll("label")).map((label) =>
@@ -81,6 +81,7 @@ describe("TripDialog", () => {
       "Start date part 1 of 1",
       "End date part 1 of 1",
       "People",
+      "Links",
       "Notes",
     ]);
   });

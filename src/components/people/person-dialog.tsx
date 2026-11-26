@@ -7,6 +7,7 @@ import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { personSchema, type PersonInput } from "@/lib/validations/person";
+import { linksFromForm, linksToForm } from "@/lib/validations/links";
 import {
   peopleAPI,
   type Person,
@@ -39,6 +40,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { LinksFormField } from "@/components/ui/links-field";
 import {
   ConnectedAccountHead,
   connectTargetSource,
@@ -98,7 +100,7 @@ export function PersonDialog({
 
   const form = useForm<PersonInput>({
     resolver: zodResolver(personSchema),
-    defaultValues: { name: "", email: "", phone: "", notes: "" },
+    defaultValues: { name: "", email: "", phone: "", links: [], notes: "" },
   });
 
   // Reload the form whenever the dialog opens, so it shows the person being
@@ -110,6 +112,7 @@ export function PersonDialog({
       name: person?.name ?? connecting?.name ?? initialName ?? "",
       email: person?.email ?? "",
       phone: person?.phone ?? "",
+      links: linksToForm(person?.links),
       notes: person?.notes ?? "",
     });
     setPicked(null);
@@ -138,6 +141,7 @@ export function PersonDialog({
         name: data.name.trim(),
         email: data.email.trim() || null,
         phone: data.phone.trim() || null,
+        links: linksFromForm(data.links),
         notes: data.notes,
       };
 
@@ -298,6 +302,8 @@ export function PersonDialog({
                     )}
                   />
                 </div>
+
+                <LinksFormField control={form.control} />
 
                 <FormField
                   control={form.control}

@@ -33,8 +33,8 @@ import { USER_FIELD_SCHEMAS } from "@/lib/validations/user-fields";
 import {
   EmergencyContactsField,
   InsurancePoliciesField,
-  listFieldErrors,
 } from "@/components/checkin/checkin-list-field";
+import { listFieldErrors } from "@/components/ui/list-field";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import {

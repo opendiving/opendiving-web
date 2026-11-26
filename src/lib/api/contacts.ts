@@ -5,6 +5,7 @@ import type {
   PaginatedResponse,
   SearchFilters,
 } from "./client";
+import type { WebLink } from "./links";
 
 /**
  * What a contact is to the diver. Mirrors the API's `ContactRole`, value for value
@@ -71,9 +72,9 @@ export interface Contact {
   roles: string[];
   phone?: string | null;
   email?: string | null;
-  // Always an absolute http(s) URL - the API refuses a bare host, and the dialog
-  // prepends the scheme before sending one.
-  website?: string | null;
+  // In the diver's order. Optional because a response cached before links existed
+  // carries none.
+  links?: WebLink[];
   address?: ContactAddress | null;
   // Where it is on a map, in decimal degrees: both or neither.
   latitude?: number | null;
@@ -90,7 +91,8 @@ export interface ContactCreate {
   roles?: string[];
   phone?: string | null;
   email?: string | null;
-  website?: string | null;
+  // Replaces the links whole; omitting it leaves them alone. Never null.
+  links?: WebLink[];
   address?: ContactAddress | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -99,9 +101,9 @@ export interface ContactCreate {
 
 /**
  * The `PATCH /contact/{uuid}` body. An explicit `null` clears the phone, the
- * email, the website or the address, and naming `address` replaces it whole;
+ * email or the address, and naming `address` or `links` replaces it whole;
  * `latitude` and `longitude` go as a pair, both `null` clearing it and half of
- * one a 422; `name`, `roles` and `notes` take no null.
+ * one a 422; `name`, `roles`, `links` and `notes` take no null.
  */
 export type ContactUpdate = Partial<ContactCreate>;
 

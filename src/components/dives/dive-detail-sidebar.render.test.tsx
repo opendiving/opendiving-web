@@ -349,7 +349,10 @@ describe("DiveDetailSidebar dive center", () => {
       null,
       contact({
         phone: "+20 69 364 0000",
-        website: "https://blueocean.example/",
+        links: [
+          { url: "https://blueocean.example/", label: null },
+          { url: "https://blueocean.example/booking", label: "Booking" },
+        ],
       }),
     );
 
@@ -365,9 +368,14 @@ describe("DiveDetailSidebar dive center", () => {
     expect(
       screen.getByRole("link", { name: "+20 69 364 0000" }),
     ).toHaveAttribute("href", "tel:+20693640000");
+    // Every link, by its label or by its address without the scheme.
     expect(
       screen.getByRole("link", { name: "blueocean.example" }),
     ).toHaveAttribute("href", "https://blueocean.example/");
+    expect(screen.getByRole("link", { name: "Booking" })).toHaveAttribute(
+      "href",
+      "https://blueocean.example/booking",
+    );
   });
 
   it("leaves out the ways to reach it that were not recorded", () => {

@@ -5,6 +5,7 @@ import type { MessageResponse, PaginatedResponse } from "./client";
 // Type-only, so it erases at compile time - `gear-service.ts` has no import back to
 // here, but keeping this one type-only means the pair can never become a real cycle.
 import type { GearServiceScheduleSummary } from "./gear-service";
+import type { WebLink } from "./links";
 
 /**
  * Broad category a gear item falls into. Mirrors the API's `GearType` enum -
@@ -138,6 +139,9 @@ export interface GearItem extends VesselFacts {
   name: string;
   brand?: string | null;
   type?: GearType | null;
+  // In the diver's order. Optional because a response cached before links existed
+  // carries none.
+  links?: WebLink[];
   notes?: string;
   rented: boolean;
   // Archived gear stays on past dives and in sets, but is hidden from the dive
@@ -182,6 +186,8 @@ export interface GearItemCreate {
   name: string;
   brand?: string;
   type?: GearType;
+  // Replaces the links whole; omitting it leaves them alone. Never null.
+  links?: WebLink[];
   notes?: string;
   rented?: boolean;
   volume?: number | null;
@@ -193,6 +199,8 @@ export interface GearItemUpdate {
   name?: string;
   brand?: string | null;
   type?: GearType | null;
+  // Replaces the links whole; omitting it leaves them alone. Never null.
+  links?: WebLink[];
   notes?: string;
   rented?: boolean;
   is_archived?: boolean;

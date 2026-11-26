@@ -11,6 +11,7 @@ import {
   normalizeTripParts,
 } from "@/lib/validations/trip";
 import { tripsAPI, Trip } from "@/lib/api/trips";
+import { linksFromForm, linksToForm } from "@/lib/validations/links";
 import { getApiDuplicateError, getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -32,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { LinksFormField } from "@/components/ui/links-field";
 import {
   TripPartsField,
   tripPartErrors,
@@ -74,6 +76,7 @@ export function TripDialog({
       name: "",
       parts: [],
       people: [],
+      links: [],
       notes: "",
     },
   });
@@ -124,6 +127,7 @@ export function TripDialog({
           }))
         : [emptyTripPart()],
       people: trip?.people ?? [],
+      links: linksToForm(trip?.links),
       notes: trip?.notes ?? "",
     });
   }, [open, trip, reset]);
@@ -137,6 +141,7 @@ export function TripDialog({
       const parts = normalizeTripParts(data.parts);
       // Sent on every save for the same reason: the API replaces the list.
       const people = data.people ?? [];
+      const links = linksFromForm(data.links ?? []);
 
       if (trip) {
         // The API answers a PATCH with just a status message, so the updated
@@ -145,6 +150,7 @@ export function TripDialog({
           name: data.name.trim(),
           parts,
           people,
+          links,
           notes: data.notes,
         });
         onSaved({
@@ -152,6 +158,7 @@ export function TripDialog({
           name: data.name.trim(),
           parts,
           people,
+          links,
           notes: data.notes,
         });
       } else {
@@ -159,6 +166,7 @@ export function TripDialog({
           name: data.name.trim(),
           parts,
           people,
+          links,
           notes: data.notes || undefined,
         });
         onSaved(created);
@@ -290,6 +298,8 @@ export function TripDialog({
                 </FormItem>
               )}
             />
+
+            <LinksFormField control={form.control} />
 
             <FormField
               control={form.control}
