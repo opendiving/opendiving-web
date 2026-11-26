@@ -98,7 +98,7 @@ describe("GET /.well-known/apple-app-site-association", () => {
     vi.restoreAllMocks();
   });
 
-  it("names the configured app, as JSON", async () => {
+  it("names the configured app for its links and for passkeys, as JSON", async () => {
     const response = await (await loadGet({ IOS_APP_ID: APP_ID }))();
 
     expect(response.status).toBe(200);
@@ -121,6 +121,7 @@ describe("GET /.well-known/apple-app-site-association", () => {
           },
         ],
       },
+      webcredentials: { apps: [APP_ID] },
     });
   });
 

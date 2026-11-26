@@ -2284,6 +2284,21 @@ describe("the app's downloads from a paired dive computer", () => {
     );
   });
 
+  it("labels a passkey from the app by its device, and says the app remembers its offer was answered", async () => {
+    await renderPage({ google: false });
+
+    const item = listAfterHeading(
+      /2\.2 Automatically Collected Information/,
+    ).find((entry) => entry.startsWith("Passkey labels:"));
+    const text = (item ?? "").replace(/\s+/g, " ");
+    expect(text).toMatch(
+      /or, for one registered in the OpenDiving app, the kind of device, such as “iPhone”/,
+    );
+    expect(text).toMatch(
+      /The OpenDiving app also remembers on the phone, for your account, that you answered its offer to add a passkey/,
+    );
+  });
+
   it("says the phone makes the notifications and no server sends one", async () => {
     await renderPage({ google: false });
 

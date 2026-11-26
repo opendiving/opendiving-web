@@ -70,8 +70,8 @@ export interface RuntimeConfig extends PublicConfig {
    */
   noindex: boolean;
   /**
-   * The iOS app this instance's links open, as Apple's app id: the team's ten-character
-   * id, a dot and the bundle identifier. It is what
+   * The iOS app this instance's links open and its passkeys sign in, as Apple's app id:
+   * the team's ten-character id, a dot and the bundle identifier. It is what
    * `app/.well-known/apple-app-site-association/route.ts` names, and unset that file is a
    * 404, so no instance claims an app its operator has not named.
    */

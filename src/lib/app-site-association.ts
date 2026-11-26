@@ -41,11 +41,16 @@ const COMPONENTS: Component[] = [
   ),
 ];
 
-/** `/.well-known/apple-app-site-association` for the app named by `appId`. */
+/**
+ * `/.well-known/apple-app-site-association` for the app named by `appId`: the links it
+ * opens, and this instance's passkeys, which iOS lets an app use only where the site's
+ * file names it under `webcredentials`.
+ */
 export function appSiteAssociation(appId: string) {
   return {
     applinks: {
       details: [{ appIDs: [appId], components: COMPONENTS }],
     },
+    webcredentials: { apps: [appId] },
   };
 }

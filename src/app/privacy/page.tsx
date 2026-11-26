@@ -658,7 +658,11 @@ export default async function PrivacyPage() {
                   <strong>Passkey labels:</strong> If you register a passkey, a
                   coarse label worked out from your browser &mdash; something
                   like &ldquo;Chrome on macOS&rdquo; &mdash; is saved with it,
-                  so a list of passkeys tells you which is which
+                  or, for one registered in the OpenDiving app, the kind of
+                  device, such as &ldquo;iPhone&rdquo;, so a list of passkeys
+                  tells you which is which. The OpenDiving app also remembers on
+                  the phone, for your account, that you answered its offer to
+                  add a passkey, so that it does not make the offer again
                 </li>
                 <li>
                   <strong>Retry records:</strong> When the OpenDiving app on a
