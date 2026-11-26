@@ -102,6 +102,36 @@ off. The API gates the same name with `require_experimental_feature`.
   `experimental_features` names the feature, or leaves it out for the off case. The e2e suite's
   `/config` fixture in `e2e/support/api.ts` answers `[]`, so every feature is off there.
 
+## Contribution checks
+
+Read `CONTRIBUTING.md` before editing. Trace the existing route, navigation entry and API support
+before adding a feature; distinguish new behavior from exposing or moving an existing capability.
+
+Before replacing a shared control, inventory its deliberate styles, focus rules and touch behavior.
+Preserve the rationale comments that still apply. Follow "UI controls use Base UI" in
+`DECISIONS.md`. Read the generated source for `data-*` selectors and `dark:` variants, and compare
+computed styles in the rendered control.
+
+Verify changed controls on populated screens in the relevant light/dark, mouse/touch, selected and
+open states. Check computed styles and interactions, including focus, dismissal and reopening.
+Geometry tests need the real stylesheet and a negative control, as `CONTRIBUTING.md` explains.
+Wait for observable focus or readiness in interaction tests, not an arbitrary timer. Report physical
+iOS and VoiceOver checks separately from browser emulation; passing unit tests proves neither.
+
+Adding hover behavior must preserve keyboard and touch activation, repeat-tap dismissal and
+accessible semantics. Reuse `HINT_DELAY_MS` from `components/ui/tooltip.tsx` and trace the control's
+pointer, click and focus handlers before adding custom handlers.
+
+For pages that act on a loaded request for the signed-in account, follow
+`components/settings/mcp-consent-page.tsx` and its render test: keep the displayed request,
+selections and submission bound to that request and account, and test switching either while open.
+
+For review fixes, check review bodies, inline comments and discussion attachments. Track each item
+through its code, documentation and verification, and state in the PR description what remains
+unverified or blocked. Keep the description current, as if the PR had just been opened, rather than
+a log of review rounds or a comment per fix. Follow the cross-repository contribution rule in
+`CONTRIBUTING.md`; a pushed API branch with no open PR does not satisfy it.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
