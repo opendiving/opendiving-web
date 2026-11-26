@@ -3,6 +3,7 @@
 import type { Trip } from "@/lib/api/trips";
 import { formatDateOnly } from "@/lib/date-time";
 import {
+  customPropertiesSections,
   RecordInfoDialog,
   type RecordInfoSection,
 } from "@/components/ui/record-info-dialog";
@@ -29,6 +30,7 @@ export function TripInfoDialog({ trip }: { trip: Trip }) {
     { facts: [{ label: "Name", value: trip.name }] },
     ...parts,
     { facts: [{ label: "Notes", value: trip.notes, wide: true }] },
+    ...customPropertiesSections(trip.custom_properties),
   ];
 
   return <RecordInfoDialog title="Trip information" sections={sections} />;

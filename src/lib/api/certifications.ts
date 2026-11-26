@@ -6,6 +6,7 @@ import {
 } from "./client";
 import type { MessageResponse, PaginatedResponse } from "./client";
 import { labelOrFallback } from "./labels";
+import type { CustomProperty } from "@/lib/custom-properties";
 
 /**
  * The training agency that issued a certification. Mirrors the API's
@@ -212,6 +213,9 @@ export interface CertificationFileInfo {
 
 /** A diving certification, with photos or scans of the physical c-card. */
 export interface Certification {
+  // The diver's own key-value pairs, in their order (`lib/custom-properties.ts`).
+  // Optional because a response cached before they existed carries none.
+  custom_properties?: CustomProperty[];
   uuid: string;
   agency: CertificationAgency;
   // Only set when `agency` is `other` - the name of the issuing body.
@@ -243,6 +247,8 @@ export interface Certification {
 }
 
 export interface CertificationCreate {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   agency: CertificationAgency;
   agency_other?: string | null;
   name: string;

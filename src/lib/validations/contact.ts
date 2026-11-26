@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { maxLength, optionalEmailField, phoneField } from "./fields";
+import { customPropertiesField } from "./custom-properties";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 import { coordinateField, isSet } from "./coordinates";
@@ -88,6 +89,7 @@ export const contactSchema = z
     latitude: coordinateField(90, "Latitude", "27.8506"),
     longitude: coordinateField(180, "Longitude", "34.3136"),
     notes: notesField(),
+    custom_properties: customPropertiesField(),
   })
   .refine((data) => isWebsite(data.website), {
     message: "Use a web address, e.g. blueocean.com",

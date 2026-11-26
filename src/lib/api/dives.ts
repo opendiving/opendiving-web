@@ -5,6 +5,7 @@ import { GearItemInfo, GearItemSummary } from "./gear";
 import type { Location } from "./location";
 import { SpeciesSummary } from "./species";
 import type { PersonReference } from "./people";
+import type { CustomProperty } from "@/lib/custom-properties";
 
 /**
  * The ppO₂ vocabulary and the cylinder-role vocabulary the API accepts. Mirrors
@@ -542,6 +543,9 @@ export interface ConditionsLookup {
 }
 
 export interface Dive {
+  // The diver's own key-value pairs, in their order (`lib/custom-properties.ts`).
+  // Optional because a response cached before they existed carries none.
+  custom_properties?: CustomProperty[];
   uuid: string;
   dive_number: number;
   // ISO 8601, e.g. "2021-04-04T10:04:47.910+02:00" - the offset is the dive's
@@ -1133,6 +1137,8 @@ export interface DiveFileInfo {
 }
 
 export interface DiveCreate {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   dive_number: number;
   // Must be an offset-aware ISO 8601 string, e.g.
   // "2021-04-04T10:04:47.910+02:00" - see `Dive.start_time` above. Build one
@@ -1186,6 +1192,8 @@ export interface DiveCreate {
 }
 
 export interface DiveUpdate {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   dive_number?: number;
   // Same ISO 8601 format as `Dive.start_time`, offset included **or omitted**.
   //

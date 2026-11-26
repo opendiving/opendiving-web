@@ -10,6 +10,7 @@ import type { LatLonBounds } from "@/lib/basemap";
 import { roundCamera, roundView } from "@/lib/site-finder-camera";
 import type { GeocodeResult } from "./geocoding";
 import type { Location } from "./location";
+import type { CustomProperty } from "@/lib/custom-properties";
 
 /**
  * The site's entry in a registry outside the logbook - DiveJSON's External Id. The
@@ -91,6 +92,9 @@ export interface DiveSiteDiveSummary {
  */
 export interface DiveSite
   extends Partial<DiveSiteDiveSummary>, DiveSiteRelation {
+  // The diver's own key-value pairs, in their order (`lib/custom-properties.ts`).
+  // Optional because a response cached before they existed carries none.
+  custom_properties?: CustomProperty[];
   uuid: string;
   name: string;
   /** Other names the site goes by, in the diver's order. */
@@ -133,6 +137,8 @@ interface DiveSiteMembersWrite {
 }
 
 export interface DiveSiteCreate extends DiveSiteMembersWrite {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   name: string;
   location?: Location | null;
   latitude?: number | null;
@@ -155,6 +161,8 @@ export interface DiveSiteCreate extends DiveSiteMembersWrite {
  * the altitude, and is refused on the three lists, where `[]` is the clear.
  */
 export interface DiveSiteUpdate extends DiveSiteMembersWrite {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   name?: string;
   location?: Location | null;
   latitude?: number | null;
@@ -164,6 +172,8 @@ export interface DiveSiteUpdate extends DiveSiteMembersWrite {
 
 /** The `PUT /dive-site/{uuid}/saved` body: what the diver writes as they save it. */
 export interface DiveSiteSave {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   notes?: string;
   tags?: string[];
 }

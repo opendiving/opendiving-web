@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { maxLength } from "./fields";
+import { customPropertiesField } from "./custom-properties";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 import { CYLINDER_MATERIALS, GEAR_TYPES } from "@/lib/api/gear";
@@ -13,6 +14,7 @@ export const gearItemSchema = z.object({
   // gain. `""` is what the select holds for "no type" while editing.
   type: z.union([z.literal(""), z.enum(GEAR_TYPES)]).optional(),
   notes: notesField().optional(),
+  custom_properties: customPropertiesField().optional(),
   rented: z.boolean().optional(),
   // The vessel facts, mirroring `GearItemCreate`'s bounds: a capacity above zero, and
   // a working pressure under the same 350 bar ceiling a dive's cylinder pressures
@@ -41,6 +43,7 @@ export const gearSetSchema = z.object({
     .nullable()
     .optional(),
   gear_item_uuids: z.array(z.string()).default([]),
+  custom_properties: customPropertiesField().default([]),
 });
 
 export type GearItemInput = z.input<typeof gearItemSchema>;

@@ -1,5 +1,6 @@
 "use client";
 
+import { PersonInfoDialog } from "@/components/people/person-info-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -165,6 +166,7 @@ export function PersonDetailPageContent() {
         figures={[]}
         actions={
           <>
+            <PersonInfoDialog person={person} />
             <Button
               variant="ghost"
               size="sm"

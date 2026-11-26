@@ -39,6 +39,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import { customPropertiesUpdate } from "@/lib/custom-properties";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 import type { PresetVessel, VolumeOption } from "@/lib/cylinder-presets";
@@ -117,6 +119,7 @@ export function GearItemDialog({
       brand: "",
       type: "",
       notes: "",
+      custom_properties: [],
       rented: false,
       volume: "",
       working_pressure: null,
@@ -137,6 +140,7 @@ export function GearItemDialog({
       brand: gearItem?.brand ?? "",
       type: gearItem ? (gearItem.type ?? "") : (initialType ?? ""),
       notes: gearItem?.notes ?? "",
+      custom_properties: gearItem?.custom_properties ?? [],
       rented: gearItem?.rented ?? false,
       volume: gearItem?.volume ?? "",
       working_pressure: gearItem?.working_pressure ?? null,
@@ -152,6 +156,10 @@ export function GearItemDialog({
       // ignored as an omitted key, and on create they're simply left off.
       const type = (data.type || null) as GearType | null;
       const vessel = vesselFactsToSave(data, type, gearItem?.type);
+      const custom_properties = customPropertiesUpdate(
+        gearItem?.custom_properties,
+        data.custom_properties,
+      );
 
       if (gearItem) {
         await gearAPI.updateGearItem(gearItem.uuid, {
@@ -161,6 +169,7 @@ export function GearItemDialog({
           notes: data.notes || "",
           rented: data.rented ?? false,
           ...vessel,
+          custom_properties,
         });
         onSaved({
           ...gearItem,
@@ -170,6 +179,7 @@ export function GearItemDialog({
           notes: data.notes || "",
           rented: data.rented ?? false,
           ...vessel,
+          custom_properties: custom_properties ?? gearItem.custom_properties,
         });
       } else {
         const created = await gearAPI.createGearItem({
@@ -179,6 +189,7 @@ export function GearItemDialog({
           notes: data.notes || undefined,
           rented: data.rented ?? false,
           ...vessel,
+          custom_properties,
         });
         onSaved(created);
       }
@@ -325,6 +336,8 @@ export function GearItemDialog({
                 </FormItem>
               )}
             />
+
+            <CustomPropertiesField />
 
             <FormApiError error={apiError} />
 

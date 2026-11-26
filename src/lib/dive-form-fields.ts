@@ -51,6 +51,7 @@ export const DIVE_FORM_FIELDS = [
   "rating",
   "tags",
   "notes",
+  "custom_properties",
   "mixture.gear_item_uuid",
   "mixture.po2_limit",
   "mixture.helium",
@@ -220,6 +221,7 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
   { key: "rating", label: "Rating", group: "Notes" },
   { key: "tags", label: "Tags", group: "Notes" },
   { key: "notes", label: "Notes", group: "Notes" },
+  { key: "custom_properties", label: "Custom properties", group: "Notes" },
   { key: "mixture.gear_item_uuid", label: "Cylinder", group: "Tanks" },
   { key: "mixture.po2_limit", label: "ppO₂ limit", group: "Tanks" },
   { key: "mixture.helium", label: "He", group: "Tanks" },
@@ -337,6 +339,7 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
   rating: null,
   tags: [],
   notes: "",
+  custom_properties: [],
   "mixture.gear_item_uuid": "",
   "mixture.po2_limit": "",
   // The one column that clears to a *number*, and the only one whose absence means

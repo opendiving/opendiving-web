@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { customPropertiesField } from "./custom-properties";
 import { optionalEmailField, phoneField } from "./fields";
+
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 
@@ -15,6 +17,7 @@ export const personSchema = z.object({
   email: optionalEmailField(),
   phone: phoneField(),
   notes: notesField(),
+  custom_properties: customPropertiesField(),
 });
 
 export type PersonInput = z.input<typeof personSchema>;

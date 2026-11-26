@@ -39,6 +39,8 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import { customPropertiesUpdate } from "@/lib/custom-properties";
 import {
   ConnectedAccountHead,
   connectTargetSource,
@@ -98,7 +100,13 @@ export function PersonDialog({
 
   const form = useForm<PersonInput>({
     resolver: zodResolver(personSchema),
-    defaultValues: { name: "", email: "", phone: "", notes: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      notes: "",
+      custom_properties: [],
+    },
   });
 
   // Reload the form whenever the dialog opens, so it shows the person being
@@ -111,6 +119,7 @@ export function PersonDialog({
       email: person?.email ?? "",
       phone: person?.phone ?? "",
       notes: person?.notes ?? "",
+      custom_properties: person?.custom_properties ?? [],
     });
     setPicked(null);
     // Same deliberate reset-on-open pattern as `contact-dialog.tsx`.
@@ -139,6 +148,10 @@ export function PersonDialog({
         email: data.email.trim() || null,
         phone: data.phone.trim() || null,
         notes: data.notes,
+        custom_properties: customPropertiesUpdate(
+          person?.custom_properties,
+          data.custom_properties,
+        ),
       };
 
       if (person) {
@@ -329,6 +342,8 @@ export function PersonDialog({
                 find you under Added you.
               </p>
             )}
+
+            {!connectingExisting && <CustomPropertiesField />}
 
             <FormApiError error={apiError} />
 

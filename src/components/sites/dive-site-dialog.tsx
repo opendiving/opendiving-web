@@ -56,6 +56,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import { customPropertiesUpdate } from "@/lib/custom-properties";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
@@ -301,6 +303,10 @@ export function DiveSiteDialog({
           longitude,
           notes: data.notes,
           ...members,
+          custom_properties: customPropertiesUpdate(
+            diveSite.custom_properties,
+            data.custom_properties ?? [],
+          ),
         };
         await diveSitesAPI.updateDiveSite(diveSite.uuid, update);
         onSaved(await readBack(diveSite, update), proposes);
@@ -312,6 +318,10 @@ export function DiveSiteDialog({
           longitude,
           notes: data.notes || undefined,
           ...members,
+          custom_properties: customPropertiesUpdate(
+            undefined,
+            data.custom_properties ?? [],
+          ),
         });
         onSaved(created, proposes);
       }
@@ -540,6 +550,8 @@ export function DiveSiteDialog({
                 </FormItem>
               )}
             />
+
+            <CustomPropertiesField />
 
             {offersChoice && !(diveSite && isCommonsSite(diveSite)) && (
               <SiteVisibilityField

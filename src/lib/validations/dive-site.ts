@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { customPropertiesField } from "./custom-properties";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 import {
@@ -56,6 +57,7 @@ export const diveSiteFormSchema = z
     altitude: altitudeField(),
     entry_types: z.array(z.enum(ENTRY_TYPES)).optional(),
     tags: tagsField().optional(),
+    custom_properties: customPropertiesField().optional(),
   })
   // Both-or-neither, mirroring the API's rule: half a position is not a partial
   // fix, it's meaningless. Two refinements rather than one so the message lands
@@ -126,6 +128,7 @@ type DiveSiteFormSource = Pick<DiveSite, "name"> &
       | "altitude"
       | "entry_types"
       | "tags"
+      | "custom_properties"
     >
   >;
 
@@ -149,6 +152,7 @@ export function diveSiteFormValues(
     altitude: site?.altitude ?? null,
     entry_types: site ? siteEntryTypes(site) : [],
     tags: site?.tags ?? [],
+    custom_properties: site?.custom_properties ?? [],
   };
 }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { CustomPropertiesField } from "@/components/ui/custom-properties-field";
+import { customPropertiesUpdate } from "@/lib/custom-properties";
 import { useEffect, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -91,7 +93,12 @@ export function GearSetDialog({
 
   const form = useForm<GearSetInput>({
     resolver: zodResolver(gearSetSchema),
-    defaultValues: { name: "", weight: undefined, gear_item_uuids: [] },
+    defaultValues: {
+      name: "",
+      weight: undefined,
+      gear_item_uuids: [],
+      custom_properties: [],
+    },
   });
   const { reset, setValue, setError, setFocus } = form;
 
@@ -104,6 +111,8 @@ export function GearSetDialog({
       weight: initialWeight ?? source?.weight,
       gear_item_uuids:
         initialItemUuids ?? source?.gear_items.map((i) => i.uuid) ?? [],
+      // A duplicate starts with its source's, as with its gear.
+      custom_properties: source?.custom_properties ?? [],
     });
     setTargetUuid(undefined);
   }, [open, gearSet, duplicateOf, initialItemUuids, initialWeight, reset]);
@@ -146,6 +155,15 @@ export function GearSetDialog({
     // the API spells as an explicit null on a PATCH so it can be unset again.
     const weight = data.weight ?? null;
     const saveToUuid = gearSet?.uuid ?? targetUuid;
+    // Saving the dive's kit over an existing set leaves that set's properties:
+    // this form never loaded them.
+    const custom_properties =
+      saveToUuid && !gearSet
+        ? undefined
+        : customPropertiesUpdate(
+            gearSet?.custom_properties,
+            data.custom_properties ?? [],
+          );
 
     try {
       if (saveToUuid) {
@@ -157,6 +175,7 @@ export function GearSetDialog({
           name: data.name.trim(),
           weight,
           gear_item_uuids: items,
+          custom_properties,
         });
         // The API returns only a status message on PATCH, so re-read the set to
         // hand the caller its actual saved shape (including the item summaries).
@@ -167,6 +186,7 @@ export function GearSetDialog({
             name: data.name.trim(),
             weight,
             gear_item_uuids: items,
+            custom_properties,
           }),
         );
       }
@@ -318,6 +338,8 @@ export function GearSetDialog({
                 </FormItem>
               )}
             />
+
+            <CustomPropertiesField />
 
             <FormApiError error={apiError} />
 

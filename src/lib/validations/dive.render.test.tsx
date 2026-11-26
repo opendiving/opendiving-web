@@ -102,7 +102,11 @@ function Harness({
   }, [form, dive]);
 
   return (
-    <form onSubmit={form.handleSubmit((data) => onSave(buildDiveUpdate(data)))}>
+    <form
+      onSubmit={form.handleSubmit((data) =>
+        onSave(buildDiveUpdate(data, dive)),
+      )}
+    >
       <label htmlFor="notes">Notes</label>
       <input id="notes" {...form.register("notes")} />
 
@@ -388,7 +392,9 @@ function CylinderForm({ onSave }: { onSave: (update: DiveUpdate) => void }) {
   return (
     <FormProvider {...form}>
       <form
-        onSubmit={form.handleSubmit((data) => onSave(buildDiveUpdate(data)))}
+        onSubmit={form.handleSubmit((data) =>
+          onSave(buildDiveUpdate(data, WITH_A_CYLINDER)),
+        )}
       >
         <MixtureFields control={form.control} fieldArray={mixtureFieldArray} />
         <button type="submit">Save</button>

@@ -122,7 +122,10 @@ export function EditDivePageContent() {
     try {
       setIsSubmitting(true);
 
-      const updateData = buildDiveUpdate(conditions.withhold(data));
+      const updateData = buildDiveUpdate(
+        conditions.withhold(data),
+        dive ?? undefined,
+      );
 
       await divesAPI.updateDive(diveId, updateData);
 

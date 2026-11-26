@@ -15,6 +15,7 @@ import type {
   WaterType,
 } from "./dives";
 import type { PersonReference } from "./people";
+import type { CustomProperty } from "@/lib/custom-properties";
 
 /** One cylinder of a draft, on the way in: `DiveMixtureWrite`'s members, none bounded. */
 export interface DiveDraftMixture {
@@ -75,6 +76,8 @@ export interface DiveDraftValues {
   sightings?: DiveDraftSighting[];
   people?: PersonReference[];
   tags?: string[];
+  // The rows as typed, blank ones included: a draft keeps the form's state.
+  custom_properties?: CustomProperty[];
 }
 
 /**
@@ -131,6 +134,8 @@ export interface DiveDraftValuesRead {
     | null;
   people: PersonReference[] | null;
   tags: string[] | null;
+  // Optional because a draft stored before custom properties existed has none.
+  custom_properties?: CustomProperty[] | null;
 }
 
 /**

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { maxLength, optionalDateField } from "./fields";
+import { customPropertiesField } from "./custom-properties";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 import { personReferenceSchema } from "./person";
@@ -34,6 +35,7 @@ export const courseSchema = z
     // Everyone on the course but the instructor above.
     people: z.array(personReferenceSchema).optional(),
     notes: notesField().optional(),
+    custom_properties: customPropertiesField().optional(),
   })
   // Mirrors the API's `validate_agency_pairing`. An object-level refine, unlike a
   // field-level transform, leaves `z.input<>` untouched.

@@ -5,6 +5,7 @@ import type {
   PaginatedResponse,
   SearchFilters,
 } from "./client";
+import type { CustomProperty } from "@/lib/custom-properties";
 
 /**
  * What a contact is to the diver. Mirrors the API's `ContactRole`, value for value
@@ -64,6 +65,9 @@ export interface ContactAddress {
  * certification, a gear service or a trip part names it.
  */
 export interface Contact {
+  // The diver's own key-value pairs, in their order (`lib/custom-properties.ts`).
+  // Optional because a response cached before they existed carries none.
+  custom_properties?: CustomProperty[];
   uuid: string;
   name: string;
   // Plain strings rather than `ContactRole`: the API reads a stored vocabulary back
@@ -84,6 +88,8 @@ export interface Contact {
 }
 
 export interface ContactCreate {
+  // Replaces the list whole; omitted, a write leaves it.
+  custom_properties?: CustomProperty[];
   name: string;
   // Strings for the reason `Contact.roles` is: an edit sends back a role this build
   // has no checkbox for rather than dropping it. The API validates the set.

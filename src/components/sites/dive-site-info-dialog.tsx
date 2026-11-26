@@ -8,6 +8,7 @@ import { formatAltitude, formatDepth } from "@/lib/units";
 import { formatCoordinateForForm } from "@/lib/validations/coordinates";
 import { ExternalIdLink } from "@/components/sites/external-id-link";
 import {
+  customPropertiesSections,
   RecordInfoDialog,
   type RecordInfoSection,
 } from "@/components/ui/record-info-dialog";
@@ -73,6 +74,7 @@ export function DiveSiteInfoDialog({ site }: { site: DiveSite }) {
         { label: "Notes", value: site.notes, wide: true },
       ],
     },
+    ...customPropertiesSections(site.custom_properties),
   ];
 
   return <RecordInfoDialog title="Dive site information" sections={sections} />;

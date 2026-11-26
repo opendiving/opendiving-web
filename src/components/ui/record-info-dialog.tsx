@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { HERO_CONTROL } from "@/components/ui/map-hero";
 import { cn } from "@/lib/utils";
+import type { CustomProperty } from "@/lib/custom-properties";
 
 export interface RecordInfoFact {
   label: string;
@@ -64,6 +65,23 @@ export function RecordInfoDialog({
       </Dialog>
     </>
   );
+}
+
+/**
+ * A record's custom properties as a section of their own, after the fields its
+ * form has, each under its key - or no section where the record holds none,
+ * since unlike a field there is nothing to show as unrecorded.
+ */
+export function customPropertiesSections(
+  properties: CustomProperty[] | undefined,
+): RecordInfoSection[] {
+  if (!properties?.length) return [];
+  return [
+    {
+      heading: "Custom properties",
+      facts: properties.map(({ key, value }) => ({ label: key, value })),
+    },
+  ];
 }
 
 // The sections themselves, for a dialog that holds them behind a control of its own.

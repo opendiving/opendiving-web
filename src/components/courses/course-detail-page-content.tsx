@@ -1,5 +1,6 @@
 "use client";
 
+import { CourseInfoDialog } from "@/components/courses/course-info-dialog";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -134,6 +135,7 @@ export function CourseDetailPageContent() {
         figures={[]}
         actions={
           <>
+            <CourseInfoDialog course={course} />
             <Button
               variant="ghost"
               size="sm"
