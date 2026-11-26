@@ -6,7 +6,7 @@ import { useDebouncedSearch } from "@/hooks/useDebouncedSearch";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { contactsAPI, contactRoleLabel, Contact } from "@/lib/api/contacts";
-import { formatWebsite } from "@/lib/contact";
+import { linkText } from "@/lib/links";
 import { Badge } from "@/components/ui/badge";
 import { RowActions } from "@/components/ui/row-actions";
 import { ContactsPageFrame } from "@/components/contacts/contacts-page-frame";
@@ -124,18 +124,7 @@ export function ContactsPageContent() {
               {contact.phone || NONE}
             </TableCell>
             <TableCell>
-              {contact.website ? (
-                <a
-                  href={contact.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="relative hover:underline touch:tap-target"
-                >
-                  {formatWebsite(contact.website)}
-                </a>
-              ) : (
-                NONE
-              )}
+              <FirstLink links={contact.links} />
             </TableCell>
             {/* No view action: a contact is read and changed in the one
                 dialog, and has no page of its own. */}
@@ -166,5 +155,28 @@ export function ContactsPageContent() {
         onConfirm={confirmDelete}
       />
     </>
+  );
+}
+
+// The first link and a count of the rest, which the contact's dialog lists.
+function FirstLink({ links }: { links: Contact["links"] }) {
+  const [first, ...rest] = links ?? [];
+  if (!first) return NONE;
+  return (
+    <span>
+      <a
+        href={first.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="relative hover:underline touch:tap-target"
+      >
+        {linkText(first)}
+      </a>
+      {rest.length > 0 && (
+        <span className="ml-1 whitespace-nowrap text-muted-foreground">
+          +{rest.length}
+        </span>
+      )}
+    </span>
   );
 }

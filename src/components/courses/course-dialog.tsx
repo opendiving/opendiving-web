@@ -7,6 +7,7 @@ import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { courseSchema, CourseInput } from "@/lib/validations/course";
+import { linksFromForm, linksToForm } from "@/lib/validations/links";
 import {
   coursesAPI,
   Course,
@@ -36,6 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { LinksFormField } from "@/components/ui/links-field";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { PeopleMultiSelect } from "@/components/people/people-multi-select";
 import { TrainingFields } from "./training-fields";
@@ -87,6 +89,7 @@ export function CourseDialog({
       instructor_number: "",
       contact_uuid: null,
       people: [],
+      links: [],
       notes: "",
     },
   });
@@ -116,6 +119,7 @@ export function CourseDialog({
       instructor_number: course?.instructor_number ?? "",
       contact_uuid: course?.contact_uuid ?? null,
       people: others,
+      links: linksToForm(course?.links),
       notes: course?.notes ?? "",
     });
     // Same deliberate reset-on-open pattern as `certification-dialog.tsx`;
@@ -171,6 +175,7 @@ export function CourseDialog({
         // The whole list on every save, the instructor first - the API replaces
         // it, so a cleared instructor is simply one no longer on it.
         people: joinCourseInstructor(data.instructor_uuid, data.people ?? []),
+        links: linksFromForm(data.links ?? []),
         notes: data.notes || "",
       };
 
@@ -291,6 +296,8 @@ export function CourseDialog({
                 </FormItem>
               )}
             />
+
+            <LinksFormField control={form.control} />
 
             <FormField
               control={form.control}

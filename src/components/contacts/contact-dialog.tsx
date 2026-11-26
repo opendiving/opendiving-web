@@ -10,9 +10,9 @@ import {
   contactAddressFromForm,
   contactAddressToForm,
   EMPTY_CONTACT_ADDRESS,
-  normalizeWebsite,
   type ContactInput,
 } from "@/lib/validations/contact";
+import { linksFromForm, linksToForm } from "@/lib/validations/links";
 import {
   formatCoordinateForForm,
   parseFormCoordinate,
@@ -48,6 +48,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { LinksFormField } from "@/components/ui/links-field";
 import { ContactPositionField } from "@/components/contacts/contact-position-field";
 
 interface ContactDialogProps {
@@ -104,7 +105,7 @@ export function ContactDialog({
       roles: [],
       phone: "",
       email: "",
-      website: "",
+      links: [],
       address: EMPTY_CONTACT_ADDRESS,
       latitude: "",
       longitude: "",
@@ -134,7 +135,7 @@ export function ContactDialog({
           : [],
       phone: contact?.phone ?? "",
       email: contact?.email ?? "",
-      website: contact?.website ?? "",
+      links: linksToForm(contact?.links),
       address: contactAddressToForm(contact?.address),
       latitude: formatCoordinateForForm(contact?.latitude),
       longitude: formatCoordinateForForm(contact?.longitude),
@@ -154,7 +155,7 @@ export function ContactDialog({
         roles: data.roles,
         phone: data.phone.trim() || null,
         email: data.email.trim() || null,
-        website: normalizeWebsite(data.website),
+        links: linksFromForm(data.links),
         address: contactAddressFromForm(data.address),
         latitude: parseFormCoordinate(data.latitude),
         longitude: parseFormCoordinate(data.longitude),
@@ -308,29 +309,7 @@ export function ContactDialog({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="website"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Website</FormLabel>
-                  {/* Not `type="url"`: the browser would refuse the bare host
-                      a diver copies off a sign, which is the case the scheme
-                      is added on save for. */}
-                  <FormControl
-                    render={
-                      <Input
-                        inputMode="url"
-                        autoComplete="off"
-                        placeholder="e.g. blueocean.com"
-                        {...field}
-                      />
-                    }
-                  />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <LinksFormField control={form.control} />
 
             <div className="grid gap-4 sm:grid-cols-2">
               {ADDRESS_PARTS.map((part) => (

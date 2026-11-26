@@ -4,6 +4,7 @@ import { notesField } from "./notes";
 import { requiredName } from "./name";
 import { locationSchema } from "./location";
 import { personReferenceSchema } from "./person";
+import { linksField } from "./links";
 
 // Date fields use a plain "YYYY-MM-DD" string (the native value format of
 // `<input type="date">`) rather than the "" placeholder trick used for
@@ -63,6 +64,7 @@ export const tripFormSchema = z.object({
     .optional(),
   // Who came along, in the diver's order.
   people: z.array(personReferenceSchema).optional(),
+  links: linksField().optional(),
   notes: notesField().optional(),
 });
 

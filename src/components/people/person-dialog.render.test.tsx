@@ -31,6 +31,7 @@ const EXISTING: Person = {
   name: "Alex M.",
   email: "alex@example.com",
   phone: "+44 7700 900111",
+  links: [{ url: "https://instagram.example/alexm", label: "Instagram" }],
   notes: "Rescue diver, dives a drysuit.",
   username: "alexm",
   avatar_sha256: null,
@@ -128,6 +129,7 @@ describe("PersonDialog", () => {
       name: "Robin",
       email: null,
       phone: null,
+      links: [],
       notes: "",
     });
     expect(onSaved).toHaveBeenCalledWith(
@@ -180,6 +182,7 @@ describe("PersonDialog", () => {
         name: "Alex M.",
         email: EXISTING.email,
         phone: null,
+        links: EXISTING.links,
         notes: EXISTING.notes,
       },
     ]);
@@ -232,6 +235,7 @@ describe("PersonDialog connecting an account", () => {
       name: "Sam Diver",
       email: null,
       phone: null,
+      links: [],
       notes: "",
       connect_link: BY_LINK.token,
     });

@@ -4,7 +4,6 @@ import {
   contactAddressToForm,
   contactSchema,
   EMPTY_CONTACT_ADDRESS,
-  normalizeWebsite,
   type ContactInput,
 } from "./contact";
 
@@ -13,7 +12,7 @@ const valid: ContactInput = {
   roles: ["dive_center"],
   phone: "",
   email: "",
-  website: "",
+  links: [],
   address: EMPTY_CONTACT_ADDRESS,
   notes: "",
 };
@@ -25,50 +24,21 @@ const errorPaths = (input: ContactInput) => {
     : result.error.issues.map((issue) => issue.path.join("."));
 };
 
-describe("normalizeWebsite", () => {
-  it("gives a bare host the scheme the API requires", () => {
-    // What a diver copies off a sign; the API refuses it without a scheme.
-    expect(normalizeWebsite("blueocean.com")).toBe("https://blueocean.com");
-    expect(normalizeWebsite("  www.blueocean.com/dahab ")).toBe(
-      "https://www.blueocean.com/dahab",
-    );
-  });
-
-  it("leaves a URL that already names its scheme as typed", () => {
-    expect(normalizeWebsite("http://blueocean.com")).toBe(
-      "http://blueocean.com",
-    );
-    expect(normalizeWebsite("ftp://blueocean.com")).toBe("ftp://blueocean.com");
-  });
-
-  it("reads an empty box as no website", () => {
-    expect(normalizeWebsite("")).toBeNull();
-    expect(normalizeWebsite("   ")).toBeNull();
-    expect(normalizeWebsite(undefined)).toBeNull();
-  });
-});
-
 describe("contactSchema", () => {
   it("accepts a name and nothing else", () => {
     expect(errorPaths({ ...valid, roles: [] })).toEqual([]);
   });
 
-  it("accepts a bare host, which is sent with its scheme", () => {
-    expect(errorPaths({ ...valid, website: "blueocean.com" })).toEqual([]);
-  });
-
-  it("refuses a website the API would refuse, beside the field", () => {
-    expect(errorPaths({ ...valid, website: "ftp://blueocean.com" })).toEqual([
-      "website",
-    ]);
-    expect(errorPaths({ ...valid, website: "not a url" })).toEqual(["website"]);
-  });
-
-  it("refuses a website longer than the API stores, scheme included", () => {
-    // 504 characters typed, 512 once `https://` is added: the API's own limit.
-    const typed = `blueocean.com/${"a".repeat(490)}`;
-    expect(errorPaths({ ...valid, website: typed })).toEqual([]);
-    expect(errorPaths({ ...valid, website: `${typed}a` })).toEqual(["website"]);
+  it("refuses a link the API would refuse, on its row", () => {
+    expect(
+      errorPaths({
+        ...valid,
+        links: [
+          { url: "blueocean.com", label: "" },
+          { url: "ftp://blueocean.com", label: "" },
+        ],
+      }),
+    ).toEqual(["links.1.url"]);
   });
 
   it("refuses an email the API would", () => {

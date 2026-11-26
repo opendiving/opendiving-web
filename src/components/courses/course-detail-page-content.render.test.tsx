@@ -118,3 +118,25 @@ describe("CourseDetailPageContent's instructor", () => {
     expect(screen.queryByText("Instructor")).not.toBeInTheDocument();
   });
 });
+
+describe("CourseDetailPageContent's links", () => {
+  it("lists every link, each opening in a new tab", () => {
+    const instructor = person({});
+    stable.people = {};
+    stable.course = {
+      ...course(instructor),
+      links: [
+        { url: "https://padi.example/elearning", label: "Course materials" },
+        { url: "https://blueocean.example/", label: null },
+      ],
+    };
+    render(<CourseDetailPageContent />);
+
+    expect(
+      screen.getByRole("link", { name: "Course materials" }),
+    ).toHaveAttribute("href", "https://padi.example/elearning");
+    const bare = screen.getByRole("link", { name: "blueocean.example" });
+    expect(bare).toHaveAttribute("href", "https://blueocean.example/");
+    expect(bare).toHaveAttribute("target", "_blank");
+  });
+});

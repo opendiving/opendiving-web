@@ -2,6 +2,7 @@ import { z } from "zod";
 import { optionalEmailField, phoneField } from "./fields";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
+import { linksField } from "./links";
 
 // The API's bound for a person's name (`schemas/person.py`), which is DiveJSON's.
 const NAME_MAX = 255;
@@ -14,6 +15,7 @@ export const personSchema = z.object({
   name: requiredName("Name", NAME_MAX),
   email: optionalEmailField(),
   phone: phoneField(),
+  links: linksField(),
   notes: notesField(),
 });
 

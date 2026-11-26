@@ -105,6 +105,27 @@ describe("TripDetailPageContent", () => {
     expect(screen.queryByText("Dahab")).not.toBeInTheDocument();
   });
 
+  it("lists the trip's links, and draws the card for them alone", () => {
+    stable.trip = {
+      ...trip(""),
+      links: [
+        { url: "https://padi.example/elearning", label: "Course materials" },
+        { url: "https://blueocean.example/", label: null },
+      ],
+    };
+    render(<TripDetailPageContent />);
+
+    expect(
+      screen.getByRole("heading", { name: "Trip Information" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Course materials" }),
+    ).toHaveAttribute("href", "https://padi.example/elearning");
+    const bare = screen.getByRole("link", { name: "blueocean.example" });
+    expect(bare).toHaveAttribute("href", "https://blueocean.example/");
+    expect(bare).toHaveAttribute("target", "_blank");
+  });
+
   it("draws no card for a trip with nothing to say", () => {
     stable.trip = trip("");
     render(<TripDetailPageContent />);

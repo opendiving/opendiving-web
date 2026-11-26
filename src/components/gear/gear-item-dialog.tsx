@@ -7,6 +7,7 @@ import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useFormContext, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { gearItemSchema, GearItemInput } from "@/lib/validations/gear";
+import { linksFromForm, linksToForm } from "@/lib/validations/links";
 import {
   CYLINDER_MATERIALS,
   cylinderMaterialLabel,
@@ -39,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { DialogSubmitButton } from "@/components/ui/dialog-submit-button";
+import { LinksFormField } from "@/components/ui/links-field";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 import type { PresetVessel, VolumeOption } from "@/lib/cylinder-presets";
@@ -116,6 +118,7 @@ export function GearItemDialog({
       name: "",
       brand: "",
       type: "",
+      links: [],
       notes: "",
       rented: false,
       volume: "",
@@ -136,6 +139,7 @@ export function GearItemDialog({
       name: gearItem?.name ?? initialName ?? "",
       brand: gearItem?.brand ?? "",
       type: gearItem ? (gearItem.type ?? "") : (initialType ?? ""),
+      links: linksToForm(gearItem?.links),
       notes: gearItem?.notes ?? "",
       rented: gearItem?.rented ?? false,
       volume: gearItem?.volume ?? "",
@@ -152,12 +156,14 @@ export function GearItemDialog({
       // ignored as an omitted key, and on create they're simply left off.
       const type = (data.type || null) as GearType | null;
       const vessel = vesselFactsToSave(data, type, gearItem?.type);
+      const links = linksFromForm(data.links ?? []);
 
       if (gearItem) {
         await gearAPI.updateGearItem(gearItem.uuid, {
           name: data.name.trim(),
           brand: data.brand?.trim() || null,
           type,
+          links,
           notes: data.notes || "",
           rented: data.rented ?? false,
           ...vessel,
@@ -167,6 +173,7 @@ export function GearItemDialog({
           name: data.name.trim(),
           brand: data.brand?.trim() || null,
           type,
+          links,
           notes: data.notes || "",
           rented: data.rented ?? false,
           ...vessel,
@@ -176,6 +183,7 @@ export function GearItemDialog({
           name: data.name.trim(),
           brand: data.brand?.trim() || undefined,
           type: type ?? undefined,
+          links,
           notes: data.notes || undefined,
           rented: data.rented ?? false,
           ...vessel,
@@ -304,6 +312,8 @@ export function GearItemDialog({
                 </FormItem>
               )}
             />
+
+            <LinksFormField control={form.control} />
 
             <FormField
               control={form.control}

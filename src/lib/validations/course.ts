@@ -3,6 +3,7 @@ import { maxLength, optionalDateField } from "./fields";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
 import { personReferenceSchema } from "./person";
+import { linksField } from "./links";
 import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
 import { COURSE_STATUSES } from "@/lib/api/courses";
 
@@ -33,6 +34,7 @@ export const courseSchema = z
     contact_uuid: z.string().nullable().optional(),
     // Everyone on the course but the instructor above.
     people: z.array(personReferenceSchema).optional(),
+    links: linksField().optional(),
     notes: notesField().optional(),
   })
   // Mirrors the API's `validate_agency_pairing`. An object-level refine, unlike a

@@ -38,6 +38,7 @@ import { NotFoundState } from "@/components/ui/not-found-state";
 import { BadgeCheck, Edit, Plus, GraduationCap } from "lucide-react";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { InfoRow } from "@/components/ui/info-row";
+import { LinkList } from "@/components/ui/link-list";
 
 export function CourseDetailPageContent() {
   const router = useRouter();
@@ -224,6 +225,11 @@ export function CourseDetailPageContent() {
                   </div>
                   <PeopleList people={others} resolved={people} />
                 </div>
+              )}
+              {course.links && course.links.length > 0 && (
+                <InfoRow label="Links">
+                  <LinkList links={course.links} />
+                </InfoRow>
               )}
               {course.notes && (
                 <InfoRow label="Notes">

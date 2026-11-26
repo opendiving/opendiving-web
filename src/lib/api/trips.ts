@@ -8,6 +8,7 @@ import type {
 import type { Dive } from "./dives";
 import type { Location } from "./location";
 import type { PersonReference } from "./people";
+import type { WebLink } from "./links";
 
 /**
  * One stretch of a trip: an optional date range and an optional place.
@@ -53,6 +54,9 @@ export interface Trip {
   // `companion` for someone who stayed on the boat. Optional because a response
   // cached before people existed carries none.
   people?: PersonReference[];
+  // In the diver's order. Optional because a response cached before links existed
+  // carries none.
+  links?: WebLink[];
   notes?: string;
   user_uuid: string;
   created_at: string;
@@ -81,6 +85,8 @@ export interface TripCreate {
   name: string;
   parts?: TripPartInput[];
   people?: PersonReference[];
+  // Replaces the links whole; omitting it leaves them alone. Never null.
+  links?: WebLink[];
   notes?: string;
 }
 
@@ -91,6 +97,8 @@ export interface TripUpdate {
   parts?: TripPartInput[];
   // The same wholesale-replace contract as the parts.
   people?: PersonReference[];
+  // Replaces the links whole; omitting it leaves them alone. Never null.
+  links?: WebLink[];
   notes?: string;
 }
 

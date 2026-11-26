@@ -105,4 +105,23 @@ describe("PersonDetailPageContent", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Disconnect" })).toBeNull();
   });
+
+  it("lists the person's links in a card of their own", () => {
+    stable.person = {
+      ...CONNECTED,
+      links: [
+        { url: "https://padi.example/elearning", label: "Course materials" },
+        { url: "https://blueocean.example/", label: null },
+      ],
+    };
+    render(<PersonDetailPageContent />);
+
+    expect(screen.getByRole("heading", { name: "Links" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Course materials" }),
+    ).toHaveAttribute("href", "https://padi.example/elearning");
+    const bare = screen.getByRole("link", { name: "blueocean.example" });
+    expect(bare).toHaveAttribute("href", "https://blueocean.example/");
+    expect(bare).toHaveAttribute("target", "_blank");
+  });
 });

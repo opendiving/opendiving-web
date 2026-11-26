@@ -10,6 +10,7 @@ import type {
   PaginatedResponse,
   SearchFilters,
 } from "./client";
+import type { WebLink } from "./links";
 
 /**
  * What a person was on one occasion - a dive, a trip, a course. Mirrors the API's
@@ -72,6 +73,9 @@ export interface Person {
   name: string;
   email?: string | null;
   phone?: string | null;
+  // In the diver's order. Optional because a response cached before links existed
+  // carries none.
+  links?: WebLink[];
   notes: string;
   // The *current* username of the account on this instance the person is
   // connected to, or null when not connected. Joined on every read, so a rename
@@ -103,6 +107,8 @@ export interface PersonFields {
   name: string;
   email?: string | null;
   phone?: string | null;
+  // Replaces the links whole; omitting it leaves them alone. Never null.
+  links?: WebLink[];
   notes?: string;
 }
 
@@ -110,7 +116,7 @@ export type PersonCreate = PersonFields & Partial<PersonConnection>;
 
 /**
  * The `PATCH /person/{uuid}` body. An explicit `null` clears the email or the
- * phone; `name` and `notes` take no null. Omitting a key leaves it alone. A
+ * phone; `name`, `links` and `notes` take no null. Omitting a key leaves it alone. A
  * connection member connects a person who is not connected yet; disconnecting is
  * `disconnectPerson`.
  */

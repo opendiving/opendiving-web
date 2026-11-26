@@ -30,8 +30,9 @@ import {
   PlainHero,
 } from "@/components/ui/map-hero";
 import { NotFoundState } from "@/components/ui/not-found-state";
+import { LinkList } from "@/components/ui/link-list";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { Edit, FileText, Mail, Phone, Unlink, User } from "lucide-react";
+import { Edit, FileText, Globe, Mail, Phone, Unlink, User } from "lucide-react";
 
 // An icon set in the subtitle's line, at its text's size, before the value it
 // marks; the link never breaks between them. A step lower than a site's facts
@@ -148,6 +149,7 @@ export function PersonDetailPageContent() {
       </a>
     ),
   ].filter(Boolean);
+  const links = person.links ?? [];
 
   return (
     <div>
@@ -238,21 +240,36 @@ export function PersonDetailPageContent() {
           />
         </div>
 
-        {person.notes && (
+        {(person.notes || links.length > 0) && (
           <div className="space-y-6 max-sm:space-y-2.5">
-            <Card>
-              <CardHeader>
-                <CardTitle as="h2" className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Notes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
-                  {person.notes}
-                </p>
-              </CardContent>
-            </Card>
+            {links.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle as="h2" className="flex items-center gap-2">
+                    <Globe className="h-5 w-5" />
+                    Links
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <LinkList links={links} />
+                </CardContent>
+              </Card>
+            )}
+            {person.notes && (
+              <Card>
+                <CardHeader>
+                  <CardTitle as="h2" className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Notes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                    {person.notes}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>

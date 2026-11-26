@@ -2,6 +2,7 @@ import { z } from "zod";
 import { maxLength } from "./fields";
 import { notesField } from "./notes";
 import { requiredName } from "./name";
+import { linksField } from "./links";
 import { CYLINDER_MATERIALS, GEAR_TYPES } from "@/lib/api/gear";
 import { MAX_PRESSURE_BAR, PRESSURE_CEILING_CLAUSE } from "./dive";
 
@@ -12,6 +13,7 @@ export const gearItemSchema = z.object({
   // categorize a one-off piece of kit before saving it would be friction for no
   // gain. `""` is what the select holds for "no type" while editing.
   type: z.union([z.literal(""), z.enum(GEAR_TYPES)]).optional(),
+  links: linksField().optional(),
   notes: notesField().optional(),
   rented: z.boolean().optional(),
   // The vessel facts, mirroring `GearItemCreate`'s bounds: a capacity above zero, and

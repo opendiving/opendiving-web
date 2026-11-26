@@ -28,7 +28,7 @@ const COPY: TableListFrameCopy = {
       "Add the dive centers, shops and places you stay at once, and pick them from your dives, courses and trips.",
     action: "Add your first contact",
   },
-  columns: ["Name", "Roles", "City", "Phone", "Website"],
+  columns: ["Name", "Roles", "City", "Phone", "Links"],
 };
 
 // Everything /contacts draws before its rows exist.

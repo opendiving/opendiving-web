@@ -4,6 +4,8 @@ import { Calendar } from "lucide-react";
 import type { Person, PersonReference } from "@/lib/api/people";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeopleList } from "@/components/people/people-list";
+import { LinkList } from "@/components/ui/link-list";
+import type { WebLink } from "@/lib/api/links";
 import {
   SectionIndexTrigger,
   SectionSentinel,
@@ -20,6 +22,7 @@ interface TripInformationCardProps {
   people: readonly PersonReference[];
   resolvedPeople: Readonly<Record<string, Person>>;
   diveCenterNames: readonly string[];
+  links: readonly WebLink[];
   notes?: string;
 }
 
@@ -30,6 +33,7 @@ export function TripInformationCard({
   people,
   resolvedPeople,
   diveCenterNames,
+  links,
   notes,
 }: TripInformationCardProps) {
   const narrow = !useMediaQuery(WIDE);
@@ -84,6 +88,15 @@ export function TripInformationCard({
               Dive centers
             </div>
             <div className="text-sm">{diveCenterNames.join(", ")}</div>
+          </div>
+        )}
+
+        {links.length > 0 && (
+          <div>
+            <div className="text-sm font-medium text-muted-foreground mb-1">
+              Links
+            </div>
+            <LinkList links={links} />
           </div>
         )}
 

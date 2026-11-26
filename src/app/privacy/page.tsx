@@ -396,10 +396,10 @@ export default async function PrivacyPage() {
                   clubs and places you stayed that you record, to name them from
                   your dives, courses, certifications, service records and trips
                   &mdash; a name, what each one is to you, and, if you add them,
-                  its phone number, email address, website, postal address,
-                  where it is on a map and your notes. A contact can be a person
-                  rather than a business &mdash; the friend whose flat you
-                  stayed in &mdash; and what you record about them is then
+                  its phone number, email address, links to its pages, postal
+                  address, where it is on a map and your notes. A contact can be
+                  a person rather than a business &mdash; the friend whose flat
+                  you stayed in &mdash; and what you record about them is then
                   somebody else&rsquo;s data, which you enter
                 </li>
                 <li>
@@ -407,11 +407,12 @@ export default async function PrivacyPage() {
                   fellow students and companions you record, to name them from
                   your dives, trips, courses and certifications &mdash; a name,
                   the role each had on a dive, a trip or a course, and, if you
-                  add them, an email address, a phone number and your notes.
-                  What you record about a person is somebody else&rsquo;s data,
-                  which you enter. A person can be connected to their account on
-                  this copy, and section 4.10 says what makes a connection, what
-                  it shows, and to whom
+                  add them, an email address, a phone number, links to that
+                  person&rsquo;s own pages and your notes. What you record about
+                  a person is somebody else&rsquo;s data, which you enter. A
+                  person can be connected to their account on this copy, and
+                  section 4.10 says what makes a connection, what it shows, and
+                  to whom
                 </li>
                 <li>
                   <strong>Photo Proposals:</strong> A Wikimedia Commons file

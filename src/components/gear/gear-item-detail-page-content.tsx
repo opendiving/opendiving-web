@@ -30,12 +30,14 @@ import {
 } from "@/components/ui/map-hero";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { NotFoundState } from "@/components/ui/not-found-state";
+import { LinkList } from "@/components/ui/link-list";
 import {
   Edit,
   Backpack,
   Archive,
   ArchiveRestore,
   FileText,
+  Globe,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { countNoun } from "@/lib/format";
@@ -131,6 +133,8 @@ export function GearItemDetailPageContent() {
     );
   }
 
+  const links = gearItem.links ?? [];
+
   return (
     <div>
       <GearItemHero
@@ -206,21 +210,36 @@ export function GearItemDetailPageContent() {
           />
         </div>
 
-        {gearItem.notes && (
+        {(gearItem.notes || links.length > 0) && (
           <div className="space-y-6 max-sm:space-y-2.5">
-            <Card>
-              <CardHeader>
-                <CardTitle as="h2" className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Notes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
-                  {gearItem.notes}
-                </p>
-              </CardContent>
-            </Card>
+            {links.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle as="h2" className="flex items-center gap-2">
+                    <Globe className="h-5 w-5" />
+                    Links
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <LinkList links={links} />
+                </CardContent>
+              </Card>
+            )}
+            {gearItem.notes && (
+              <Card>
+                <CardHeader>
+                  <CardTitle as="h2" className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Notes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                    {gearItem.notes}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>
