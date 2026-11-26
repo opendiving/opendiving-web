@@ -1,3 +1,4 @@
+import { unitSystemFor } from "@/lib/units";
 // How far apart two recorded positions are, and how to say it.
 //
 // This exists because the read-only map cannot show it. That map is capped at
@@ -5,7 +6,11 @@
 // an entry and an exit fix a swim apart are drawn as one dot. The distance is
 // real and worth seeing, so it is text.
 
-import { FEET_PER_MILE, METERS_PER_FOOT, type UnitSystem } from "@/lib/units";
+import {
+  FEET_PER_MILE,
+  METERS_PER_FOOT,
+  type UnitSelection,
+} from "@/lib/units";
 
 // A position, in the same two field names everything else in the app uses.
 export interface GeoPoint {
@@ -54,8 +59,8 @@ export function haversineMeters(a: GeoPoint, b: GeoPoint): number {
  * Lives here rather than in `lib/units.ts` with the other formatters: the
  * kilometre threshold and the tests behind it are this module's.
  */
-export function formatDistance(meters: number, units: UnitSystem): string {
-  if (units === "imperial") {
+export function formatDistance(meters: number, units: UnitSelection): string {
+  if (unitSystemFor("depth", units) === "imperial") {
     const feet = meters / METERS_PER_FOOT;
     const wholeFeet = Math.round(feet);
     if (wholeFeet < FEET_PER_MILE) return `${wholeFeet} ft`;

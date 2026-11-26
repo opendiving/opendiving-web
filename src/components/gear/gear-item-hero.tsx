@@ -28,7 +28,7 @@ export function GearItemHero({
     gearItem.is_archived ? "Archived" : null,
   ];
 
-  const units = useUnits();
+  const { preferences: units } = useUnits();
   const figures: MapHeroFigure[] = [];
   // The vessel's facts lead where it records any - meaningful on a cylinder, and
   // shown on whatever type carries them, as an import may leave them on an untyped

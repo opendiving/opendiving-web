@@ -7,7 +7,7 @@ import {
   versionedRequest,
   type MessageResponse,
 } from "./client";
-import type { UnitSystem } from "@/lib/units";
+import type { UnitSystem, UnitPreferenceOverrides } from "@/lib/units";
 import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
 import type { PictureCrop, PictureKind } from "@/lib/picture";
 
@@ -47,6 +47,7 @@ export interface User {
   // server default, so a response either carries it or comes from an API this build
   // cannot talk to anyway (`PATCH /user` would 422 on the settings card's own field).
   units: UnitSystem;
+  unit_preferences?: UnitPreferenceOverrides;
   // Which dive-form fields this diver keeps hidden, in the API's canonical order
   // (form order, duplicates collapsed) - so the Fields surfaces decide which preset
   // matches by comparing this list element by element.
@@ -140,6 +141,7 @@ export interface UpdateProfileData {
   renewal_reminder_emails?: boolean;
   year_in_review_emails?: boolean;
   units?: UnitSystem;
+  unit_preferences?: UnitPreferenceOverrides;
   // Replaced wholesale - there is no "hide one more" verb, because the Fields dialog
   // holds the whole set and sends it. Any order is accepted and stored canonically;
   // this client sends the canonical form anyway so what it holds and what came back
